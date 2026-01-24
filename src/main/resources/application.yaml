@@ -1,0 +1,78 @@
+# Общие настройки
+spring:
+  application:
+    name: household-store
+  
+  # Настройки по умолчанию (для локальной разработки)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/household_store?currentSchema=household_schema
+    username: postgres
+    password: postgres123
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        default_schema: household_schema
+        format_sql: true
+  
+  # Actuator для health checks
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health,info
+    endpoint:
+      health:
+        show-details: always
+
+# Включаем Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator  # явно указываем путь
+  endpoint:
+    health:
+      enabled: true
+      show-details: always
+  info:
+    enabled: true
+
+server:
+  port: 8081  # Используем порт 8081!
+  servlet:
+    context-path: /api
+
+logging:
+  level:
+    com.zaxxer.hikari: INFO
+    org.hibernate.SQL: DEBUG
+    ru.galtor85: DEBUG
+
+---
+
+
+# Профиль для Docker
+spring:
+  config:
+    activate:
+      on-profile: docker
+  
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/household_store?currentSchema=household_schema}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres123}
+  
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+
+server:
+  port: ${SERVER_PORT:8081}  # По умолчанию 8081
