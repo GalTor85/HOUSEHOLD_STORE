@@ -1,9 +1,8 @@
 package ru.galtor85.household_store.service;
 
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import ru.galtor85.household_store.model.User;
+import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.repository.UserRepository;
 
 @Service

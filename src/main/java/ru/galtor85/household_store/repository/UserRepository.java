@@ -1,7 +1,7 @@
 package ru.galtor85.household_store.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import ru.galtor85.household_store.model.User;
+import ru.galtor85.household_store.entity.User;
 
 import java.util.Optional;
 

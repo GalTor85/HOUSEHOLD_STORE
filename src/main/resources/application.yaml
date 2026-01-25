@@ -3,7 +3,7 @@ spring:
   application:
     name: household-store
   
-  # Настройки по умолчанию (для локальной разработки)
+  # Настройки базы данных
   datasource:
     url: jdbc:postgresql://localhost:5432/household_store?currentSchema=household_schema
     username: postgres
@@ -11,7 +11,8 @@ spring:
     hikari:
       connection-timeout: 30000
       maximum-pool-size: 10
-  
+
+  # JPA/Hibernate
   jpa:
     hibernate:
       ddl-auto: update
@@ -20,59 +21,69 @@ spring:
       hibernate:
         default_schema: household_schema
         format_sql: true
-  
-  # Actuator для health checks
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Thymeleaf
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    cache: false
+    check-template: true
+    check-template-location: true
+
+  # MVC
+  mvc:
+    static-path-pattern: /static/**
+
+  # Сессии
+  session:
+    timeout: 30m
+
+  # Actuator
   management:
     endpoints:
       web:
         exposure:
-          include: health,info
+          include: health,info,metrics
+        base-path: /actuator
     endpoint:
       health:
+        enabled: true
         show-details: always
-
-# Включаем Actuator
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics
-      base-path: /actuator  # явно указываем путь
-  endpoint:
-    health:
+    info:
       enabled: true
-      show-details: always
-  info:
-    enabled: true
 
+# Сервер
 server:
-  port: 8081  # Используем порт 8081!
+  port: 8081
   servlet:
     context-path: /api
 
+# Логирование
 logging:
   level:
     com.zaxxer.hikari: INFO
     org.hibernate.SQL: DEBUG
+    org.springframework.web: INFO
     ru.galtor85: DEBUG
 
 ---
-
-
 # Профиль для Docker
 spring:
   config:
     activate:
       on-profile: docker
-  
+
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/household_store?currentSchema=household_schema}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres123}
-  
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://household-postgres:5432/household_store?currentSchema=household_schema}
+    username: ${SPRING_DATASOURCE_USERNAME:household_app}
+    password: ${SPRING_DATASOURCE_PASSWORD:household123}
+
   jpa:
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
 
 server:
-  port: ${SERVER_PORT:8081}  # По умолчанию 8081
+  port: ${SERVER_PORT:8081}

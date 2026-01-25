@@ -6,6 +6,7 @@ services:
       POSTGRES_DB: household_store
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres123
+      POSTGRES_HOST_AUTH_METHOD: md5  # Добавляем для безопасности
     ports:
       - "5432:5432"
     volumes:
@@ -19,9 +20,12 @@ services:
       start_period: 30s
     networks:
       - household-network
+    restart: unless-stopped  # Добавляем для автоперезапуска
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: household-app
     depends_on:
       postgres:
@@ -32,22 +36,36 @@ services:
       SPRING_DATASOURCE_USERNAME: household_app
       SPRING_DATASOURCE_PASSWORD: household123
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SERVER_PORT: 8081  # Используем порт 8081!
+      SERVER_PORT: 8081
+      # Java настройки для Docker
+      JAVA_OPTS: "-Xmx512m -Xms256m -Djava.security.egd=file:/dev/./urandom"
+      # Указываем context path явно если нужно
+      SERVER_SERVLET_CONTEXT_PATH: /api
     ports:
-      - "8081:8081"  # Маппим 8081 на хосте на 8081 в контейнере
+      - "8081:8081"
     networks:
       - household-network
     restart: unless-stopped
+    # Меняем healthcheck на более надежный вариант
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s  # Даем больше времени на старт Spring Boot
+    # Добавляем лимиты ресурсов
+    mem_limit: 512m
+    cpus: "0.5"
+    # Монтируем volume для логов
+    volumes:
+      - ./logs:/app/logs:rw
+
 
 volumes:
   postgres_data:
+    name: household-postgres-data
 
 networks:
   household-network:
     driver: bridge
+    name: household-network  # имя сети

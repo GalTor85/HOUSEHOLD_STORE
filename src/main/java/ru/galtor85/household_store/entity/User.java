@@ -1,4 +1,4 @@
-package ru.galtor85.household_store.model;
+package ru.galtor85.household_store.entity;
 
 
 import jakarta.persistence.*;
@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users")
+@Table(name = "users", schema = "household_schema")
 @Entity
 public class User {
 
@@ -32,9 +32,10 @@ public class User {
 
     @Column(unique = true, nullable = false)
     private String email;
-  //  @Enumerated(EnumType.STRING)
 
-    private Role role;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.USER;
 
     private boolean active;
 
@@ -45,13 +46,13 @@ public class User {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    public void prePersist() {
+    public void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = createdAt;
     }
 
     @PreUpdate
-    public void preUpdate() {
+    public void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
 
