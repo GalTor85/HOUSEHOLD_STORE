@@ -40,7 +40,7 @@ services:
       # Java настройки для Docker
       JAVA_OPTS: "-Xmx512m -Xms256m -Djava.security.egd=file:/dev/./urandom"
       # Указываем context path явно если нужно
-      SERVER_SERVLET_CONTEXT_PATH: /api
+      SERVER_SERVLET_CONTEXT_PATH: /
     ports:
       - "8081:8081"
     networks:

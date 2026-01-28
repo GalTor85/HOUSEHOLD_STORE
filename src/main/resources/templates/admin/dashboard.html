@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ-панель</title>
+</head>
+<body>
+<h1>Админ-панель</h1>
+<p>Добро пожаловать, <span th:text="${user.email}"></span>!</p>
+<p>Ваша роль: <span th:text="${user.role}"></span></p>
+<a href="/auth/logout">Выйти</a>
+</body>
+</html>

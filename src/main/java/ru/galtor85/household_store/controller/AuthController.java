@@ -52,11 +52,11 @@ public class AuthController {
             log.info("User logged in: {}", user.getEmail());
 
             // Редирект в зависимости от роли
-            if (user.getRole() == Role.ADMIN) {
-                return "redirect:/admin/dashboard";
-            } else {
-                return "redirect:/user/dashboard";
-            }
+            return switch (user.getRole()) {
+                case ADMIN -> "redirect:/admin/users";
+                case USER -> "redirect:/user/dashboard";
+                default -> "redirect:/auth/login";
+            };
 
         } catch (RuntimeException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());

@@ -8,6 +8,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
+<!-- Админка -->
+<div th:if="${session.user != null && session.user.role == T(ru.galtor85.household_store.entity.Role).ADMIN}">
+    <a class="nav-link" th:href="@{/admin/users}">
+        <i class="fas fa-user-cog me-1"></i>Админка
+    </a>
+</div>
+
 <!-- Навигация -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">
