@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.Remove;
 import org.springframework.data.annotation.Id;
 
 import java.time.LocalDateTime;
@@ -56,11 +57,7 @@ public class User {
         updatedAt = LocalDateTime.now();
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getId() {
-        return id;
+    @PreRemove
+    public void OnRemove() {
     }
 }

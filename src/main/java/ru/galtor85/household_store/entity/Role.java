@@ -12,8 +12,15 @@ public enum Role {
 
 
     // Метод для проверки прав
-    public boolean canManage(Role other) {
-        return this.ordinal() >= other.ordinal();
+    public boolean canManage(Role targetRole) {
+        // Иерархия прав: ADMIN > MANAGER > USER > CUSTOMER
+        return switch (this) {
+            case ADMIN -> true;  // Админ может управлять всеми
+            case MANAGER -> targetRole == USER || targetRole == CUSTOMER;
+            case USER -> targetRole == CUSTOMER;
+            case CUSTOMER -> false;  // Клиенты не могут управлять никем
+            default -> false;
+        };
     }
 
     // Получить роли, которыми можно управлять

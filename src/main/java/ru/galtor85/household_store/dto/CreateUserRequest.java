@@ -20,6 +20,6 @@ public class CreateUserRequest {
     private String firstName;
     private String lastName;
     private String surname;
-    private Role role = Role.USER;
+    private Role role; //= Role.USER? TODO
     private boolean active = true;
 }

@@ -10,7 +10,8 @@ import ru.galtor85.household_store.dto.ChangeRoleRequest;
 import ru.galtor85.household_store.dto.UserResponse;
 import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
-import ru.galtor85.household_store.service.UserManagementService;
+import ru.galtor85.household_store.service.UserRoleService;
+import ru.galtor85.household_store.service.UserSearchService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,7 +20,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 public class AdminApiController {
-    private final UserManagementService userManagementService;
+    private final UserSearchService userSearchService;
+    private final UserRoleService userRoleService;
 
     @GetMapping("/users")
     public ResponseEntity<List<UserResponse>> getAllUsers(HttpSession session) {
@@ -28,7 +30,7 @@ public class AdminApiController {
             return ResponseEntity.status(403).build();
         }
 
-        List<User> users = userManagementService.getAllUsers(adminUser);
+        List<User> users = userSearchService.getAllUsers(adminUser);
         List<UserResponse> responses = users.stream()
                 .map(UserResponse::fromEntity)
                 .collect(Collectors.toList());
@@ -45,7 +47,7 @@ public class AdminApiController {
                 return ResponseEntity.status(403).build();
             }
 
-            User updatedUser = userManagementService.changeUserRole(
+            User updatedUser = userRoleService.changeUserRole(
                     adminUser, userId, request.getNewRole());
 
             return ResponseEntity.ok(UserResponse.fromEntity(updatedUser));

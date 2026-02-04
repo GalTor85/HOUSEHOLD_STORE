@@ -3,7 +3,7 @@ package ru.galtor85.household_store.dto;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import ru.galtor85.household_store.entity.Role;
-import ru.galtor85.household_store.entity.User;
+
 
 @Data
 public class ChangeRoleRequest {
