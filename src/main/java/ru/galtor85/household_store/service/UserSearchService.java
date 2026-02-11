@@ -1,5 +1,6 @@
 package ru.galtor85.household_store.service;
 
+import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,12 @@ public class UserSearchService {
     public boolean userExistsByEmail(String email) {
         return userRepository.existsByEmail(email);
     }
+
+    @Transactional(readOnly = true)
+    public Optional<User> findByEmail(String email){
+        return userRepository.findByEmail(email);
+    }
+
     /**
      * Возвращает пользователя с Id
      */

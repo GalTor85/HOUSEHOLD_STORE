@@ -2,6 +2,7 @@
 spring:
   application:
     name: household-store
+
   
   # Настройки базы данных
   datasource:
@@ -76,6 +77,8 @@ spring:
     activate:
       on-profile: docker
 
+
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://household-postgres:5432/household_store?currentSchema=household_schema}
     username: ${SPRING_DATASOURCE_USERNAME:household_app}
@@ -84,6 +87,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+# App
+app:
+  jwt:
+    access-token-validity: 3600000
+    refresh-token-validity: 86400000
 
 server:
   port: ${SERVER_PORT:8081}
