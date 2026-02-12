@@ -102,6 +102,7 @@ public class AdminApiController {
                     .firstName(request.getFirstName())
                     .lastName(request.getLastName())
                     .surname(request.getSurname())
+                    .birthDate(request.getBirthDate())
                     .role(request.getRole())
                     .active(request.isActive())
                     .build();

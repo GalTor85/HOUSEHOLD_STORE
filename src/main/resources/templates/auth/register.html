@@ -58,6 +58,11 @@
         .strength-weak { background: #dc3545; width: 25%; }
         .strength-medium { background: #ffc107; width: 50%; }
         .strength-strong { background: #28a745; width: 100%; }
+
+        /* Стиль для поля даты */
+        input[type="date"] {
+            padding: 10px;
+        }
     </style>
 </head>
 <body>
@@ -122,6 +127,25 @@
                            class="form-control"
                            id="surname"
                            placeholder="Иванович">
+                </div>
+
+                <!-- ИСПРАВЛЕНО: Поле для даты рождения -->
+                <div class="mb-3">
+                    <label for="birthDate" class="form-label">
+                        <i class="fas fa-calendar me-2"></i>Дата рождения
+                    </label>
+                    <input type="date"
+                           th:field="*{birthDate}"
+                           class="form-control"
+                           id="birthDate"
+                           th:min="1900-01-01"
+                           th:max="${#dates.format(#dates.createNow(), 'yyyy-MM-dd')}">
+                    <div th:if="${#fields.hasErrors('birthDate')}" class="text-danger small mt-1">
+                        <span th:errors="*{birthDate}"></span>
+                    </div>
+                    <div class="form-text">
+                        Выберите дату рождения
+                    </div>
                 </div>
 
                 <div class="mb-3">
@@ -241,4 +265,4 @@
     });
 </script>
 </body>
-</html>
+</html></html>

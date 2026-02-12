@@ -9,6 +9,8 @@ import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.repository.UserRepository;
 
+import java.time.LocalDate;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -29,7 +31,9 @@ public class AdminUserCreationService {
         if (userRepository.existsByEmail(newUser.getEmail())) {
             throw new RuntimeException("Пользователь с таким email уже существует");
         }
-
+        if (newUser.getBirthDate() == null) {
+            newUser.setBirthDate(LocalDate.now().minusYears(18));  // Устанавливаем дату рождения по умолчанию
+        }
         newUser.setRole(role);
         newUser.setActive(true);
 

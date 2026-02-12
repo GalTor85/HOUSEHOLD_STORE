@@ -10,6 +10,8 @@ import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDate;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class AdminInitializer implements CommandLineRunner {
                     .password(passwordEncoder.encode("Admin123!"))
                     .firstName("Администратор")
                     .lastName("Системы")
+                    .birthDate(LocalDate.now())
                     .role(Role.ADMIN)
                     .active(true)
                     .build();
@@ -43,6 +46,7 @@ public class AdminInitializer implements CommandLineRunner {
                     .password(passwordEncoder.encode("Manager123!"))
                     .firstName("Менеджер")
                     .lastName("Системы")
+                    .birthDate(LocalDate.now())
                     .role(Role.MANAGER)
                     .active(true)
                     .build();

@@ -22,5 +22,7 @@ public class RegisterForm {
     @NotBlank(message = "Фамилия обязательна")
     private String lastName;
 
+
+
     private String surname;
 }

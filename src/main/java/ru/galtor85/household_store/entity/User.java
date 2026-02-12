@@ -6,15 +6,18 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.Remove;
 import org.springframework.data.annotation.Id;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.Collection;
 import java.util.Collections;
+
 
 @Data
 @Builder
@@ -35,6 +38,22 @@ public class User implements UserDetails {
     private String firstName;
     private String lastName;
     private String surname;
+
+    // День рождения
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
+    // Для возраста
+    @Transient
+    public int getAge() {
+        return Period.between(birthDate, LocalDate.now()).getYears();
+    }
+
+    // Проверка совершеннолетия
+    @Transient
+    public boolean isAdult() {
+        return getAge() >= 18;
+    }
 
     @Column(unique = true, nullable = false)
     private String email;
