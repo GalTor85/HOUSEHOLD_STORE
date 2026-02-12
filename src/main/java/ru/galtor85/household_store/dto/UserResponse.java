@@ -19,6 +19,7 @@ public class UserResponse {
     @Schema(description = "Возраст", example = "34")
     private Integer age;
     private Role role;
+    private String creator;
     private boolean active;
     private String createdAt;
     private String updatedAt;
@@ -33,6 +34,7 @@ public class UserResponse {
         response.setBirthDate(user.getBirthDate());
         response.setAge(user.getAge());
         response.setRole(user.getRole());
+        response.setCreator(user.getCreator());
         response.setActive(user.isActive());
         response.setCreatedAt(user.getCreatedAt().toString());
         response.setUpdatedAt(user.getUpdatedAt().toString());

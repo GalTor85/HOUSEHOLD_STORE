@@ -104,6 +104,7 @@ public class AdminApiController {
                     .surname(request.getSurname())
                     .birthDate(request.getBirthDate())
                     .role(request.getRole())
+                    .creator(currentAdmin.getUsername()+" email:"+currentAdmin.getEmail())
                     .active(request.isActive())
                     .build();
 

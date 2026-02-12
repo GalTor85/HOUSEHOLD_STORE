@@ -48,6 +48,7 @@ public class AuthRestController {
                     .surname(request.getSurname())
                     .birthDate(request.getBirthDate())
                     .role(Role.USER)
+                    .creator(request.getFirstName()+" "+request.getLastName()+" email:"+request.getEmail())
                     .active(true)
                     .build();
 

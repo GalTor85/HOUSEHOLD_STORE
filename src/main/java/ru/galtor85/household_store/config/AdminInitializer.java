@@ -32,6 +32,7 @@ public class AdminInitializer implements CommandLineRunner {
                     .lastName("Системы")
                     .birthDate(LocalDate.now())
                     .role(Role.ADMIN)
+                    .creator("System")
                     .active(true)
                     .build();
 
@@ -48,6 +49,7 @@ public class AdminInitializer implements CommandLineRunner {
                     .lastName("Системы")
                     .birthDate(LocalDate.now())
                     .role(Role.MANAGER)
+                    .creator("System")
                     .active(true)
                     .build();
 

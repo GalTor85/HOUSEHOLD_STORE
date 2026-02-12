@@ -134,6 +134,7 @@ public class AdminUserController {
                     .surname(request.getSurname())
                     .birthDate(request.getBirthDate())
                     .role(request.getRole())
+                    .creator(adminUser.getUsername()+" email:"+adminUser.getEmail())
                     .active(request.isActive())
                     .build();
 

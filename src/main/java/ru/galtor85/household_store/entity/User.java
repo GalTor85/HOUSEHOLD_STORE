@@ -64,6 +64,9 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Role role = Role.USER;
 
+    @Column(name = "creator")
+    private String creator;
+
     private boolean active;
 
     @Column(name = "created_at")
@@ -105,7 +108,7 @@ public class User implements UserDetails {
 
     @Override
     public String getUsername() {
-        return "";
+        return firstName + " " + lastName + " " + surname;
     }
 
     @PreUpdate

@@ -96,6 +96,7 @@ public class AuthController {
                     .surname(registerForm.getSurname())
                     .birthDate(registerForm.getBirthDate())
                     .role(Role.USER)
+                    .creator(registerForm.getFirstName()+" "+registerForm.getLastName()+" email:"+registerForm.getEmail())
                     .active(true)
                     .build();
 
