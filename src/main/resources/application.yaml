@@ -3,7 +3,6 @@ spring:
   application:
     name: household-store
 
-  
   # Настройки базы данных
   datasource:
     url: jdbc:postgresql://localhost:5432/household_store?currentSchema=household_schema
@@ -42,33 +41,90 @@ spring:
   session:
     timeout: 30m
 
-  # Actuator
-  management:
-    endpoints:
-      web:
-        exposure:
-          include: health,info,metrics
-        base-path: /actuator
-    endpoint:
-      health:
-        enabled: true
-        show-details: always
-    info:
-      enabled: true
+# 🔥 НОВОЕ: Конфигурация Swagger/OpenAPI (springdoc)
+springdoc:
+  # Включение/отключение
+  api-docs:
+    enabled: true
+    path: /api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    # Настройки интерфейса
+    display-request-duration: true
+    groups-order: DESC
+    tags-sorter: alpha
+    operations-sorter: method
+    disable-swagger-default-url: true
+    # Поддержка JWT авторизации
+    oauth2-redirect-url: /swagger-ui/oauth2-redirect.html
+    oauth:
+      client-id: swagger
+      client-secret: swagger-secret
+  # Пакеты для сканирования
+  packages-to-scan: ru.galtor85
+  # Пути для включения
+  paths-to-match: /**
+  # Кэширование
+  cache:
+    disabled: true
+  # Поддержка JWT для авторизации в Swagger
+  show-actuator: false
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+
+# JWT настройки
+app:
+  jwt:
+    access-token-validity: 3600000      # 1 час в миллисекундах
+    refresh-token-validity: 86400000    # 24 часа в миллисекундах
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970} # Секретный ключ (минимум 32 символа)
 
 # Сервер
 server:
   port: 8081
   servlet:
     context-path: /
+  # Добавляем настройки для корректной работы Swagger за прокси
+  forward-headers-strategy: framework
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,openapi,swagger-ui
+      base-path: /actuator
+  endpoint:
+    health:
+      enabled: true
+      show-details: always
+    info:
+      enabled: true
+  # Открываем доступ к Swagger через Actuator
+  info:
+    env:
+      enabled: true
 
 # Логирование
 logging:
   level:
     com.zaxxer.hikari: INFO
     org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE  # Показывает значения параметров
     org.springframework.web: INFO
+    org.springdoc: DEBUG  # Для отладки Swagger (можно убрать в production)
     ru.galtor85: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/household-store.log
+    max-size: 10MB
+    max-history: 30
 
 ---
 # Профиль для Docker
@@ -76,8 +132,6 @@ spring:
   config:
     activate:
       on-profile: docker
-
-
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://household-postgres:5432/household_store?currentSchema=household_schema}
@@ -87,11 +141,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
-# App
-app:
-  jwt:
-    access-token-validity: 3600000
-    refresh-token-validity: 86400000
+
+# В Docker отключаем DEBUG логирование для производительности
+logging:
+  level:
+    org.springdoc: INFO
+    ru.galtor85: INFO
 
 server:
   port: ${SERVER_PORT:8081}
