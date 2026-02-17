@@ -96,20 +96,10 @@ public class AdminApiController {
             log.info("Admin {} creating new user with email: {}",
                     currentAdmin.getEmail(), request.getEmail());
 
-            User newUser = User.builder()
-                    .email(request.getEmail())
-                    .password(request.getPassword())
-                    .firstName(request.getFirstName())
-                    .lastName(request.getLastName())
-                    .surname(request.getSurname())
-                    .birthDate(request.getBirthDate())
-                    .role(request.getRole())
-                    .creator(currentAdmin.getUsername()+" email:"+currentAdmin.getEmail())
-                    .active(request.isActive())
-                    .build();
-
+            User newUser = request.toEntity(currentAdmin.getEmail() + " " + currentAdmin.getMobileNumber());
             User createdUser = adminUserCreationService.createUserWithRole(
                     currentAdmin, newUser, request.getRole());
+
 
             log.info("User created successfully: {}", createdUser.getEmail());
             return ResponseEntity.status(HttpStatus.CREATED)

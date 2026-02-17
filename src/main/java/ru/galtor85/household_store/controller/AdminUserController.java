@@ -126,17 +126,7 @@ public class AdminUserController {
         }
 
         try {
-            User newUser = User.builder()
-                    .email(request.getEmail())
-                    .password(request.getPassword())
-                    .firstName(request.getFirstName())
-                    .lastName(request.getLastName())
-                    .surname(request.getSurname())
-                    .birthDate(request.getBirthDate())
-                    .role(request.getRole())
-                    .creator(adminUser.getUsername()+" email:"+adminUser.getEmail())
-                    .active(request.isActive())
-                    .build();
+            User newUser = request.toEntity(adminUser.getEmail());
 
             User createdUser = adminUserCreationService.createUserWithRole(adminUser, newUser, request.getRole());
 

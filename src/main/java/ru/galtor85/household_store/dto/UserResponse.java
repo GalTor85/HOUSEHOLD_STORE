@@ -14,6 +14,7 @@ public class UserResponse {
     private String firstName;
     private String lastName;
     private String surname;
+    private String mobileNumber;
     @Schema(description = "Дата рождения", example = "1990-01-01")
     private LocalDate birthDate;
     @Schema(description = "Возраст", example = "34")
@@ -31,6 +32,7 @@ public class UserResponse {
         response.setFirstName(user.getFirstName());
         response.setLastName(user.getLastName());
         response.setSurname(user.getSurname());
+        response.setMobileNumber(user.getMobileNumber());
         response.setBirthDate(user.getBirthDate());
         response.setAge(user.getAge());
         response.setRole(user.getRole());

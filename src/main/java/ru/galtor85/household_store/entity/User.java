@@ -12,6 +12,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
@@ -46,6 +47,7 @@ public class User implements UserDetails {
     // Для возраста
     @Transient
     public int getAge() {
+        if (birthDate == null) return 0;
         return Period.between(birthDate, LocalDate.now()).getYears();
     }
 
@@ -55,10 +57,10 @@ public class User implements UserDetails {
         return getAge() >= 18;
     }
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true)
     private String email;
     @Column(unique = true)
-    private String telephone;
+    private String mobileNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -80,6 +82,7 @@ public class User implements UserDetails {
         createdAt = LocalDateTime.now();
         updatedAt = createdAt;
     }
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

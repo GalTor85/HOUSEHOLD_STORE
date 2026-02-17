@@ -58,6 +58,7 @@ public class AuthRestController {
             // Автоматически логиним пользователя после регистрации
             AuthResponse authResponse = authenticateAndGetToken(
                     request.getEmail(),
+                    request.getMobileNumber(),
                     request.getPassword()
             );
 
@@ -84,6 +85,7 @@ public class AuthRestController {
         try {
             AuthResponse authResponse = authenticateAndGetToken(
                     request.getEmail(),
+                    request.getMobileNumber(),
                     request.getPassword()
             );
 
@@ -209,7 +211,7 @@ public class AuthRestController {
     }
 
     // ========== ВСПОМОГАТЕЛЬНЫЙ МЕТОД ==========
-    private AuthResponse authenticateAndGetToken(String email, String password) {
+    private AuthResponse authenticateAndGetToken(String email,String mobileNumber, String password) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, password)
         );

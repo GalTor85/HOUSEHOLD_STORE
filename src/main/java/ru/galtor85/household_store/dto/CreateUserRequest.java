@@ -6,15 +6,20 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import ru.galtor85.household_store.entity.Role;
+import ru.galtor85.household_store.entity.User;
 
 import java.time.LocalDate;
 
 
+
+
 @Data
 public class CreateUserRequest {
-    @NotBlank
+
     @Email
     private String email;
+
+    private String mobileNumber;
 
     @NotBlank
     @Size(min = 6)
@@ -28,4 +33,19 @@ public class CreateUserRequest {
     private String surname;
     private Role role; //= Role.USER? TODO
     private boolean active = true;
+
+    public User toEntity(String creator) {
+        return User.builder()
+                .email(email)
+                .password(password)
+                .firstName(firstName)
+                .lastName(lastName)
+                .surname(surname)
+                .mobileNumber(mobileNumber)
+                .birthDate(birthDate)
+                .role(role)
+                .creator(creator)
+                .active(active)
+                .build();
+    }
 }
