@@ -5,10 +5,10 @@ services:
     environment:
       POSTGRES_DB: household_store
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      POSTGRES_HOST_AUTH_METHOD: md5  # Добавляем для безопасности
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST_AUTH_METHOD: md5
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -20,7 +20,7 @@ services:
       start_period: 30s
     networks:
       - household-network
-    restart: unless-stopped  # Добавляем для автоперезапуска
+    restart: unless-stopped
 
   app:
     build:
@@ -36,30 +36,31 @@ services:
       SPRING_DATASOURCE_USERNAME: household_app
       SPRING_DATASOURCE_PASSWORD: household123
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SERVER_PORT: 8081
-      # Java настройки для Docker
+      SERVER_PORT: 8443
+      SSL_KEYSTORE_PATH: file:/app/keystore/keystore.p12
+      SSL_KEYSTORE_PASSWORD: changeit
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
       JAVA_OPTS: "-Xmx512m -Xms256m -Djava.security.egd=file:/dev/./urandom"
-      # Указываем context path явно если нужно
-      SERVER_SERVLET_CONTEXT_PATH: /
     ports:
-      - "8081:8081"
+      - "8443:8443"
+    volumes:
+      - ./logs:/app/logs:rw
+      # Сертификат уже скопирован в образ при сборке, поэтому не монтируем отдельно
     networks:
       - household-network
     restart: unless-stopped
-    # Меняем healthcheck на более надежный вариант
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/api/actuator/health"]
+      test: ["CMD", "curl", "-k", "-f", "https://localhost:8443/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s  # Даем больше времени на старт Spring Boot
-    # Добавляем лимиты ресурсов
+      start_period: 60s
     mem_limit: 512m
     cpus: "0.5"
-    # Монтируем volume для логов
-    volumes:
-      - ./logs:/app/logs:rw
-
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
 
 volumes:
   postgres_data:
@@ -68,4 +69,4 @@ volumes:
 networks:
   household-network:
     driver: bridge
-    name: household-network  # имя сети
+    name: household-network

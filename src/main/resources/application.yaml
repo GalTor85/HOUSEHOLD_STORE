@@ -72,16 +72,24 @@ app:
     access-token-validity: 3600000
     refresh-token-validity: 86400000
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  environment:
+    LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_BOOT_WEB_EMBEDDED_TOMCAT: DEBUG
+    LOGGING_LEVEL_ORG_APACHE_TOMCAT_UTIL_NET: DEBUG
 
 # Сервер
 server:
-  port: 8082
+  port: 8443
   servlet:
     context-path: /
   forward-headers-strategy: framework
   error:
     include-message: always
     include-binding-errors: always
+  ssl:
+    key-store: ${SSL_KEYSTORE_PATH:classpath:keystore.p12}
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:changeit}
+    key-store-type: PKCS12
+    key-alias: ${SSL_KEY_ALIAS:tomcat}
 
 # Actuator
 management:
@@ -110,6 +118,7 @@ logging:
     org.springdoc: DEBUG
     ru.galtor85: DEBUG
     org.springframework.jdbc: DEBUG
+
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
@@ -127,10 +136,10 @@ spring:
 
   sql:
     init:
-      mode: always
-      continue-on-error: false
-      schema-locations: classpath:schema-local.sql
-      platform: postgresql
+      mode: never   # Отключаем SQL-инициализацию, Hibernate сам создаст схему
+
+server:
+  port: 8443        # порт уже указан в общей части, но можно переопределить
 
 ---
 # Профиль для Docker
@@ -148,7 +157,6 @@ spring:
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
 
-  # В Docker НЕ выполняем SQL скрипты
   sql:
     init:
       mode: never
@@ -159,4 +167,4 @@ logging:
     ru.galtor85: INFO
 
 server:
-  port: ${SERVER_PORT:8081}
+  port: 8443
