@@ -24,7 +24,14 @@ public class RegisterForm {
     )
     private String mobileNumber;
 
-
+//    public RegisterForm() {
+//        if (mobileNumber == null) {
+//            mobileNumber = "";
+//        }
+//        if (email == null) {
+//            email = "";
+//        }
+//    }
 
     @NotBlank(message = "Пароль обязателен")
     @Size(min = 6, message = "Пароль должен содержать минимум 6 символов")

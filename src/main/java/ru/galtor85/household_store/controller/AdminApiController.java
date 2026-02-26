@@ -44,7 +44,7 @@ public class AdminApiController {
         String currentUsername = auth.getName();
         log.debug("Getting current admin by username: {}", currentUsername);
 
-        return userSearchService.findByEmail(currentUsername)
+        return userSearchService.searchUsersByEmailOrMobileNumber(currentUsername)
                 .orElseThrow(() -> new RuntimeException("Текущий администратор не найден: " + currentUsername));
     }
 

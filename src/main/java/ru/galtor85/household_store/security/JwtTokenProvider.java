@@ -56,8 +56,8 @@ public class JwtTokenProvider {
         }
     }
 
-    public String createToken(String email, Role role) {
-        log.info("Creating encrypted JWT token for: {}, role: {}", email, role);
+    public String createToken(String identify, Role role) {
+        log.info("Creating encrypted JWT token for: {}, role: {}", identify, role);
 
         try {
             Date now = new Date();
@@ -71,7 +71,7 @@ public class JwtTokenProvider {
             // Шифруем токен с использованием AES-256-GCM
             return Jwts.builder()
                     .claims(claims)
-                    .subject(email)
+                    .subject(identify)
                     .issuedAt(now)
                     .expiration(validity)
                     .encryptWith(getEncryptionKey(), Jwts.ENC.A256GCM)
@@ -83,8 +83,8 @@ public class JwtTokenProvider {
         }
     }
 
-    public String createRefreshToken(String email) {
-        log.info("Creating encrypted refresh token for: {}", email);
+    public String createRefreshToken(String identify) {
+        log.info("Creating encrypted refresh token for: {}", identify);
 
         try {
             Date now = new Date();
@@ -97,7 +97,7 @@ public class JwtTokenProvider {
             // Шифруем токен
             return Jwts.builder()
                     .claims(claims)
-                    .subject(email)
+                    .subject(identify)
                     .issuedAt(now)
                     .expiration(validity)
                     .encryptWith(getEncryptionKey(), Jwts.ENC.A256GCM)

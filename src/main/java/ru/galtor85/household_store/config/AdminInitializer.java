@@ -48,7 +48,7 @@ public class AdminInitializer implements CommandLineRunner {
                     .password(passwordEncoder.encode("Manager123!"))
                     .firstName("Менеджер")
                     .lastName("Системы")
-                    .mobileNumber("123456789")
+                    .mobileNumber("+7123456789")
                     .birthDate(LocalDate.now())
                     .role(Role.MANAGER)
                     .creator("System")

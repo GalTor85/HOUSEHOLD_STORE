@@ -27,10 +27,6 @@ public class AdminUserCreationService {
                     "У вас недостаточно прав для создания пользователя с ролью " + role);
         }
 
-        // Проверяем уникальность email
-        if (userRepository.existsByEmail(newUser.getEmail())) {
-            throw new RuntimeException("Пользователь с таким email уже существует");
-        }
         if (newUser.getBirthDate() == null) {
             newUser.setBirthDate(LocalDate.now().minusYears(18));  // Устанавливаем дату рождения по умолчанию
         }

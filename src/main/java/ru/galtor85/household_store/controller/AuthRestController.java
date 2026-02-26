@@ -19,6 +19,8 @@ import ru.galtor85.household_store.security.JwtTokenProvider;
 import ru.galtor85.household_store.service.UserSearchService;
 import ru.galtor85.household_store.service.UserService;
 
+import static ru.galtor85.household_store.dto.AuthResponse.buildAuthResponse;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -42,13 +44,14 @@ public class AuthRestController {
             // Преобразуем запрос в сущность
             User user = User.builder()
                     .email(request.getEmail())
+                    .mobileNumber(request.getMobileNumber())
                     .password(request.getPassword()) // Service захеширует
                     .firstName(request.getFirstName())
                     .lastName(request.getLastName())
                     .surname(request.getSurname())
                     .birthDate(request.getBirthDate())
                     .role(Role.USER)
-                    .creator(request.getFirstName()+" "+request.getLastName()+" email:"+request.getEmail())
+                    .creator(request.getFirstName() + " " + request.getLastName() + " email:" + request.getEmail())
                     .active(true)
                     .build();
 
@@ -56,17 +59,9 @@ public class AuthRestController {
             log.info("User registered: {}", registeredUser.getEmail());
 
             // Автоматически логиним пользователя после регистрации
-            AuthResponse authResponse = authenticateAndGetToken(
-                    request.getEmail(),
-                    request.getMobileNumber(),
-                    request.getPassword()
-            );
-
+            AuthResponse authResponse = buildAuthResponse(registeredUser, jwtTokenProvider);
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(
-                            "Регистрация успешна",
-                            authResponse
-                    ));
+                    .body(ApiResponse.success("Регистрация успешна", authResponse));
 
         } catch (Exception e) {
             log.error("Registration failed: {}", e.getMessage());
@@ -79,29 +74,18 @@ public class AuthRestController {
     @PostMapping("/login")
     @Operation(summary = "Вход в систему",
             description = "Аутентификация пользователя и получение JWT токена")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(
-            @Valid @RequestBody LoginForm request) {
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginForm request) {
+        String identify = UserIdentifierResolver.resolve(request); // вынос логики
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(identify, request.getPassword())
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        try {
-            AuthResponse authResponse = authenticateAndGetToken(
-                    request.getEmail(),
-                    request.getMobileNumber(),
-                    request.getPassword()
-            );
+        User user = userSearchService.searchUsersByEmailOrMobileNumber(identify)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-            log.info("User logged in: {}", request.getEmail());
-
-            return ResponseEntity.ok(
-                    ApiResponse.success(
-                            "Вход выполнен успешно",
-                            authResponse
-                    ));
-
-        } catch (Exception e) {
-            log.error("Login failed: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Неверный email или пароль"));
-        }
+        AuthResponse authResponse = buildAuthResponse(user, jwtTokenProvider);
+        return ResponseEntity.ok(ApiResponse.success("Вход выполнен успешно", authResponse));
     }
 
     // ========== ВЫХОД ==========
@@ -152,8 +136,8 @@ public class AuthRestController {
                         .body(ApiResponse.error("Токен невалиден или истек"));
             }
 
-            String email = jwtTokenProvider.getUsernameFromToken(jwtToken);
-            User user = userSearchService.findByEmail(email)
+            String identify = jwtTokenProvider.getUsernameFromToken(jwtToken);
+            User user = userSearchService.searchUsersByEmailOrMobileNumber(identify)
                     .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
             return ResponseEntity.ok(
@@ -182,13 +166,13 @@ public class AuthRestController {
                         .body(ApiResponse.error("Невалидный refresh токен"));
             }
 
-            String email = jwtTokenProvider.getUsernameFromToken(request.getRefreshToken());
-            User user = userSearchService.findByEmail(email)
+            String identify = jwtTokenProvider.getUsernameFromToken(request.getRefreshToken());
+            User user = userSearchService.searchUsersByEmailOrMobileNumber(identify)
                     .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
             // Генерируем новую пару токенов
-            String newAccessToken = jwtTokenProvider.createToken(user.getEmail(), user.getRole());
-            String newRefreshToken = jwtTokenProvider.createRefreshToken(user.getEmail());
+            String newAccessToken = jwtTokenProvider.createToken(identify, user.getRole());
+            String newRefreshToken = jwtTokenProvider.createRefreshToken(identify);
 
             AuthResponse authResponse = AuthResponse.builder()
                     .accessToken(newAccessToken)
@@ -212,17 +196,18 @@ public class AuthRestController {
 
     // ========== ВСПОМОГАТЕЛЬНЫЙ МЕТОД ==========
     private AuthResponse authenticateAndGetToken(String email,String mobileNumber, String password) {
+        String identify = email != null && !email.isEmpty() ? email : mobileNumber;
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, password)
+                new UsernamePasswordAuthenticationToken(identify, password)
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        User user = userSearchService.findByEmail(email)
+        User user = userSearchService.searchUsersByEmailOrMobileNumber(identify)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-        String accessToken = jwtTokenProvider.createToken(email, user.getRole());
-        String refreshToken = jwtTokenProvider.createRefreshToken(email);
+        String accessToken = jwtTokenProvider.createToken(identify, user.getRole());
+        String refreshToken = jwtTokenProvider.createRefreshToken(identify);
 
         return AuthResponse.builder()
                 .accessToken(accessToken)

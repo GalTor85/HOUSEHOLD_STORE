@@ -128,25 +128,4 @@ public class AuthController {
         }
         return "redirect:/auth/login";
     }
-
-    // ========== REST API (оставляем для мобильных приложений) ==========
-
-    @RestController
-    @RequestMapping("/api/auth")
-    @RequiredArgsConstructor
-    public static class AuthApiController {
-        private final UserService userService;
-
-        @PostMapping("/register")
-        public ResponseEntity<User> register(@RequestBody User user) {
-            return ResponseEntity.ok(userService.register(user));
-        }
-
-        @PostMapping("/login")
-        public ResponseEntity<User> login(@RequestBody LoginRequest request) {
-            return ResponseEntity.ok(userService.login(request.email(), request.password()));
-        }
-
-        public record LoginRequest(String email, String password) {}
-    }
 }

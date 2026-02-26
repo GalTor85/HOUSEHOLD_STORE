@@ -28,6 +28,11 @@ public class UserSearchService {
         return userRepository.findByEmailContainingOrFirstNameContainingOrLastNameContaining(
                 searchTerm, searchTerm, searchTerm);
     }
+    @Transactional(readOnly = true)
+    public Optional<User>  searchUsersByEmailOrMobileNumber(String identify) {
+        return userRepository.findByEmailOrMobileNumber(
+                identify, identify);
+    }
 
     @Transactional(readOnly = true)
     public List<User> findUsersByRole(Role role) {
