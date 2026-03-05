@@ -38,7 +38,7 @@ public class AuthRestController {
     @Operation(summary = "Регистрация нового пользователя",
             description = "Создает нового пользователя с ролью USER по умолчанию")
     public ResponseEntity<ApiResponse<AuthResponse>> register(
-            @Valid @RequestBody RegisterForm request) {
+            @Valid @RequestBody CreateUserRequest request) {
 
         try {
             // Преобразуем запрос в сущность
