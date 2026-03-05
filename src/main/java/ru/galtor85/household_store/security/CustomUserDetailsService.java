@@ -21,18 +21,18 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
+    public UserDetails loadUserByUsername(String value) throws UsernameNotFoundException {
+        User user = userRepository.findByEmailOrMobileNumber(value, value)
                 .orElseThrow(() -> {
-                    log.error("Пользователь с email {} не найден", email);
+                    log.error("Пользователь с email или mobileNumber {} не найден", value);
                     return new UsernameNotFoundException(
-                            String.format("Пользователь с email %s не найден", email)
+                            String.format("Пользователь с email или mobileNumber %s не найден", value)
                     );
                 });
 
         // Проверяем активен ли пользователь
         if (!user.isActive()) {
-            log.error("Пользователь {} деактивирован", email);
+            log.error("Пользователь {} деактивирован", value);
             throw new UsernameNotFoundException("Пользователь деактивирован");
         }
 
@@ -42,7 +42,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         );
 
         return org.springframework.security.core.userdetails.User
-                .withUsername(user.getEmail())
+                .withUsername(value)
                 .password(user.getPassword())
                 .authorities(authorities)
                 .accountExpired(false)

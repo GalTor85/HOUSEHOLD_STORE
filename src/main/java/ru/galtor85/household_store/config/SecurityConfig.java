@@ -17,6 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import ru.galtor85.household_store.advice.exception.AuthenticationManagerException;
 import ru.galtor85.household_store.security.JwtAuthenticationFilter;
 
 import java.util.Arrays;
@@ -38,14 +39,17 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authConfig) throws Exception {
-        return authConfig.getAuthenticationManager();
+            AuthenticationConfiguration authConfig)  {
+        try {
+            return authConfig.getAuthenticationManager();
+        } catch (Exception e) {
+            throw new AuthenticationManagerException(e.getMessage());
+        }
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http)  {
         http
-                // Отключаем CSRF (для REST API)
                 .csrf(AbstractHttpConfigurer::disable)
 
                 // Настройка CORS
@@ -96,14 +100,14 @@ public class SecurityConfig {
                             response.setStatus(401);
                             response.setContentType("application/json");
                             response.getWriter().write(
-                                    "{\"error\": \"Unauthorized\", \"message\": \"Требуется аутентификация\"}"
+                                    "{\"error\": \"Unauthorized\", \"message\": \"Authentication required\"}"
                             );
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(403);
                             response.setContentType("application/json");
                             response.getWriter().write(
-                                    "{\"error\": \"Forbidden\", \"message\": \"Недостаточно прав\"}"
+                                    "{\"error\": \"Forbidden\", \"message\": \"Insufficient privileges\"}"
                             );
                         })
                 );
@@ -157,6 +161,4 @@ public class SecurityConfig {
 
         return source;
     }
-
-
 }

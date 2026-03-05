@@ -4,8 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import ru.galtor85.household_store.dto.EditUserRequest;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.repository.UserRepository;
+
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +43,26 @@ public class UserService {
         }
 
         return user;
+    }
+
+    public User edit(User user, EditUserRequest request) {
+        if (Strings.isBlank(request.getFirstName()) && Strings.isBlank(request.getLastName())
+                && Strings.isBlank(request.getSurname()) && Strings.isBlank(request.getEmail())
+                && Strings.isBlank(request.getAddress()) && Strings.isBlank(request.getBirthDate())
+                && Strings.isBlank(request.getMobileNumber()) && Strings.isBlank(request.getPassword())) {
+            throw new IllegalArgumentException("Новые данные не предоставлены");
+        }
+        user.setFirstName(Strings.isBlank(request.getFirstName()) ? user.getFirstName() : request.getFirstName());
+        user.setLastName(Strings.isBlank(request.getLastName()) ? user.getLastName() : request.getLastName());
+        user.setSurname(Strings.isBlank(request.getSurname()) ? user.getSurname() : request.getSurname());
+        user.setAddress(Strings.isBlank(request.getAddress()) ? user.getAddress() : request.getAddress());
+        user.setEmail(Strings.isBlank(request.getEmail()) ? user.getEmail() : request.getEmail());
+        user.setMobileNumber(Strings.isBlank(request.getMobileNumber()) ? user.getMobileNumber() : request.getMobileNumber());
+        user.setBirthDate(request.getBirthDate() != null ? LocalDate.parse(request.getBirthDate()) : user.getBirthDate());
+        if (Strings.isNotBlank(request.getPassword())) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+        return userRepository.save(user);
     }
 
 }

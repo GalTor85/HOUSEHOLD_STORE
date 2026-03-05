@@ -2,15 +2,18 @@ package ru.galtor85.household_store.entity;
 
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
+import ru.galtor85.household_store.validation.PatternMobileNumber;
 
 
 import java.time.LocalDate;
@@ -18,6 +21,8 @@ import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.Collection;
 import java.util.Collections;
+
+
 
 
 @Data
@@ -28,17 +33,22 @@ import java.util.Collections;
 @Entity
 public class User implements UserDetails {
 
-    @jakarta.persistence.Id
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @Column(nullable = false)
+    @Size(min = 6, message = "Пароль должен содержать минимум 6 символов")
+    @NotBlank(message = "Пароль обязателен")
     private String password;
 
 
     private String firstName;
     private String lastName;
     private String surname;
+
+    @Column(name = "address")
+    private String address;
 
     // День рождения
     @Column(name = "birth_date")
@@ -58,8 +68,16 @@ public class User implements UserDetails {
     }
 
     @Column(unique = true)
+    @Pattern(
+            regexp = "^[A-Za-z0-9+_.-]+@(.+)$",  // Пример регулярного выражения
+            message = "Некорректный формат email"
+    )
     private String email;
     @Column(unique = true)
+    @Pattern(
+            regexp = PatternMobileNumber.REGEXP,  // Пример регулярного выражения
+            message = PatternMobileNumber.MESSAGE
+    )
     private String mobileNumber;
 
     @Enumerated(EnumType.STRING)
@@ -122,4 +140,5 @@ public class User implements UserDetails {
     @PreRemove
     public void OnRemove() {
     }
+
 }

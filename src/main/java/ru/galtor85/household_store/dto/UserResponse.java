@@ -1,19 +1,28 @@
 package ru.galtor85.household_store.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
 
 import java.time.LocalDate;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserResponse {
     private Long id;
     private String email;
     private String firstName;
     private String lastName;
     private String surname;
+    private String address;
     private String mobileNumber;
     @Schema(description = "Дата рождения", example = "1990-01-01")
     private LocalDate birthDate;
@@ -33,6 +42,7 @@ public class UserResponse {
         response.setLastName(user.getLastName());
         response.setSurname(user.getSurname());
         response.setMobileNumber(user.getMobileNumber());
+        response.setAddress(user.getAddress());
         response.setBirthDate(user.getBirthDate());
         response.setAge(user.getAge());
         response.setRole(user.getRole());

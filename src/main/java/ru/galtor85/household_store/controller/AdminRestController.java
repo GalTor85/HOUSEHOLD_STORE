@@ -3,12 +3,14 @@ package ru.galtor85.household_store.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import ru.galtor85.household_store.advice.exception.CustomAuthenticationException;
 import ru.galtor85.household_store.dto.*;
 import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
@@ -24,7 +26,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
-public class AdminApiController {
+public class AdminRestController {
 
     private final UserSearchService userSearchService;
     private final UserRoleService userRoleService;
@@ -38,7 +40,7 @@ public class AdminApiController {
     private User getCurrentAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
-            throw new RuntimeException("Пользователь не аутентифицирован");
+            throw new CustomAuthenticationException("Пользователь не аутентифицирован");
         }
 
         String currentUsername = auth.getName();
@@ -51,7 +53,12 @@ public class AdminApiController {
     // ========== ПОЛУЧЕНИЕ СПИСКА ПОЛЬЗОВАТЕЛЕЙ ==========
     @GetMapping
     public ResponseEntity<ApiResponse<List<UserResponse>>> getUsers(
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String mobileNumber,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String firstName,
+            @RequestParam(required = false) String lastName,
+            @RequestParam(required = false) String sort)
+                {
 
         try {
             User currentAdmin = getCurrentAdmin();
@@ -59,12 +66,17 @@ public class AdminApiController {
                     currentAdmin.getEmail(), currentAdmin.getId());
 
             List<User> users;
-            if (search != null && !search.trim().isEmpty()) {
-                users = userSearchService.searchUsers(search.trim());
-                log.debug("Searching users with query: {}", search);
+
+            if (mobileNumber != null && !mobileNumber.trim().isEmpty() ||
+                    email != null && !email.trim().isEmpty() ||
+                    firstName != null && !firstName.trim().isEmpty() ||
+                    lastName != null && !lastName.trim().isEmpty()) {
+                users = userSearchService.searchUsersByCriteria(mobileNumber, email, firstName, lastName, sort);
+
+                log.debug("Searching users with email: {} or mobileNumber: {} or firstName: {} or lastName: {}", email, mobileNumber, firstName, lastName);
             } else {
-                users = userSearchService.getAllUsers(currentAdmin);
-                log.debug("Getting all users for admin");
+                users = userSearchService.getAllUsers(sort);
+                log.debug("Getting all users for admin with sort: {}", sort);
             }
 
             List<UserResponse> userResponses = users.stream()
@@ -257,16 +269,18 @@ public class AdminApiController {
         }
     }
 
-    // ========== ПОИСК ПОЛЬЗОВАТЕЛЕЙ ПО EMAIL ==========
+    // ========== ПОИСК ПОЛЬЗОВАТЕЛЕЙ ПО EMAIL ИЛИ MOBILENUMBER ==========
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<List<UserResponse>>> searchUsersByEmail(
-            @RequestParam String email) {
+    public ResponseEntity<ApiResponse<List<UserResponse>>> searchUsersByEmailorMobileNumber(
+            @RequestParam String identify,
+            @RequestParam(required = false) String sort
+            ) {
         try {
             User currentAdmin = getCurrentAdmin();
-            log.info("Admin {} searching users by email: {}",
-                    currentAdmin.getEmail(), email);
+            log.info("Admin {} searching users by email or mobileNumber: {}",
+                    currentAdmin.getEmail(), identify);
 
-            List<User> users = userSearchService.searchUsers(email);
+            List<User> users = userSearchService.searchUsersByCriteria(identify, identify, null, null, sort);
             List<UserResponse> userResponses = users.stream()
                     .map(UserResponse::fromEntity)
                     .collect(Collectors.toList());
@@ -288,11 +302,12 @@ public class AdminApiController {
             User currentAdmin = getCurrentAdmin();
             log.info("Admin {} fetching user statistics", currentAdmin.getEmail());
 
-            List<User> allUsers = userSearchService.getAllUsers(currentAdmin);
+            List<User> allUsers = userSearchService.getAllUsers(null);
 
             Map<String, Object> stats = new HashMap<>();
             stats.put("totalUsers", allUsers.size());
             stats.put("activeUsers", allUsers.stream().filter(User::isActive).count());
+            stats.put("inactiveUsers", allUsers.stream().filter(u -> !u.isActive()).count());
             stats.put("admins", allUsers.stream().filter(u -> u.getRole() == Role.ADMIN).count());
             stats.put("managers", allUsers.stream().filter(u -> u.getRole() == Role.MANAGER).count());
             stats.put("regularUsers", allUsers.stream().filter(u -> u.getRole() == Role.USER).count());

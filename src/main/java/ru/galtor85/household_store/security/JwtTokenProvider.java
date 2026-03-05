@@ -66,6 +66,7 @@ public class JwtTokenProvider {
             // Создаем claims
             Map<String, Object> claims = new HashMap<>();
             claims.put("role", role.name());
+            claims.put("identify", identify);
             claims.put("type", "access");
 
             // Шифруем токен с использованием AES-256-GCM
@@ -92,6 +93,7 @@ public class JwtTokenProvider {
 
             // Создаем claims
             Map<String, Object> claims = new HashMap<>();
+            claims.put("identify", identify);
             claims.put("type", "refresh");
 
             // Шифруем токен
@@ -141,6 +143,20 @@ public class JwtTokenProvider {
                     .getSubject();
         } catch (Exception e) {
             log.error("Cannot extract username from token: {}", e.getMessage());
+            throw new RuntimeException("Invalid or expired token", e);
+        }
+    }
+
+    public String getIdentifierFromToken(String token) {
+        try {
+            return Jwts.parser()
+                    .decryptWith(getEncryptionKey())
+                    .build()
+                    .parseEncryptedClaims(token)
+                    .getPayload()
+                    .get("identify", String.class);
+        } catch (Exception e) {
+            log.error("Cannot extract userId from token: {}", e.getMessage());
             throw new RuntimeException("Invalid or expired token", e);
         }
     }
