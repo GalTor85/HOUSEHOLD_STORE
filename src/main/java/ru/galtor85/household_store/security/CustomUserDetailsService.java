@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.repository.UserRepository;
+import ru.galtor85.household_store.service.MessageService;
 
 import java.util.Collections;
 import java.util.List;
@@ -19,36 +20,47 @@ import java.util.List;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final MessageService messageService;
 
     @Override
     public UserDetails loadUserByUsername(String value) throws UsernameNotFoundException {
         User user = userRepository.findByEmailOrMobileNumber(value, value)
                 .orElseThrow(() -> {
-                    log.error("Пользователь с email или mobileNumber {} не найден", value);
-                    return new UsernameNotFoundException(
-                            String.format("Пользователь с email или mobileNumber %s не найден", value)
+                    String errorMessage = messageService.get(
+                            "custom-user-details-service.security.user.not.found",
+                            value
                     );
+                    log.error(errorMessage);
+                    return new UsernameNotFoundException(errorMessage);
                 });
 
-        // Проверяем активен ли пользователь
         if (!user.isActive()) {
-            log.error("Пользователь {} деактивирован", value);
-            throw new UsernameNotFoundException("Пользователь деактивирован");
+            String errorMessage = messageService.get(
+                    "custom-user-details-service.security.user.inactive",
+                    value
+            );
+            log.error(errorMessage);
+            throw new UsernameNotFoundException(errorMessage);
         }
 
-        // Создаем authorities из роли пользователя
+        log.info(messageService.get(
+                "custom-user-details-service.security.user.authenticated",
+                user.getEmail(),
+                user.getRole()
+        ));
+
         List<SimpleGrantedAuthority> authorities = Collections.singletonList(
                 new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
         );
 
-        return org.springframework.security.core.userdetails.User
-                .withUsername(value)
-                .password(user.getPassword())
-                .authorities(authorities)
-                .accountExpired(false)
-                .accountLocked(false)
-                .credentialsExpired(false)
-                .disabled(!user.isActive())
-                .build();
+        return new org.springframework.security.core.userdetails.User(
+                value,
+                user.getPassword(),
+                user.isActive(),
+                true,
+                true,
+                true,
+                authorities
+        );
     }
 }

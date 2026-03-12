@@ -13,36 +13,42 @@ public class LoginForm {
 
     private String mobileNumber;
 
-    @NotBlank(message = "Пароль обязателен")
+    @NotBlank(message = "{login-form.validation.password.empty}")
     @Pattern(
-            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@#$%^&*!])[A-Za-z\\d@#$%^&*!]{6,}$",  // Пример регулярного выражения
-            message = "Пароль должен содержать минимум 6 символов, включая хотя бы одну заглавную букву, одну строчную букву, одну цифру и один специальный символ"
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@#$%^&*!])[A-Za-z\\d@#$%^&*!]{6,}$",
+            message = "{login-form.validation.password.invalid}"
     )
     private String password;
 
-    @AssertTrue(message = "Необходимо указать либо email, либо номер телефона")
+    @AssertTrue(message = "{login-form.validation.login.identifier.required}")
     public boolean isEitherEmailOrMobilePresent() {
         return Strings.isNotBlank(email) || Strings.isNotBlank(mobileNumber);
     }
 
-    @AssertTrue(message = "Некорректный формат email")
+    @AssertTrue(message = "{login-form.validation.email.invalid}")
     public boolean isValidEmail() {
-        // Если email не указан, то валидация не требуется
         if (Strings.isBlank(email)) {
             return true;
         }
-        // Простая проверка формата email
         return email.matches("^[A-Za-z0-9+_.-]+@(.+)$");
     }
 
-    @AssertTrue(message = "Некорректный формат номера телефона")
+    @AssertTrue(message = "{login-form.validation.mobile.invalid}")
     public boolean isValidMobileNumber() {
-        // Если телефон не указан, то валидация не требуется
         if (Strings.isBlank(mobileNumber)) {
             return true;
         }
-        // Проверка: только цифры, плюс, скобки, дефисы, пробелы, длина от 10 до 15 символов
         String cleaned = mobileNumber.replaceAll("[^0-9]", "");
         return cleaned.length() >= 5 && cleaned.length() <= 15;
+    }
+
+    public String getIdentifier() {
+        if (Strings.isNotBlank(email)) {
+            return email;
+        }
+        if (Strings.isNotBlank(mobileNumber)) {
+            return mobileNumber;
+        }
+        return null;
     }
 }

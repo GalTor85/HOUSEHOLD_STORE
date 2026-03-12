@@ -7,58 +7,102 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
-import ru.galtor85.household_store.repository.UserRepository;
 
 import java.time.LocalDate;
+import java.util.Locale;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminUserCreationService {
 
-    private final UserRepository userRepository;
-    private final UserService userService; // или PasswordEncoder напрямую
+    private final UserService userService;
+    private final MessageService messageService;
 
     @Transactional
-    public  User createUserWithRole(User adminUser, User newUser, Role role) {
-        // Проверяем права администратора
+    public User createUserWithRole(User adminUser, User newUser, Role role, Locale locale) {
+        locale = locale != null ? locale : Locale.getDefault();
+
         if (!adminUser.getRole().canManage(role)) {
-            throw new AccessDeniedException(
-                    "У вас недостаточно прав для создания пользователя с ролью " + role);
+            String errorMessage = messageService.get(
+                    "admin-user-creation-service.error.admin.insufficient.rights.create",
+                    role
+            );
+            log.warn(messageService.get(
+                    "admin-user-creation-service.log.admin.insufficient.rights.create",
+                    adminUser.getEmail(),
+                    role
+            ));
+            throw new AccessDeniedException(errorMessage);
         }
 
         if (newUser.getBirthDate() == null) {
-            newUser.setBirthDate(LocalDate.now().minusYears(18));  // Устанавливаем дату рождения по умолчанию
+            newUser.setBirthDate(LocalDate.now().minusYears(18));
+            log.debug(messageService.get(
+                    "admin-user-creation-service.log.user.birthdate.default",
+                    18
+            ));
         }
+
         newUser.setRole(role);
         newUser.setActive(true);
 
-        // Создаем пользователя через существующий сервис
         User createdUser = userService.register(newUser);
 
-        log.info("Администратор {} создал пользователя {} с ролью {}",
-                adminUser.getEmail(), createdUser.getEmail(), role);
+        log.info(messageService.get(
+                "admin-user-creation-service.log.admin.user.created",
+                adminUser.getEmail(),
+                createdUser.getEmail(),
+                role
+        ));
+
+        return createdUser;
+    }
+
+    @Transactional
+    public User createUserWithRole(User adminUser, User newUser, Role role) {
+        return createUserWithRole(adminUser, newUser, role, Locale.getDefault());
+    }
+
+    @Transactional
+    public User createUserWithGeneratedPassword(User adminUser, User newUser, Role role, Locale locale) {
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String generatedPassword = generateRandomPassword();
+        newUser.setPassword(generatedPassword);
+
+        User createdUser = createUserWithRole(adminUser, newUser, role, locale);
+
+        log.info(messageService.get(
+                "admin-user-creation-service.log.admin.user.password.generated",
+                createdUser.getEmail(),
+                generatedPassword
+        ));
 
         return createdUser;
     }
 
     @Transactional
     public User createUserWithGeneratedPassword(User adminUser, User newUser, Role role) {
-        // Альтернативный метод с генерацией пароля
-        String generatedPassword = generateRandomPassword();
-        newUser.setPassword(generatedPassword);
-
-        User createdUser = createUserWithRole(adminUser, newUser, role);
-
-        // TODO: Отправить email с паролем
-        log.info("Сгенерирован пароль для пользователя {}: {}",
-                createdUser.getEmail(), generatedPassword);
-
-        return createdUser;
+        return createUserWithGeneratedPassword(adminUser, newUser, role, Locale.getDefault());
     }
 
     private String generateRandomPassword() {
-        // Логика генерации пароля
-        return "TempPass123!"; // Временная реализация
+        // TODO: Реализовать нормальную генерацию пароля
+        return "TempPass123!";
+    }
+
+    public boolean canCreateUserWithRole(User adminUser, Role role, Locale locale) {
+        boolean canCreate = adminUser.getRole().canManage(role);
+
+        if (!canCreate) {
+            log.debug(messageService.get(
+                    "admin-user-creation-service.log.admin.cannot.create.role",
+                    adminUser.getEmail(),
+                    role
+            ));
+        }
+
+        return canCreate;
     }
 }

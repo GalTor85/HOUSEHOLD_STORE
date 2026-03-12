@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.annotation.Nullable;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -7,7 +10,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,9 +18,10 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import ru.galtor85.household_store.dto.ApiResponse;
+import ru.galtor85.household_store.service.MessageService;
 
 import java.io.IOException;
-
 
 @Slf4j
 @Component
@@ -26,9 +29,16 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
-
-    @Qualifier("customUserDetailsService")
     private final UserDetailsService userDetailsService;
+    private final MessageService messageService;
+    private final ObjectMapper objectMapper = createObjectMapper();
+
+    private static ObjectMapper createObjectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return mapper;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -37,21 +47,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @Nullable FilterChain filterChain
     ) throws ServletException, IOException {
 
+        assert request != null;
+        assert response != null;
+        assert filterChain != null;
+
         try {
-            // 1. Извлекаем JWT из запроса
-            assert request != null;
             String jwt = getJwtFromRequest(request);
 
-            // 2. Если токен существует и валиден
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
-
-                // 3. Получаем email из токена
                 String email = jwtTokenProvider.getUsernameFromToken(jwt);
-
-                // 4. Загружаем данные пользователя
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                // 5. Создаем объект аутентификации
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
@@ -63,56 +69,77 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new WebAuthenticationDetailsSource().buildDetails(request)
                 );
 
-                // 6. Устанавливаем аутентификацию в контекст Security
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                log.debug("Установлен контекст аутентификации для пользователя: {}", email);
+                log.debug(messageService.get(
+                        "jwt-authentication-filter.log.auth.context.set",
+                        email
+                ));
+            } else if (StringUtils.hasText(jwt) && !jwtTokenProvider.validateToken(jwt)) {
+                log.warn(messageService.get(
+                        "jwt-authentication-filter.log.auth.token.invalid",
+                        jwt.substring(0, Math.min(10, jwt.length())) + "..."
+                ));
             }
-        } catch (Exception ex) {
-            log.error("Не удалось установить аутентификацию пользователя", ex);
 
-            // Можно отправить более информативный ответ
-            assert response != null;
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write(
-                    "{\"error\": \"Ошибка аутентификации\", \"message\": \"" +
-                            ex.getMessage() + "\"}"
+        } catch (Exception ex) {
+            log.error(messageService.get(
+                    "jwt-authentication-filter.log.auth.error",
+                    ex.getMessage()
+            ), ex);
+
+            sendErrorResponse(response,
+                    messageService.get("jwt-authentication-filter.error.auth.failed"),
+                    HttpServletResponse.SC_UNAUTHORIZED
             );
             return;
         }
 
-        // 7. Продолжаем цепочку фильтров
-        assert filterChain != null;
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Извлекает JWT токен из заголовка Authorization
-     */
     private String getJwtFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
-
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
         }
-
         return null;
     }
 
-    /**
-     * Игнорируем некоторые пути (опционально)
-     */
+    private void sendErrorResponse(HttpServletResponse response, String message, int status) throws IOException {
+        response.setStatus(status);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        ApiResponse<Void> errorResponse = ApiResponse.<Void>builder()
+                .success(false)
+                .message(message)
+                .timestamp(java.time.LocalDateTime.now())
+                .build();
+
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+    }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
 
-        // Не фильтруем публичные эндпоинты
-        return path.startsWith("/api/v1/auth/") ||
+        boolean shouldSkip = path.startsWith("/api/v1/auth/") ||
                 path.startsWith("/swagger-ui/") ||
                 path.startsWith("/v3/api-docs") ||
                 path.startsWith("/actuator/health") ||
                 path.equals("/api/v1/") ||
-                path.equals("/api/v1/ping");
+                path.equals("/api/v1/ping") ||
+                path.equals("/api/v1/health") ||
+                path.equals("/api/v1/info");
+
+        if (shouldSkip) {
+            log.debug(messageService.get(
+                    "jwt-authentication-filter.log.auth.skip",
+                    path
+            ));
+        }
+
+        return shouldSkip;
     }
 }

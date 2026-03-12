@@ -1,29 +1,19 @@
 package ru.galtor85.household_store.entity;
 
-
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import ru.galtor85.household_store.validation.PatternMobileNumber;
-
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.Collection;
 import java.util.Collections;
-
-
-
 
 @Data
 @Builder
@@ -33,15 +23,12 @@ import java.util.Collections;
 @Entity
 public class User implements UserDetails {
 
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(nullable = false)
-    @Size(min = 6, message = "Пароль должен содержать минимум 6 символов")
-    @NotBlank(message = "Пароль обязателен")
-    private String password;
 
+    @Column(nullable = false)
+    private String password; // Без валидации - пароль хранится закодированным
 
     private String firstName;
     private String lastName;
@@ -50,35 +37,14 @@ public class User implements UserDetails {
     @Column(name = "address")
     private String address;
 
-    // День рождения
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
-    // Для возраста
-    @Transient
-    public int getAge() {
-        if (birthDate == null) return 0;
-        return Period.between(birthDate, LocalDate.now()).getYears();
-    }
-
-    // Проверка совершеннолетия
-    @Transient
-    public boolean isAdult() {
-        return getAge() >= 18;
-    }
+    @Column(unique = true)
+    private String email; // Без валидации - валидация в DTO
 
     @Column(unique = true)
-    @Pattern(
-            regexp = "^[A-Za-z0-9+_.-]+@(.+)$",  // Пример регулярного выражения
-            message = "Некорректный формат email"
-    )
-    private String email;
-    @Column(unique = true)
-    @Pattern(
-            regexp = PatternMobileNumber.REGEXP,  // Пример регулярного выражения
-            message = PatternMobileNumber.MESSAGE
-    )
-    private String mobileNumber;
+    private String mobileNumber; // Без валидации - валидация в DTO
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -101,6 +67,25 @@ public class User implements UserDetails {
         updatedAt = createdAt;
     }
 
+    @PreUpdate
+    public void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PostRemove
+    public void onRemove(){
+    }
+
+    @Transient
+    public int getAge() {
+        if (birthDate == null) return 0;
+        return Period.between(birthDate, LocalDate.now()).getYears();
+    }
+
+    @Transient
+    public boolean isAdult() {
+        return getAge() >= 18;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -109,36 +94,27 @@ public class User implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return UserDetails.super.isAccountNonExpired();
+        return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return UserDetails.super.isAccountNonLocked();
+        return true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return UserDetails.super.isCredentialsNonExpired();
+        return true;
     }
 
     @Override
     public boolean isEnabled() {
-        return UserDetails.super.isEnabled();
+        return active;
     }
+
 
     @Override
     public String getUsername() {
-        return firstName + " " + lastName + " " + surname;
+        return email != null ? email : mobileNumber;
     }
-
-    @PreUpdate
-    public void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreRemove
-    public void OnRemove() {
-    }
-
 }

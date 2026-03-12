@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateStatusRequest {
-    @NotNull(message = "Статус обязателен")
-    private boolean active;
+
+    @NotNull(message = "{update-status-request.validation.status.empty}")
+    private Boolean active;
 }

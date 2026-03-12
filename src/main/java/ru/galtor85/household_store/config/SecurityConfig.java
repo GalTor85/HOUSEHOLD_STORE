@@ -1,8 +1,11 @@
 package ru.galtor85.household_store.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,11 +21,14 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import ru.galtor85.household_store.advice.exception.AuthenticationManagerException;
+import ru.galtor85.household_store.dto.ApiResponse;
 import ru.galtor85.household_store.security.JwtAuthenticationFilter;
+import ru.galtor85.household_store.service.MessageService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Arrays;
 
-
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
@@ -30,25 +36,28 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final MessageService messageService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authConfig)  {
+            AuthenticationConfiguration authConfig) {
         try {
+            log.debug(messageService.get("security-config.log.creating.authentication.manager"));
             return authConfig.getAuthenticationManager();
         } catch (Exception e) {
-            throw new AuthenticationManagerException(e.getMessage());
+            throw new AuthenticationManagerException(
+                    messageService.get("security-config.error.creating.authentication.manager", e.getMessage())
+            );
         }
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http)  {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
 
@@ -74,7 +83,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api-docs/**",
                                 "/actuator/**",
-                                "/error"
+                                "/error",
+                                "/api/v1/debug/**"
                         ).permitAll()
 
                         // Админские эндпоинты
@@ -97,21 +107,38 @@ public class SecurityConfig {
                 // Настройка исключений
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, authException) -> {
-                            response.setStatus(401);
-                            response.setContentType("application/json");
-                            response.getWriter().write(
-                                    "{\"error\": \"Unauthorized\", \"message\": \"Authentication required\"}"
-                            );
+                            log.warn(messageService.get("security-config.log.error.authentication.failed",
+                                    request.getRequestURI(), authException.getMessage()));
+
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+                            ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
+                                    .success(false)
+                                    .message(messageService.get("security-config.error.authentication.required"))
+                                    .path(request.getRequestURI())
+                                    .build();
+
+                            response.getWriter().write(new ObjectMapper().writeValueAsString(apiResponse));
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            response.setStatus(403);
-                            response.setContentType("application/json");
-                            response.getWriter().write(
-                                    "{\"error\": \"Forbidden\", \"message\": \"Insufficient privileges\"}"
-                            );
+                            log.warn(messageService.get("security-config.log.error.access.denied",
+                                    request.getRequestURI(), accessDeniedException.getMessage()));
+
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+                            ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
+                                    .success(false)
+                                    .message(messageService.get("security-config.error.access.denied.message"))
+                                    .path(request.getRequestURI())
+                                    .build();
+
+                            response.getWriter().write(new ObjectMapper().writeValueAsString(apiResponse));
                         })
                 );
 
+        log.debug(messageService.get("security-config.log.security.filter.chain.configured"));
         return http.build();
     }
 
@@ -122,7 +149,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Разрешаем определенные источники (или все для разработки)
+        // Разрешаем определенные источники
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:8080"
@@ -156,8 +183,14 @@ public class SecurityConfig {
                 "Content-Disposition"
         ));
 
+        log.debug(messageService.get("security-config.log.cors.allowed.headers", configuration.getAllowedHeaders()));
+        log.debug(messageService.get("security-config.log.cors.allowed.methods", configuration.getAllowedMethods()));
+        log.debug(messageService.get("security-config.log.cors.allowed.origins", configuration.getAllowedOrigins()));
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+
+        log.debug(messageService.get("security-config.log.cors.configuration.source.configured"));
 
         return source;
     }

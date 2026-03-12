@@ -2,42 +2,48 @@ package ru.galtor85.household_store.config;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.repository.UserRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import ru.galtor85.household_store.service.MessageService;
 
 import java.time.LocalDate;
+import java.util.Locale;
 
-@Component
 @Slf4j
+@Component
 @RequiredArgsConstructor
 public class AdminInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
     @Lazy
     private final PasswordEncoder passwordEncoder;
+    private final MessageService messageService;
 
     @Override
     public void run(String... args) {
+        Locale locale = Locale.getDefault();
+
         // Создаем администратора по умолчанию если его нет
         if (userRepository.findByEmail("admin@household.store").isEmpty()) {
             User admin = User.builder()
                     .email("admin@household.store")
                     .password(passwordEncoder.encode("Admin123!"))
-                    .firstName("Администратор")
-                    .lastName("Системы")
+                    .firstName(messageService.get("admin-initializer.admin.default.firstname"))
+                    .lastName(messageService.get("admin-initializer.admin.default.lastname"))
                     .birthDate(LocalDate.now())
                     .role(Role.ADMIN)
-                    .creator("System")
+                    .creator(messageService.get("admin-initializer.system"))
                     .active(true)
                     .build();
 
             userRepository.save(admin);
-            log.info("✅ Создан администратор по умолчанию: admin@household.store / Admin123!");
+            log.info(messageService.get("admin-initializer.log.admin.created",
+                    "admin@household.store", "Admin123!"));
         }
 
         // Создаем менеджера по умолчанию
@@ -45,16 +51,17 @@ public class AdminInitializer implements CommandLineRunner {
             User manager = User.builder()
                     .email("manager@household.store")
                     .password(passwordEncoder.encode("Manager123!"))
-                    .firstName("Менеджер")
-                    .lastName("Системы")
+                    .firstName(messageService.get("admin-initializer.manager.default.firstname"))
+                    .lastName(messageService.get("admin-initializer.manager.default.lastname"))
                     .birthDate(LocalDate.now())
                     .role(Role.MANAGER)
-                    .creator("System")
+                    .creator(messageService.get("admin-initializer.system"))
                     .active(true)
                     .build();
 
             userRepository.save(manager);
-            log.info("✅ Создан менеджер по умолчанию: manager@household.store / Manager123!");
+            log.info(messageService.get("admin-initializer.log.manager.created",
+                    "manager@household.store", "Manager123!"));
         }
     }
 }

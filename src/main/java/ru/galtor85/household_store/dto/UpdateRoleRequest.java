@@ -10,6 +10,7 @@ import ru.galtor85.household_store.entity.Role;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateRoleRequest {
-    @NotNull(message = "Роль обязательна")
+
+    @NotNull(message = "{update-role-request.validation.role.empty}")
     private Role newRole;
 }
