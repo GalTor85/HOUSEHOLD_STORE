@@ -283,4 +283,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error(message));
     }
+
+    @ExceptionHandler(MessageNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMessageNotFoundException(
+            MessageNotFoundException e, Locale locale) {
+
+        log.error("MessageNotFoundException: {}", e.getMessage());
+
+        String message = messageService.getWithDefault(
+                "global-exception-handler.error.configuration.missing.key",
+                "Configuration error: missing message key"
+        );
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(message));
+    }
 }
