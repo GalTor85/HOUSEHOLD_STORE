@@ -3,22 +3,27 @@ package ru.galtor85.household_store.mapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.UserResponse;
+import ru.galtor85.household_store.dto.UserTypeAssignmentDto;
 import ru.galtor85.household_store.entity.User;
+import ru.galtor85.household_store.entity.UserTypeAssignment;
 import ru.galtor85.household_store.repository.SecurityUserRepository;
+import ru.galtor85.household_store.repository.UserTypeAssignmentRepository;
 import ru.galtor85.household_store.security.SecurityUser;
+import ru.galtor85.household_store.service.MessageService;
 
 @Component
 @RequiredArgsConstructor
 public class UserMapper {
 
     private final SecurityUserRepository securityUserRepository;
+    private final UserTypeAssignmentRepository userTypeAssignmentRepository;
+    private final MessageService messageService;
 
     public UserResponse build(User user) {
         if (user == null) {
             return null;
         }
 
-        // Получаем SecurityUser для этого пользователя
         SecurityUser securityUser = securityUserRepository.findById(user.getId())
                 .orElse(null);
 
@@ -31,19 +36,18 @@ public class UserMapper {
         response.setMobileNumber(user.getMobileNumber());
         response.setAddress(user.getAddress());
         response.setBirthDate(user.getBirthDate());
+        response.setAge(user.getAge());
 
-        // Вычисляем возраст
-        if (user.getBirthDate() != null) {
-            response.setAge(user.getAge());
-        }
+        // ДОБАВЛЕНО: получаем текущий тип пользователя и конвертируем в DTO
+        userTypeAssignmentRepository.findActiveByUserId(user.getId())
+                .ifPresent(assignment -> {
+                    UserTypeAssignmentDto assignmentDto = convertToDto(assignment);
+                    response.setCurrentUserType(assignmentDto);
+                });
 
-        // Берем роль и статус из SecurityUser
         if (securityUser != null) {
             response.setRole(securityUser.getRole());
             response.setActive(securityUser.isEnabled());
-        } else {
-            response.setRole(null);
-            response.setActive(false);
         }
 
         response.setCreator(user.getCreator());
@@ -59,9 +63,6 @@ public class UserMapper {
         return response;
     }
 
-    /**
-     * Альтернативный метод, если SecurityUser уже получен
-     */
     public UserResponse build(User user, SecurityUser securityUser) {
         if (user == null) {
             return null;
@@ -76,10 +77,14 @@ public class UserMapper {
         response.setMobileNumber(user.getMobileNumber());
         response.setAddress(user.getAddress());
         response.setBirthDate(user.getBirthDate());
+        response.setAge(user.getAge());
 
-        if (user.getBirthDate() != null) {
-            response.setAge(user.getAge());
-        }
+        // ДОБАВЛЕНО: получаем текущий тип пользователя и конвертируем в DTO
+        userTypeAssignmentRepository.findActiveByUserId(user.getId())
+                .ifPresent(assignment -> {
+                    UserTypeAssignmentDto assignmentDto = convertToDto(assignment);
+                    response.setCurrentUserType(assignmentDto);
+                });
 
         if (securityUser != null) {
             response.setRole(securityUser.getRole());
@@ -97,5 +102,25 @@ public class UserMapper {
         }
 
         return response;
+    }
+
+    private UserTypeAssignmentDto convertToDto(UserTypeAssignment assignment) {
+        String localizedName = messageService.get(
+                "usertype." + assignment.getUserType().name()
+        );
+
+        return UserTypeAssignmentDto.builder()
+                .id(assignment.getId())
+                .userId(assignment.getUserId())
+                .userType(assignment.getUserType())
+                .userTypeName(localizedName)
+                .assignedAt(assignment.getAssignedAt())
+                .updatedAt(assignment.getUpdatedAt())
+                .assignedBy(assignment.getAssignedBy())
+                .active(assignment.isActive())
+                .validFrom(assignment.getValidFrom())
+                .validTo(assignment.getValidTo())
+                .reason(assignment.getReason())
+                .build();
     }
 }
