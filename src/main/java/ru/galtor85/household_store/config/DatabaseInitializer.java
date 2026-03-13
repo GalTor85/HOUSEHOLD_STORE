@@ -10,11 +10,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
+import ru.galtor85.household_store.entity.UserType;
 import ru.galtor85.household_store.repository.SecurityUserRepository;
 import ru.galtor85.household_store.repository.UserRepository;
 import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.security.SecurityUserFactory;
 import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.service.UserTypeAssignmentService;
 
 import java.time.LocalDate;
 import java.util.Locale;
@@ -30,6 +32,7 @@ public class DatabaseInitializer {
     private final PasswordEncoder passwordEncoder;
     private final MessageService messageService;
     private final JdbcTemplate jdbcTemplate;
+    private final UserTypeAssignmentService userTypeAssignmentService;
 
     @PostConstruct
     @Transactional
@@ -97,8 +100,6 @@ public class DatabaseInitializer {
                 // Сохраняем SecurityUser отдельно
                 securityUserRepository.save(adminSecurity);
 
-                // УДАЛЕНО: admin.setSecurityUser(adminSecurity) - больше не нужно
-
                 log.info(messageService.get("admin-initializer.log.admin.created",
                         "admin@household.store", "Admin123!"));
             } else {
@@ -132,7 +133,14 @@ public class DatabaseInitializer {
 
                 securityUserRepository.save(managerSecurity);
 
-                // УДАЛЕНО: manager.setSecurityUser(managerSecurity) - больше не нужно
+                // ДЛЯ МЕНЕДЖЕРА - EMPLOYEE (сотрудник)
+                userTypeAssignmentService.assignUserType(
+                        savedManager.getId(),
+                        UserType.EMPLOYEE,
+                        "system",
+                        "Default manager user"
+                );
+
 
                 log.info(messageService.get("admin-initializer.log.manager.created",
                         "manager@household.store", "Manager123!"));

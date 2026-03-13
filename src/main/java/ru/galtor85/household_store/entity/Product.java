@@ -60,24 +60,31 @@ public class Product {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    // ДОБАВЛЕНО: вариативные характеристики
+    //  вариативные характеристики
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<ProductAttribute> attributes = new ArrayList<>();
 
-    // ДОБАВЛЕНО: флаг, что товар имеет варианты (например, разные цвета/размеры)
+    //  флаг, что товар имеет варианты (например, разные цвета/размеры)
     @Column(name = "has_variants")
     private boolean hasVariants;
 
-    // ДОБАВЛЕНО: ссылка на родительский товар (для вариантов)
+    // ссылка на родительский товар (для вариантов)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_product_id")
     private Product parentProduct;
 
-    // ДОБАВЛЕНО: список дочерних вариантов
+    // список дочерних вариантов
     @OneToMany(mappedBy = "parentProduct", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Product> variants = new ArrayList<>();
+
+    // ШТРИХ КОД
+    @Column(name = "barcode", unique = true)
+    private String barcode; // Штрих-код (EAN-13, UPC)
+
+    @Column(name = "barcode_format")
+    private String barcodeFormat; // EAN_13, UPC_A, QR_CODE, etc.
 
     // Вспомогательные методы
     public void addAttribute(ProductAttribute attribute) {

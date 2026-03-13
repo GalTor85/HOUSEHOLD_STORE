@@ -20,6 +20,15 @@ public class ProductCreateRequest {
     @Schema(description = "SKU (Stock Keeping Unit)", example = "IPHONE-13-PRO-128")
     private String sku;
 
+    // ДОБАВЛЕНО: штрих-код
+    @Size(min = 8, max = 20, message = "{product.validation.barcode.size}")
+    @Schema(description = "Barcode (EAN-13, UPC)", example = "4601234567890")
+    private String barcode;
+
+    // ДОБАВЛЕНО: формат штрих-кода
+    @Schema(description = "Barcode format", example = "EAN_13")
+    private String barcodeFormat;
+
     @NotBlank(message = "{product.validation.name.empty}")
     @Size(min = 2, max = 100, message = "{product.validation.name.size}")
     @Schema(description = "Product name", example = "iPhone 13 Pro")
@@ -55,19 +64,15 @@ public class ProductCreateRequest {
     @Schema(description = "Active status", example = "true")
     private Boolean active;
 
-    // ДОБАВЛЕНО: характеристики
     @Schema(description = "Product attributes")
     private List<ProductAttributeDto> attributes;
 
-    // ДОБАВЛЕНО: флаг наличия вариантов
     @Schema(description = "Has variants", example = "false")
     private Boolean hasVariants;
 
-    // ДОБАВЛЕНО: ID родительского товара (если это вариант)
     @Schema(description = "Parent product ID", example = "1")
     private Long parentProductId;
 
-    // ДОБАВЛЕНО: список вариантов (для создания нескольких сразу)
     @Schema(description = "Product variants")
     private List<ProductCreateRequest> variants;
 }
