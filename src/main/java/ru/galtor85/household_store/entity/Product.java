@@ -88,6 +88,15 @@ public class Product {
     @Column(name = "barcode_format")
     private String barcodeFormat; // EAN_13, UPC_A, QR_CODE, etc.
 
+    @Column(name = "supplier_id")
+    private Long supplierId; // Основной поставщик
+
+    @Column(name = "supplier_price", precision = 10, scale = 2)
+    private BigDecimal supplierPrice; // Закупочная цена
+
+    @Column(name = "supplier_sku")
+    private String supplierSku; // Артикул поставщика
+
     // Вспомогательные методы
     public void addAttribute(ProductAttribute attribute) {
         attributes.add(attribute);
