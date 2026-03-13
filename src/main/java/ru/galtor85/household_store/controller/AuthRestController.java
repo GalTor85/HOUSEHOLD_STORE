@@ -18,10 +18,12 @@ import ru.galtor85.household_store.dto.*;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.mapper.UserMapper;
 import ru.galtor85.household_store.mapper.UserToEntity;
+import ru.galtor85.household_store.repository.SecurityUserRepository;
 import ru.galtor85.household_store.security.JwtTokenProvider;
+import ru.galtor85.household_store.security.SecurityUser;
+import ru.galtor85.household_store.service.MessageService;
 import ru.galtor85.household_store.service.UserSearchService;
 import ru.galtor85.household_store.service.UserService;
-import ru.galtor85.household_store.service.MessageService;
 
 @Slf4j
 @RestController
@@ -38,8 +40,8 @@ public class AuthRestController {
     private final UserMapper userMapper;
     private final MessageService messageService;
     private final UserIdentifierResolver userIdentifierResolver;
+    private final SecurityUserRepository securityUserRepository;
 
-    // ========== РЕГИСТРАЦИЯ ==========
     @PostMapping("/register")
     @Operation(summary = "Registration of a new user",
             description = "Creates a new user with the default role USER")
@@ -49,18 +51,27 @@ public class AuthRestController {
         log.debug(messageService.get("auth-rest-controller.log.register.attempt", request.getEmail()));
 
         try {
+            // Создаем User из запроса
             User user = userToEntity.build(request, "Registration");
 
-            User registeredUser = userService.register(user);
+            // Регистрируем пользователя (User + SecurityUser)
+            User registeredUser = userService.register(user, request.getPassword(), null, null);
+
+            // ИСПРАВЛЕНО: получаем SecurityUser по ID из репозитория
+            SecurityUser securityUser = securityUserRepository.findById(registeredUser.getId())
+                    .orElseThrow(() -> new RuntimeException("Security user not found after registration"));
+
+            // ИСПРАВЛЕНО: получаем User для билдера ответа
+            User userForResponse = userSearchService.getUserById(registeredUser.getId());
+
+            AuthResponse authResponse = buildAuthResponse(securityUser, userForResponse, jwtTokenProvider);
+
             log.info(messageService.get("auth-rest-controller.log.user.registered", registeredUser.getEmail()));
 
-            AuthResponse authResponse = buildAuthResponse(registeredUser, jwtTokenProvider);
-
-            String successMessage = messageService.get("auth-rest-controller.auth.register.success");
-            log.debug(messageService.get("auth-rest-controller.log.register.completed", registeredUser.getEmail()));
-
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(successMessage, authResponse));
+                    .body(ApiResponse.success(
+                            messageService.get("auth-rest-controller.auth.register.success"),
+                            authResponse));
 
         } catch (UserAlreadyExistsException e) {
             log.warn(messageService.get("auth-rest-controller.log.register.email.exists", request.getEmail()));
@@ -69,13 +80,13 @@ public class AuthRestController {
             log.warn(messageService.get("auth-rest-controller.log.register.validation.failed", e.getMessage()));
             throw e;
         } catch (Exception e) {
-            log.error(messageService.get("auth-rest-controller.log.registration.failed", request.getEmail(), e.getMessage()));
+            log.error(messageService.get("auth-rest-controller.log.registration.failed",
+                    request.getEmail(), e.getMessage()));
             throw new UserRegistrationException(
                     messageService.get("auth-rest-controller.auth.register.error", e.getMessage()));
         }
     }
 
-    // ========== ВХОД ==========
     @PostMapping("/login")
     @Operation(summary = "Login to the system",
             description = "Authenticate user and get JWT token")
@@ -91,37 +102,25 @@ public class AuthRestController {
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            User user = userSearchService.searchUsersByEmailOrMobileNumber(identify)
-                    .orElseThrow(() -> {
-                        String errorMessage = messageService.get(
-                                "auth-rest-controller.error.user.not.found.identify", identify);
-                        log.error(errorMessage);
-                        return new UserNotFoundException(errorMessage);
-                    });
+            SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
 
-            if (!user.isActive()) {
-                log.warn(messageService.get("auth-rest-controller.log.login.user.inactive", identify));
-                throw new UserNotActiveException(
-                        messageService.get("auth-rest-controller.auth.login.user.inactive"));
-            }
+            // ИСПРАВЛЕНО: получаем User по userId из securityUser
+            User user = userSearchService.getUserById(securityUser.getUserId());
 
-            AuthResponse authResponse = buildAuthResponse(user, jwtTokenProvider);
+            // ИСПРАВЛЕНО: передаем и securityUser и user
+            AuthResponse authResponse = buildAuthResponse(securityUser, user, jwtTokenProvider);
 
-            String successMessage = messageService.get("auth-rest-controller.auth.login.success");
-            log.info(messageService.get("auth-rest-controller.log.login.success", identify, user.getId()));
+            log.info(messageService.get("auth-rest-controller.log.login.success",
+                    user.getAuthenticationId(), securityUser.getId()));
 
-            return ResponseEntity.ok(ApiResponse.success(successMessage, authResponse));
+            return ResponseEntity.ok(ApiResponse.success(
+                    messageService.get("auth-rest-controller.auth.login.success"),
+                    authResponse));
 
-        } catch (UserNotFoundException e) {
-            log.warn(messageService.get("auth-rest-controller.log.login.user.not.found", identify));
-            throw new UserLoginException(
-                    messageService.get("auth-rest-controller.auth.login.invalid.credentials"));
         } catch (org.springframework.security.authentication.BadCredentialsException e) {
             log.warn(messageService.get("auth-rest-controller.log.login.bad.credentials", identify));
-            throw new UserLoginException(
+            throw new UserAuthenticationError(
                     messageService.get("auth-rest-controller.auth.login.invalid.credentials"));
-        } catch (UserLoginException e) {
-            throw e;
         } catch (Exception e) {
             log.error(messageService.get("auth-rest-controller.log.logins.failed", identify, e.getMessage()));
             throw new UserAuthenticationError(
@@ -129,7 +128,6 @@ public class AuthRestController {
         }
     }
 
-    // ========== ВЫХОД ==========
     @PostMapping("/logout")
     @Operation(summary = "Logout from the system",
             description = "Invalidates the current session/token")
@@ -141,18 +139,17 @@ public class AuthRestController {
 
         try {
             if (token != null && token.startsWith("Bearer ")) {
-                String jwtToken = token.substring(7);
                 log.debug(messageService.get("auth-rest-controller.log.logout.token.received"));
-                // Здесь можно добавить логику инвалидации токена
             }
 
             SecurityContextHolder.clearContext();
-
-            String successMessage = messageService.get("auth-rest-controller.auth.logout.success");
             log.info(messageService.get("auth-rest-controller.log.logout.success"));
 
             return ResponseEntity.ok(
-                    ApiResponse.success(successMessage, null)
+                    ApiResponse.success(
+                            messageService.get("auth-rest-controller.auth.logout.success"),
+                            null
+                    )
             );
 
         } catch (Exception e) {
@@ -162,7 +159,6 @@ public class AuthRestController {
         }
     }
 
-    // ========== ПРОВЕРКА ТОКЕНА ==========
     @GetMapping("/validate")
     @Operation(summary = "Token validation",
             description = "Validates JWT token and retrieves user information")
@@ -174,50 +170,50 @@ public class AuthRestController {
 
         try {
             if (token == null || !token.startsWith("Bearer ")) {
-                String errorMessage = messageService.get("auth-rest-controller.auth.token.invalid.format");
                 log.warn(messageService.get("auth-rest-controller.log.token.invalid.format"));
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(ApiResponse.error(errorMessage));
+                        .body(ApiResponse.error(
+                                messageService.get("auth-rest-controller.auth.token.invalid.format")));
             }
 
             String jwtToken = token.substring(7);
 
             if (!jwtTokenProvider.validateToken(jwtToken)) {
-                String errorMessage = messageService.get("auth-rest-controller.auth.token.invalid.expired");
                 log.warn(messageService.get("auth-rest-controller.log.token.invalid.expired"));
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(ApiResponse.error(errorMessage));
+                        .body(ApiResponse.error(
+                                messageService.get("auth-rest-controller.auth.token.invalid.expired")));
             }
 
-            String identify = jwtTokenProvider.getUsernameFromToken(jwtToken);
-            log.debug(messageService.get("auth-rest-controller.log.token.identify.extracted", identify));
+            Long userId = jwtTokenProvider.getUserIdFromToken(jwtToken);
+            log.debug(messageService.get("auth-rest-controller.log.token.userid.extracted", userId));
 
-            User user = userSearchService.searchUsersByEmailOrMobileNumber(identify)
+            // Получаем SecurityUser по ID
+            SecurityUser securityUser = securityUserRepository.findById(userId)
                     .orElseThrow(() -> {
-                        String errorMessage = messageService.get(
-                                "auth-rest-controller.error.user.not.found.identify", identify);
-                        log.error(errorMessage);
-                        return new UserNotFoundException(errorMessage);
+                        log.error("Security user not found for ID: {}", userId);
+                        return new TokenValidationError(
+                                messageService.get("auth-rest-controller.error.security.user.not.found"));
                     });
 
-            if (!user.isActive()) {
-                log.warn(messageService.get("auth-rest-controller.log.token.user.inactive", identify));
+            // Проверяем активен ли пользователь через SecurityUser
+            if (!securityUser.isEnabled()) {
+                log.warn(messageService.get("auth-rest-controller.log.token.user.inactive", userId));
                 throw new TokenValidationError(
                         messageService.get("auth-rest-controller.auth.token.user.inactive"));
             }
 
-            String successMessage = messageService.get("auth-rest-controller.auth.token.valid");
-            log.info(messageService.get("auth-rest-controller.log.token.valid", identify));
+            // ИСПРАВЛЕНО: получаем User через userSearchService по userId
+            User user = userSearchService.getUserById(userId);
+
+            log.info(messageService.get("auth-rest-controller.log.token.valid", userId));
 
             return ResponseEntity.ok(
                     ApiResponse.success(
-                            successMessage,
+                            messageService.get("auth-rest-controller.auth.token.valid"),
                             userMapper.build(user)
                     ));
 
-        } catch (UserNotFoundException e) {
-            throw new TokenValidationError(
-                    messageService.get("auth-rest-controller.auth.token.user.not.found"));
         } catch (TokenValidationError e) {
             throw e;
         } catch (Exception e) {
@@ -227,7 +223,6 @@ public class AuthRestController {
         }
     }
 
-    // ========== ОБНОВЛЕНИЕ ТОКЕНА ==========
     @PostMapping("/refresh")
     @Operation(summary = "Token refresh",
             description = "Obtains a new token using a refresh token")
@@ -238,86 +233,62 @@ public class AuthRestController {
 
         try {
             if (request.getRefreshToken() == null || request.getRefreshToken().isEmpty()) {
-                String errorMessage = messageService.get("auth-rest-controller.auth.refresh.token.missing");
                 log.warn(messageService.get("auth-rest-controller.log.refresh.token.missing"));
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(ApiResponse.error(errorMessage));
+                        .body(ApiResponse.error(
+                                messageService.get("auth-rest-controller.auth.refresh.token.missing")));
             }
 
             if (!jwtTokenProvider.validateToken(request.getRefreshToken())) {
-                String errorMessage = messageService.get("auth-rest-controller.auth.refresh.token.invalid");
                 log.warn(messageService.get("auth-rest-controller.log.refresh.token.invalid"));
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(ApiResponse.error(errorMessage));
+                        .body(ApiResponse.error(
+                                messageService.get("auth-rest-controller.auth.refresh.token.invalid")));
             }
 
-            String identify = jwtTokenProvider.getUsernameFromToken(request.getRefreshToken());
-            log.debug(messageService.get("auth-rest-controller.log.refresh.identify.extracted", identify));
+            Long userId = jwtTokenProvider.getUserIdFromToken(request.getRefreshToken());
+            log.debug(messageService.get("auth-rest-controller.log.refresh.userid.extracted", userId));
 
-            User user = userSearchService.searchUsersByEmailOrMobileNumber(identify)
+            // Получаем SecurityUser
+            SecurityUser securityUser = securityUserRepository.findById(userId)
                     .orElseThrow(() -> {
-                        String errorMessage = messageService.get(
-                                "auth-rest-controller.error.user.not.found.identify", identify);
-                        log.error(errorMessage);
-                        return new UserNotFoundException(errorMessage);
+                        log.error("Security user not found for ID: {}", userId);
+                        return new TokenValidationError(
+                                messageService.get("auth-rest-controller.error.security.user.not.found"));
                     });
 
-            if (!user.isActive()) {
-                log.warn(messageService.get("auth-rest-controller.log.refresh.user.inactive", identify));
+            if (!securityUser.isEnabled()) {
+                log.warn(messageService.get("auth-rest-controller.log.refresh.user.inactive", userId));
                 throw new TokenValidationError(
                         messageService.get("auth-rest-controller.auth.refresh.user.inactive"));
             }
 
-            String newAccessToken = jwtTokenProvider.createToken(identify, user.getRole());
-            String newRefreshToken = jwtTokenProvider.createRefreshToken(identify);
+            // ИСПРАВЛЕНО: получаем User через userSearchService
+            User user = userSearchService.getUserById(userId);
 
-            AuthResponse authResponse = AuthResponse.builder()
-                    .accessToken(newAccessToken)
-                    .refreshToken(newRefreshToken)
-                    .tokenType("Bearer")
-                    .expiresIn(jwtTokenProvider.getValidity())
-                    .user(userMapper.build(user))
-                    .build();
+            AuthResponse authResponse = buildAuthResponse(securityUser, user, jwtTokenProvider);
 
-            String successMessage = messageService.get("auth-rest-controller.auth.refresh.success");
-            log.info(messageService.get("auth-rest-controller.log.refresh.success", identify));
+            log.info(messageService.get("auth-rest-controller.log.refresh.success", userId));
 
             return ResponseEntity.ok(
-                    ApiResponse.success(successMessage, authResponse));
+                    ApiResponse.success(
+                            messageService.get("auth-rest-controller.auth.refresh.success"),
+                            authResponse));
 
-        } catch (UserNotFoundException e) {
-            throw new TokenValidationError(
-                    messageService.get("auth-rest-controller.auth.refresh.user.not.found"));
         } catch (TokenValidationError e) {
             throw e;
         } catch (Exception e) {
             log.error(messageService.get("auth-rest-controller.log.refresh.error", e.getMessage()));
-            String errorMessage = messageService.get("auth-rest-controller.auth.refresh.error");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error(errorMessage));
+                    .body(ApiResponse.error(
+                            messageService.get("auth-rest-controller.auth.refresh.error")));
         }
     }
 
-    // ========== ВСПОМОГАТЕЛЬНЫЙ МЕТОД ==========
-    private AuthResponse authenticateAndGetToken(String email, String mobileNumber, String password) {
-        String identify = email != null && !email.isEmpty() ? email : mobileNumber;
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(identify, password)
-        );
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        User user = userSearchService.searchUsersByEmailOrMobileNumber(identify)
-                .orElseThrow(() -> new UserNotFoundException(
-                        messageService.get("auth-rest-controller.error.user.not.found.identify", identify)));
-
-        return buildAuthResponse(user, jwtTokenProvider);
-    }
-
-    public AuthResponse buildAuthResponse(User user, JwtTokenProvider jwtTokenProvider) {
-        String identify = user.getEmail() != null ? user.getEmail() : user.getMobileNumber();
-        String accessToken = jwtTokenProvider.createToken(identify, user.getRole());
-        String refreshToken = jwtTokenProvider.createRefreshToken(identify);
+    // ИСПРАВЛЕНО: метод buildAuthResponse теперь принимает User отдельно
+    private AuthResponse buildAuthResponse(SecurityUser securityUser, User user, JwtTokenProvider jwtTokenProvider) {
+        String accessToken = jwtTokenProvider.createToken(securityUser, user);
+        String refreshToken = jwtTokenProvider.createRefreshToken(securityUser, user);
 
         return AuthResponse.builder()
                 .accessToken(accessToken)

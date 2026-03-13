@@ -17,6 +17,8 @@ import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.mapper.UserMapper;
 import ru.galtor85.household_store.mapper.UserToEntity;
+import ru.galtor85.household_store.repository.SecurityUserRepository;
+import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.*;
 
 import java.util.HashMap;
@@ -40,27 +42,24 @@ public class AdminRestController {
     private final UserToEntity userToEntity;
     private final UserMapper userMapper;
     private final MessageService messageService;
+    private final SecurityUserRepository securityUserRepository;
 
-    /**
-     * Получение текущего аутентифицированного администратора
-     */
-    private User getCurrentAdmin() {
+    private SecurityUser getCurrentSecurityUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
             throw new CustomAuthenticationException(
                     messageService.get("admin-rest-controller.user.not.authenticated"));
         }
-
-        String currentUsername = auth.getName();
-        log.debug(messageService.get("admin-rest-controller.log.getting.current.admin", currentUsername));
-
-        return userSearchService.searchUsersByEmailOrMobileNumber(currentUsername)
-                .orElseThrow(() -> new UserNotFoundException(
-                        messageService.get("admin-rest-controller.error.current.admin.not.found", currentUsername)
-                ));
+        return (SecurityUser) auth.getPrincipal();
     }
 
-    // ========== ПОЛУЧЕНИЕ СПИСКА ПОЛЬЗОВАТЕЛЕЙ ==========
+    private User getCurrentAdmin() {
+        SecurityUser securityUser = getCurrentSecurityUser();
+        log.debug(messageService.get("admin-rest-controller.log.getting.current.admin",
+                securityUser.getUsername()));
+        return userSearchService.getUserById(securityUser.getUserId());
+    }
+
     @GetMapping
     @Operation(summary = "Get users list",
             description = "Get a list of all users with optional filtering and sorting")
@@ -73,16 +72,13 @@ public class AdminRestController {
 
         try {
             User currentAdmin = getCurrentAdmin();
-            log.info(messageService.get("admin-rest-controller.log.admin.fetching.users",
-                    currentAdmin.getEmail(), currentAdmin.getId()));
+            log.info(messageService.get("admin-rest-controller.log.admin.fetching.users", currentAdmin.getEmail(), currentAdmin.getId()));
 
             List<User> users;
 
             if (hasSearchCriteria(mobileNumber, email, firstName, lastName)) {
-                users = userSearchService.searchUsersByCriteria(
-                        mobileNumber, email, firstName, lastName, sort);
-                log.debug(messageService.get("admin-rest-controller.log.searching.users.with.criteria",
-                        email, mobileNumber, firstName, lastName));
+                users = userSearchService.searchUsersByCriteria(mobileNumber, email, firstName, lastName, sort);
+                log.debug(messageService.get("admin-rest-controller.log.searching.users.with.criteria", email, mobileNumber, firstName, lastName));
             } else {
                 users = userSearchService.getAllUsers(sort);
                 log.debug(messageService.get("admin-rest-controller.log.getting.all.users", sort));
@@ -99,15 +95,12 @@ public class AdminRestController {
                     userResponses));
 
         } catch (RuntimeException e) {
-            throw new CustomAuthenticationException(
-                    messageService.get("admin-rest-controller.error.authentication", e.getMessage()));
+            throw new CustomAuthenticationException(messageService.get("admin-rest-controller.error.authentication", e.getMessage()));
         } catch (Exception e) {
-            throw new UserFetchedException(
-                    messageService.get("admin-rest-controller.user.fetch.error", e.getMessage()));
+            throw new UserFetchedException(messageService.get("admin-rest-controller.user.fetch.error", e.getMessage()));
         }
     }
 
-    // ========== СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ ==========
     @PostMapping
     @Operation(summary = "Create user",
             description = "Create a new user")
@@ -116,13 +109,13 @@ public class AdminRestController {
 
         try {
             User currentAdmin = getCurrentAdmin();
-            log.info(messageService.get("admin-rest-controller.log.admin.creating.user",
-                    currentAdmin.getEmail(), request.getEmail()));
+            log.info(messageService.get("admin-rest-controller.log.admin.creating.user", currentAdmin.getEmail(), request.getEmail()));
 
             String creator = currentAdmin.getEmail() + " " + currentAdmin.getMobileNumber();
             User newUser = userToEntity.build(request, creator);
+
             User createdUser = adminUserCreationService.createUserWithRole(
-                    currentAdmin, newUser, request.getRole());
+                    currentAdmin, newUser, request.getPassword(), request.getRole(), null);
 
             log.info(messageService.get("admin-rest-controller.log.user.created.success", createdUser.getEmail()));
 
@@ -133,16 +126,13 @@ public class AdminRestController {
 
         } catch (IllegalArgumentException e) {
             throw new ValidationRequestException(
-                    messageService.get("admin-rest-controller.user.create.validation",
-                            e.getMessage(), request.getEmail(), request.getMobileNumber()),
+                    messageService.get("admin-rest-controller.user.create.validation", e.getMessage(), request.getEmail(), request.getMobileNumber()),
                     request.getEmail() + " " + request.getMobileNumber());
         } catch (Exception e) {
-            throw new UserCreateException(
-                    messageService.get("admin-rest-controller.user.create.error", e.getMessage()));
+            throw new UserCreateException(messageService.get("admin-rest-controller.user.create.error", e.getMessage()));
         }
     }
 
-    // ========== ИЗМЕНЕНИЕ РОЛИ ПОЛЬЗОВАТЕЛЯ ==========
     @PatchMapping("/{userId}/role")
     @Operation(summary = "Update user role",
             description = "Change user role")
@@ -152,11 +142,9 @@ public class AdminRestController {
 
         try {
             User currentAdmin = getCurrentAdmin();
-            log.info(messageService.get("admin-rest-controller.log.admin.changing.role",
-                    currentAdmin.getEmail(), userId, request.getNewRole()));
+            log.info(messageService.get("admin-rest-controller.log.admin.changing.role", currentAdmin.getEmail(), userId, request.getNewRole()));
 
-            User updatedUser = userRoleService.changeUserRole(
-                    currentAdmin, userId, request.getNewRole());
+            User updatedUser = userRoleService.changeUserRole(currentAdmin, userId, request.getNewRole(), null);
 
             return ResponseEntity.ok(ApiResponse.success(
                     messageService.get("admin-rest-controller.user.role.updated"),
@@ -164,19 +152,15 @@ public class AdminRestController {
 
         } catch (IllegalArgumentException e) {
             throw new ValidationRequestException(
-                    messageService.get("admin-rest-controller.user.role.validation",
-                            e.getMessage(), userId, request.getNewRole()),
+                    messageService.get("admin-rest-controller.user.role.validation", e.getMessage(), userId, request.getNewRole()),
                     request.getNewRole().toString() + " for user ID " + userId);
         } catch (SecurityException e) {
-            throw new UserAccessException(
-                    messageService.get("admin-rest-controller.user.role.denied", e.getMessage()));
+            throw new UserAccessException(messageService.get("admin-rest-controller.user.role.denied", e.getMessage()));
         } catch (Exception e) {
-            throw new UserUpdateRoleException(
-                    messageService.get("admin-rest-controller.user.role.error", e.getMessage()));
+            throw new UserUpdateRoleException(messageService.get("admin-rest-controller.user.role.error", e.getMessage()));
         }
     }
 
-    // ========== ИЗМЕНЕНИЕ СТАТУСА ПОЛЬЗОВАТЕЛЯ ==========
     @PatchMapping("/{userId}/status")
     @Operation(summary = "Update user status",
             description = "Activate or deactivate user")
@@ -186,14 +170,13 @@ public class AdminRestController {
 
         try {
             User currentAdmin = getCurrentAdmin();
-            String statusText = request.getActive() ?
+            String statusText = request.isActive() ?
                     messageService.get("admin-rest-controller.user.status.active") :
                     messageService.get("admin-rest-controller.user.status.inactive");
-            log.info(messageService.get("admin-rest-controller.log.admin.changing.status",
-                    currentAdmin.getEmail(), userId, statusText));
 
-            User updatedUser = userStatusService.toggleUserActive(
-                    currentAdmin, userId, request.getActive());
+            log.info(messageService.get("admin-rest-controller.log.admin.changing.status", currentAdmin.getEmail(), userId, statusText));
+
+            User updatedUser = userStatusService.toggleUserActive(currentAdmin, userId, request.isActive(), null);
 
             return ResponseEntity.ok(ApiResponse.success(
                     messageService.get("admin-rest-controller.user.status.updated"),
@@ -201,19 +184,15 @@ public class AdminRestController {
 
         } catch (IllegalArgumentException e) {
             throw new ValidationRequestException(
-                    messageService.get("admin-rest-controller.user.status.validation",
-                            e.getMessage(), userId, request.getActive()),
-                    request.getActive() + " for user ID " + userId);
+                    messageService.get("admin-rest-controller.user.status.validation", e.getMessage(), userId, request.isActive()),
+                    request.isActive() + " for user ID " + userId);
         } catch (SecurityException e) {
-            throw new UserAccessException(
-                    messageService.get("admin-rest-controller.user.status.denied", e.getMessage()));
+            throw new UserAccessException(messageService.get("admin-rest-controller.user.status.denied", e.getMessage()));
         } catch (Exception e) {
-            throw new UserUpdateStatusException(
-                    messageService.get("admin-rest-controller.user.status.error", e.getMessage()));
+            throw new UserUpdateStatusException(messageService.get("admin-rest-controller.user.status.error", e.getMessage()));
         }
     }
 
-    // ========== УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ ==========
     @DeleteMapping("/{userId}")
     @Operation(summary = "Delete user",
             description = "Delete user by ID")
@@ -222,24 +201,10 @@ public class AdminRestController {
 
         try {
             User currentAdmin = getCurrentAdmin();
-            log.info(messageService.get("admin-rest-controller.log.admin.deleting.user",
-                    currentAdmin.getEmail(), userId));
+            log.info(messageService.get("admin-rest-controller.log.admin.deleting.user", currentAdmin.getEmail(), userId));
 
-            if (currentAdmin.getId().equals(userId)) {
-                log.warn(messageService.get("admin-rest-controller.log.admin.attempt.delete.self"));
-                throw new UserAccessException(messageService.get("admin-rest-controller.user.self.delete"));
-            }
+            userDeletedService.deleteUserWithCheck(userId, currentAdmin, null);
 
-            User userToDelete = userSearchService.getUserById(userId);
-
-            if (!currentAdmin.getRole().canManage(userToDelete.getRole())) {
-                log.warn(messageService.get("admin-rest-controller.log.admin.insufficient.permissions",
-                        currentAdmin.getEmail(), userToDelete.getRole()));
-                throw new UserAccessException(
-                        messageService.get("admin-rest-controller.user.delete.denied", userToDelete.getRole()));
-            }
-
-            userDeletedService.deleteUser(userId);
             log.info(messageService.get("admin-rest-controller.log.user.deleted.success", userId));
 
             return ResponseEntity.ok(ApiResponse.success(
@@ -256,7 +221,6 @@ public class AdminRestController {
         }
     }
 
-    // ========== ПОЛУЧЕНИЕ ОДНОГО ПОЛЬЗОВАТЕЛЯ ==========
     @GetMapping("/{userId}")
     @Operation(summary = "Get user by ID",
             description = "Get detailed information about a user")
@@ -273,33 +237,27 @@ public class AdminRestController {
                     userMapper.build(user)));
 
         } catch (IllegalArgumentException e) {
-            throw new UserNotFoundException(
-                    messageService.get("admin-rest-controller.user.not.found", userId));
+            throw new UserNotFoundException(messageService.get("admin-rest-controller.user.not.found", userId));
         } catch (Exception e) {
-            throw new UserFetchedException(
-                    messageService.get("admin-rest-controller.user.fetch.error", e.getMessage()));
+            throw new UserFetchedException(messageService.get("admin-rest-controller.user.fetch.error", e.getMessage()));
         }
     }
 
-    // ========== ПОИСК ПОЛЬЗОВАТЕЛЕЙ ПО EMAIL ИЛИ MOBILENUMBER ==========
     @GetMapping("/search")
     @Operation(summary = "Search users",
             description = "Search users by email or mobile number")
-    public ResponseEntity<ApiResponse<List<UserResponse>>> searchUsersByEmailOrMobileNumber(
+    public ResponseEntity<ApiResponse<List<UserResponse>>> searchUsers(
             @RequestParam String identify,
             @RequestParam(required = false) String sort) {
 
         try {
             User currentAdmin = getCurrentAdmin();
-            log.info(messageService.get("admin-rest-controller.log.admin.searching.users",
-                    currentAdmin.getEmail(), identify));
+            log.info(messageService.get("admin-rest-controller.log.admin.searching.users", currentAdmin.getEmail(), identify));
 
-            List<User> users = userSearchService.searchUsersByCriteria(
-                    identify, identify, null, null, sort);
+            List<User> users = userSearchService.searchUsersByCriteria(identify, identify, null, null, sort);
 
             if (users.isEmpty()) {
-                throw new UserNotFoundException(
-                        messageService.get("admin-rest-controller.user.search.not.found", identify));
+                throw new UserNotFoundException(messageService.get("admin-rest-controller.user.search.not.found", identify));
             }
 
             List<UserResponse> userResponses = users.stream()
@@ -311,15 +269,12 @@ public class AdminRestController {
                     userResponses));
 
         } catch (RuntimeException e) {
-            throw new UserNotFoundException(
-                    messageService.get("admin-rest-controller.user.search.error", e.getMessage()));
+            throw new UserNotFoundException(messageService.get("admin-rest-controller.user.search.error", e.getMessage()));
         } catch (Exception e) {
-            throw new UserFetchedException(
-                    messageService.get("admin-rest-controller.user.search.error", e.getMessage()));
+            throw new UserFetchedException(messageService.get("admin-rest-controller.user.search.error", e.getMessage()));
         }
     }
 
-    // ========== ПОЛУЧЕНИЕ СТАТИСТИКИ ==========
     @GetMapping("/stats")
     @Operation(summary = "Get statistics",
             description = "Get system usage statistics")
@@ -330,29 +285,40 @@ public class AdminRestController {
             log.info(messageService.get("admin-rest-controller.log.admin.getting.stats", currentAdmin.getEmail()));
 
             List<User> allUsers = userSearchService.getAllUsers(null);
+            List<Long> userIds = allUsers.stream().map(User::getId).collect(Collectors.toList());
+
+            // Получаем всех SecurityUsers одним запросом
+            List<SecurityUser> allSecurityUsers = securityUserRepository.findAllById(userIds);
+            Map<Long, SecurityUser> securityUsersMap = allSecurityUsers.stream()
+                    .collect(Collectors.toMap(SecurityUser::getId, su -> su));
+
+            long total = allUsers.size();
+            long active = securityUsersMap.values().stream().filter(SecurityUser::isEnabled).count();
+            long inactive = total - active;
+
+            long admins = securityUsersMap.values().stream()
+                    .filter(su -> su.getRole() == Role.ADMIN).count();
+            long managers = securityUsersMap.values().stream()
+                    .filter(su -> su.getRole() == Role.MANAGER).count();
+            long regular = securityUsersMap.values().stream()
+                    .filter(su -> su.getRole() == Role.USER).count();
+            long logged = allUsers.stream().filter(u -> u.getCreator() != null).count();
 
             Map<String, Object> stats = new HashMap<>();
-            stats.put(messageService.get("admin-rest-controller.stats.total"), allUsers.size());
-            stats.put(messageService.get("admin-rest-controller.stats.active"),
-                    allUsers.stream().filter(User::isActive).count());
-            stats.put(messageService.get("admin-rest-controller.stats.inactive"),
-                    allUsers.stream().filter(u -> !u.isActive()).count());
-            stats.put(messageService.get("admin-rest-controller.stats.admins"),
-                    allUsers.stream().filter(u -> u.getRole() == Role.ADMIN).count());
-            stats.put(messageService.get("admin-rest-controller.stats.managers"),
-                    allUsers.stream().filter(u -> u.getRole() == Role.MANAGER).count());
-            stats.put(messageService.get("admin-rest-controller.stats.users"),
-                    allUsers.stream().filter(u -> u.getRole() == Role.USER).count());
-            stats.put(messageService.get("admin-rest-controller.stats.logged"),
-                    allUsers.stream().filter(u -> u.getCreator() != null).count());
+            stats.put(messageService.get("admin-rest-controller.stats.total"), total);
+            stats.put(messageService.get("admin-rest-controller.stats.active"), active);
+            stats.put(messageService.get("admin-rest-controller.stats.inactive"), inactive);
+            stats.put(messageService.get("admin-rest-controller.stats.admins"), admins);
+            stats.put(messageService.get("admin-rest-controller.stats.managers"), managers);
+            stats.put(messageService.get("admin-rest-controller.stats.users"), regular);
+            stats.put(messageService.get("admin-rest-controller.stats.logged"), logged);
 
             return ResponseEntity.ok(ApiResponse.success(
                     messageService.get("admin-rest-controller.stats.fetched"),
                     stats));
 
         } catch (Exception e) {
-            throw new StatisticException(
-                    messageService.get("admin-rest-controller.stats.error", e.getMessage()));
+            throw new StatisticException(messageService.get("admin-rest-controller.stats.error", e.getMessage()));
         }
     }
 

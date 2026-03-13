@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.UserCreateRequest;
 import ru.galtor85.household_store.dto.UserEditRequest;
-import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.service.MessageService;
 
@@ -29,15 +28,13 @@ public class UserToEntity {
 
         log.debug(messageService.get("user-to-entity.log.mapper.converting.user", request.getEmail()));
 
+        // В User больше нет role, active и password!
         return User.builder()
                 .email(request.getEmail())
                 .mobileNumber(request.getMobileNumber())
-                .role(request.getRole() != null ? request.getRole() : Role.USER)
-                .active(request.getActive() != null ? request.getActive() : true)
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .surname(request.getSurname())
-                .password(request.getPassword())
                 .birthDate(parseBirthDate(request.getBirthDate(), locale))
                 .address(request.getAddress())
                 .creator(creator)
@@ -92,5 +89,6 @@ public class UserToEntity {
         if (request.getBirthDate() != null) {
             user.setBirthDate(parseBirthDate(request.getBirthDate(), locale));
         }
+        // role, active, password - не обновляем здесь, они в SecurityUser
     }
 }

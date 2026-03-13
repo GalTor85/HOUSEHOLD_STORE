@@ -9,11 +9,15 @@ import ru.galtor85.household_store.advice.exception.UserNotFoundException;
 import ru.galtor85.household_store.dto.UserStatistics;
 import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
+import ru.galtor85.household_store.repository.SecurityUserRepository;
 import ru.galtor85.household_store.repository.UserRepository;
+import ru.galtor85.household_store.security.SecurityUser;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -21,6 +25,7 @@ import java.util.Optional;
 public class UserSearchService {
 
     private final UserRepository userRepository;
+    private final SecurityUserRepository securityUserRepository;
     private final MessageService messageService;
 
     @Transactional(readOnly = true)
@@ -89,19 +94,15 @@ public class UserSearchService {
         return user;
     }
 
+    /**
+     * @deprecated Роль теперь хранится в SecurityUser. Используйте SecurityUserRepository напрямую.
+     */
+    @Deprecated
     @Transactional(readOnly = true)
     public List<User> findUsersByRole(Role role, Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
-
-        List<User> users = userRepository.findByRole(role);
-
-        log.debug(messageService.get(
-                "user-search-service.log.user.search.role",
-                users.size(),
-                role
-        ));
-
-        return users;
+        log.warn("Method findUsersByRole is deprecated - role is now in SecurityUser");
+        return List.of();
     }
 
     @Transactional(readOnly = true)
@@ -178,13 +179,32 @@ public class UserSearchService {
 
         List<User> allUsers = userRepository.findAll();
 
-        long total = allUsers.size();
-        long active = allUsers.stream().filter(User::isActive).count();
-        long admins = allUsers.stream().filter(u -> u.getRole() == Role.ADMIN).count();
-        long managers = allUsers.stream().filter(u -> u.getRole() == Role.MANAGER).count();
-        long regular = allUsers.stream().filter(u -> u.getRole() == Role.USER).count();
+        List<Long> userIds = allUsers.stream()
+                .map(User::getId)
+                .collect(Collectors.toList());
 
-        UserStatistics stats = new UserStatistics(total, active, total - active, admins, managers, regular);
+        List<SecurityUser> allSecurityUsers = securityUserRepository.findAllById(userIds);
+
+        Map<Long, SecurityUser> securityUserMap = allSecurityUsers.stream()
+                .collect(Collectors.toMap(SecurityUser::getId, su -> su));
+
+        long total = allUsers.size();
+        long active = allSecurityUsers.stream()
+                .filter(SecurityUser::isEnabled)
+                .count();
+        long inactive = total - active;
+
+        long admins = allSecurityUsers.stream()
+                .filter(su -> su.getRole() == Role.ADMIN)
+                .count();
+        long managers = allSecurityUsers.stream()
+                .filter(su -> su.getRole() == Role.MANAGER)
+                .count();
+        long regular = allSecurityUsers.stream()
+                .filter(su -> su.getRole() == Role.USER)
+                .count();
+
+        UserStatistics stats = new UserStatistics(total, active, inactive, admins, managers, regular);
 
         log.info(messageService.get(
                 "user-search-service.log.user.statistics",
@@ -196,6 +216,23 @@ public class UserSearchService {
         ));
 
         return stats;
+    }
+
+    /**
+     * Получить SecurityUser по ID пользователя
+     */
+    public SecurityUser getSecurityUserByUserId(Long userId) {
+        return securityUserRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(
+                        messageService.get("user-search-service.error.security.user.not.found", userId)
+                ));
+    }
+
+    /**
+     * Получить SecurityUser по ID пользователя (с опциональным результатом)
+     */
+    public Optional<SecurityUser> findSecurityUserByUserId(Long userId) {
+        return securityUserRepository.findById(userId);
     }
 
     // ========== ПЕРЕГРУЖЕННЫЕ МЕТОДЫ ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ ==========

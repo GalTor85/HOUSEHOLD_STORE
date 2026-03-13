@@ -12,4 +12,8 @@ public class UpdateStatusRequest {
 
     @NotNull(message = "{update-status-request.validation.status.empty}")
     private Boolean active;
+
+    public boolean isActive() {
+        return active != null && active;
+    }
 }

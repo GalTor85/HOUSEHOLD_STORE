@@ -1,0 +1,162 @@
+package ru.galtor85.household_store.config;
+
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.entity.Role;
+import ru.galtor85.household_store.entity.User;
+import ru.galtor85.household_store.repository.SecurityUserRepository;
+import ru.galtor85.household_store.repository.UserRepository;
+import ru.galtor85.household_store.security.SecurityUser;
+import ru.galtor85.household_store.security.SecurityUserFactory;
+import ru.galtor85.household_store.service.MessageService;
+
+import java.time.LocalDate;
+import java.util.Locale;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class DatabaseInitializer {
+
+    private final UserRepository userRepository;
+    private final SecurityUserRepository securityUserRepository;
+    private final SecurityUserFactory securityUserFactory;
+    private final PasswordEncoder passwordEncoder;
+    private final MessageService messageService;
+    private final JdbcTemplate jdbcTemplate;
+
+    @PostConstruct
+    @Transactional
+    public void init() {
+        Locale locale = Locale.getDefault();
+
+        if (!isTableExists("users")) {
+            log.info(messageService.get("database-initializer.log.tables.not.ready"));
+            return;
+        }
+
+        log.info(messageService.get("database-initializer.log.schema.ready"));
+
+        createDefaultAdmin(locale);
+        createDefaultManager(locale);
+
+        log.info(messageService.get("database-initializer.log.completed"));
+    }
+
+    private boolean isTableExists(String tableName) {
+        try {
+            String schema = "household_schema";
+            String query = "SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ?";
+            Integer result = jdbcTemplate.queryForObject(query, Integer.class, schema, tableName);
+            return result != null && result == 1;
+        } catch (DataAccessException e) {
+            log.debug(messageService.get("database-initializer.log.table.not.exists", tableName));
+            return false;
+        }
+    }
+
+    private boolean isDatabaseReady() {
+        try {
+            jdbcTemplate.execute("SELECT 1");
+            return isTableExists("users") && isTableExists("security_users");
+        } catch (Exception e) {
+            log.debug(messageService.get("database-initializer.log.database.not.ready", e.getMessage()));
+            return false;
+        }
+    }
+
+    private void createDefaultAdmin(Locale locale) {
+        try {
+            if (userRepository.findByEmail("admin@household.store").isEmpty()) {
+                log.info(messageService.get("database-initializer.log.creating.admin"));
+
+                // Создаем User
+                User admin = User.builder()
+                        .email("admin@household.store")
+                        .firstName(messageService.get("admin-initializer.admin.default.firstname"))
+                        .lastName(messageService.get("admin-initializer.admin.default.lastname"))
+                        .birthDate(LocalDate.now())
+                        .creator(messageService.get("admin-initializer.system"))
+                        .build();
+
+                User savedAdmin = userRepository.save(admin);
+
+                // Создаем SecurityUser для администратора (ТОЛЬКО с userId)
+                SecurityUser adminSecurity = securityUserFactory.createNew(
+                        savedAdmin,  // User нужен только для получения ID
+                        passwordEncoder.encode("Admin123!"),
+                        Role.ADMIN
+                );
+
+                // Сохраняем SecurityUser отдельно
+                securityUserRepository.save(adminSecurity);
+
+                // УДАЛЕНО: admin.setSecurityUser(adminSecurity) - больше не нужно
+
+                log.info(messageService.get("admin-initializer.log.admin.created",
+                        "admin@household.store", "Admin123!"));
+            } else {
+                log.debug(messageService.get("database-initializer.log.admin.exists"));
+            }
+        } catch (Exception e) {
+            log.error(messageService.get("database-initializer.log.admin.create.failed", e.getMessage()), e);
+        }
+    }
+
+    private void createDefaultManager(Locale locale) {
+        try {
+            if (userRepository.findByEmail("manager@household.store").isEmpty()) {
+                log.info(messageService.get("database-initializer.log.creating.manager"));
+
+                User manager = User.builder()
+                        .email("manager@household.store")
+                        .firstName(messageService.get("admin-initializer.manager.default.firstname"))
+                        .lastName(messageService.get("admin-initializer.manager.default.lastname"))
+                        .birthDate(LocalDate.now())
+                        .creator(messageService.get("admin-initializer.system"))
+                        .build();
+
+                User savedManager = userRepository.save(manager);
+
+                SecurityUser managerSecurity = securityUserFactory.createNew(
+                        savedManager,
+                        passwordEncoder.encode("Manager123!"),
+                        Role.MANAGER
+                );
+
+                securityUserRepository.save(managerSecurity);
+
+                // УДАЛЕНО: manager.setSecurityUser(managerSecurity) - больше не нужно
+
+                log.info(messageService.get("admin-initializer.log.manager.created",
+                        "manager@household.store", "Manager123!"));
+            } else {
+                log.debug(messageService.get("database-initializer.log.manager.exists"));
+            }
+        } catch (Exception e) {
+            log.error(messageService.get("database-initializer.log.manager.create.failed", e.getMessage()), e);
+        }
+    }
+
+    @Transactional
+    public void forceInitialize() {
+        Locale locale = Locale.getDefault();
+        log.info(messageService.get("database-initializer.log.force.start"));
+
+        if (!isDatabaseReady()) {
+            log.error(messageService.get("database-initializer.log.force.not.ready"));
+            return;
+        }
+
+        createDefaultAdmin(locale);
+        createDefaultManager(locale);
+
+        log.info(messageService.get("database-initializer.log.force.completed"));
+    }
+}

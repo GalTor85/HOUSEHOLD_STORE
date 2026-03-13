@@ -1,12 +1,11 @@
 package ru.galtor85.household_store.security;
 
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.UnauthorizedException;
-import ru.galtor85.household_store.entity.Role;
+import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.service.MessageService;
 
 import javax.crypto.SecretKey;
@@ -14,7 +13,6 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
 @Slf4j
@@ -58,16 +56,19 @@ public class JwtTokenProvider {
         }
     }
 
-    public String createToken(String identify, Role role) {
-        log.info(messageService.get("jwt-token-provider.jwt.token.creating", identify, role));
+    public String createToken(SecurityUser securityUser, User user) {
+        String identify = user.getAuthenticationId();  // берем из User
+        log.info(messageService.get("jwt-token-provider.jwt.token.creating",
+                identify, securityUser.getRole()));
 
         try {
             Date now = new Date();
             Date validity = new Date(now.getTime() + accessTokenValidity);
 
             Map<String, Object> claims = new HashMap<>();
-            claims.put("role", role.name());
+            claims.put("role", securityUser.getRole().name());
             claims.put("identify", identify);
+            claims.put("userId", securityUser.getUserId());  // используем getUserId()
             claims.put("type", "access");
 
             return Jwts.builder()
@@ -84,7 +85,8 @@ public class JwtTokenProvider {
         }
     }
 
-    public String createRefreshToken(String identify) {
+    public String createRefreshToken(SecurityUser securityUser, User user) {
+        String identify = user.getAuthenticationId();
         log.info(messageService.get("jwt-token-provider.jwt.refresh.creating", identify));
 
         try {
@@ -93,6 +95,7 @@ public class JwtTokenProvider {
 
             Map<String, Object> claims = new HashMap<>();
             claims.put("identify", identify);
+            claims.put("userId", securityUser.getUserId());
             claims.put("type", "refresh");
 
             return Jwts.builder()
@@ -149,21 +152,21 @@ public class JwtTokenProvider {
         }
     }
 
-    public String getIdentifierFromToken(String token) {
+    public Long getUserIdFromToken(String token) {
         try {
-            String identifier = Jwts.parser()
+            Long userId = Jwts.parser()
                     .decryptWith(getEncryptionKey())
                     .build()
                     .parseEncryptedClaims(token)
                     .getPayload()
-                    .get("identify", String.class);
+                    .get("userId", Long.class);
 
-            log.debug(messageService.get("jwt-token-provider.jwt.identifier.extracted", identifier));
-            return identifier;
+            log.debug(messageService.get("jwt-token-provider.jwt.userid.extracted", userId));
+            return userId;
 
         } catch (Exception e) {
-            log.error(messageService.get("jwt-token-provider.jwt.identifier.error", e.getMessage()));
-            throw new RuntimeException("Invalid or expired token", e); //TODO
+            log.error(messageService.get("jwt-token-provider.jwt.userid.error", e.getMessage()));
+            throw new RuntimeException("Invalid or expired token", e);
         }
     }
 

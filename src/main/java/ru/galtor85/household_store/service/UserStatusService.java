@@ -6,7 +6,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.entity.User;
-import ru.galtor85.household_store.repository.UserRepository;
+import ru.galtor85.household_store.repository.SecurityUserRepository;
+import ru.galtor85.household_store.security.SecurityUser;
+import ru.galtor85.household_store.security.SecurityUserFactory;
 
 import java.util.Locale;
 
@@ -15,54 +17,60 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class UserStatusService {
 
-    private final UserRepository userRepository;
+
+    private final SecurityUserRepository securityUserRepository;
     private final UserSearchService userSearchService;
     private final MessageService messageService;
+    private final SecurityUserFactory securityUserFactory;
 
     @Transactional
     public User toggleUserActive(User adminUser, Long userId, boolean active, Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
-        final Locale finalLocale = locale;
-        final Long finalUserId = userId;
-        final User finalAdminUser = adminUser;
-
-        User userToUpdate = userRepository.findById(finalUserId)
+        // Получаем SecurityUser администратора
+        SecurityUser adminSecurity = securityUserRepository.findById(adminUser.getId())
                 .orElseThrow(() -> {
-                    String errorMessage = messageService.get(
-                            "user-status-service.error.user.not.found.id",
-                            finalUserId
-                    );
+                    String error = messageService.get("user-status-service.error.admin.security.not.found", adminUser.getEmail());
+                    log.error(error);
+                    return new AccessDeniedException(error);
+                });
+
+        // Получаем SecurityUser целевого пользователя
+        SecurityUser targetSecurity = securityUserRepository.findById(userId)
+                .orElseThrow(() -> {
+                    String errorMessage = messageService.get("user-status-service.error.user.not.found.id", userId);
                     log.error(errorMessage);
                     return new RuntimeException(errorMessage);
                 });
 
-        User targetUser = userSearchService.getUserById(finalUserId, finalLocale);
+        // Получаем бизнес-данные целевого пользователя
+        User targetUser = userSearchService.getUserById(userId, locale);
 
-        if (!finalAdminUser.getRole().canManage(targetUser.getRole())) {
-            String errorMessage = messageService.get(
-                    "user-status-service.error.status.insufficient.rights.manage",
-                    targetUser.getRole()
-            );
-            log.warn(messageService.get(
-                    "user-status-service.log.status.insufficient.rights.manage",
-                    finalAdminUser.getEmail(),
-                    targetUser.getRole()
-            ));
+        // Проверяем, может ли админ управлять ролью целевого пользователя
+        if (!adminSecurity.getRole().canManage(targetSecurity.getRole())) {
+            String errorMessage = messageService.get("user-status-service.error.status.insufficient.rights.manage", targetSecurity.getRole());
+            log.warn(messageService.get("user-status-service.log.status.insufficient.rights.manage", adminUser.getEmail(), targetSecurity.getRole()));
             throw new AccessDeniedException(errorMessage);
         }
 
-        if (userToUpdate.getId().equals(finalAdminUser.getId()) && !active) {
-            String errorMessage = messageService.get(
-                    "user-status-service.error.status.deactivate.self"
-            );
+        // Нельзя деактивировать самого себя
+        if (targetUser.getId().equals(adminUser.getId()) && !active) {
+            String errorMessage = messageService.get("user-status-service.error.status.deactivate.self");
             log.warn(errorMessage);
             throw new RuntimeException(errorMessage);
         }
 
-        boolean oldStatus = userToUpdate.isActive();
-        userToUpdate.setActive(active);
-        User updatedUser = userRepository.save(userToUpdate);
+        // Сохраняем старый статус для логирования
+        boolean oldStatus = targetSecurity.isEnabled();
+
+        // ИСПРАВЛЕНО: передаем существующий SecurityUser в фабрику
+        SecurityUser updatedSecurityUser = securityUserFactory.withUpdatedStatus(
+                targetUser,
+                targetSecurity,  // передаем существующий SecurityUser
+                active
+        );
+
+        securityUserRepository.save(updatedSecurityUser);
 
         String statusText = active ?
                 messageService.get("user-status-service.user.status.active") :
@@ -74,13 +82,13 @@ public class UserStatusService {
 
         log.info(messageService.get(
                 "user-status-service.log.status.changed",
-                finalAdminUser.getEmail(),
-                updatedUser.getEmail(),
+                adminUser.getEmail(),
+                targetUser.getEmail(),
                 oldStatusText,
                 statusText
         ));
 
-        return updatedUser;
+        return targetUser;
     }
 
     @Transactional
@@ -97,23 +105,13 @@ public class UserStatusService {
     public boolean isUserActive(Long userId, Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
-        final Long finalUserId = userId;
-        final Locale finalLocale = locale;
-
-        return userRepository.findById(finalUserId)
-                .map(user -> {
-                    log.debug(messageService.get(
-                            "user-status-service.log.status.check",
-                            finalUserId,
-                            user.isActive()
-                    ));
-                    return user.isActive();
+        return securityUserRepository.findById(userId)
+                .map(securityUser -> {
+                    log.debug(messageService.get("user-status-service.log.status.check", userId, securityUser.isEnabled()));
+                    return securityUser.isEnabled();
                 })
                 .orElseGet(() -> {
-                    log.debug(messageService.get(
-                            "user-status-service.log.status.user.not.found",
-                            finalUserId
-                    ));
+                    log.debug(messageService.get("user-status-service.log.status.user.not.found", userId));
                     return false;
                 });
     }
@@ -122,43 +120,29 @@ public class UserStatusService {
     public boolean canManageUserStatus(User adminUser, Long userId, Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
-        final Locale finalLocale = locale;
-        final Long finalUserId = userId;
-        final User finalAdminUser = adminUser;
-
         try {
-            User targetUser = userSearchService.getUserById(finalUserId, finalLocale);
+            SecurityUser adminSecurity = securityUserRepository.findById(adminUser.getId())
+                    .orElseThrow(() -> new AccessDeniedException("Admin not found"));
 
-            if (targetUser.getId().equals(finalAdminUser.getId())) {
-                log.debug(messageService.get(
-                        "user-status-service.log.status.cannot.manage.self",
-                        finalAdminUser.getEmail()
-                ));
+            SecurityUser targetSecurity = securityUserRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Target not found"));
+
+            if (userId.equals(adminUser.getId())) {
+                log.debug(messageService.get("user-status-service.log.status.cannot.manage.self", adminUser.getEmail()));
                 return false;
             }
 
-            boolean canManage = finalAdminUser.getRole().canManage(targetUser.getRole());
+            boolean canManage = adminSecurity.getRole().canManage(targetSecurity.getRole());
 
-            log.debug(messageService.get(
-                    "user-status-service.log.status.can.manage",
-                    finalAdminUser.getEmail(),
-                    targetUser.getEmail(),
-                    canManage
-            ));
+            log.debug(messageService.get("user-status-service.log.status.can.manage", adminUser.getEmail(), userId, canManage));
 
             return canManage;
 
         } catch (Exception e) {
-            log.error(messageService.get(
-                    "user-status-service.log.status.check.error",
-                    finalUserId,
-                    e.getMessage()
-            ));
+            log.error(messageService.get("user-status-service.log.status.check.error", userId, e.getMessage()));
             return false;
         }
     }
-
-    // ========== ПЕРЕГРУЖЕННЫЕ МЕТОДЫ ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ ==========
 
     @Transactional
     public User toggleUserActive(User adminUser, Long userId, boolean active) {

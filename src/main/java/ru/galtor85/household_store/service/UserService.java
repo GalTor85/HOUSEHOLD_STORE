@@ -7,12 +7,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.ValidationRequestException;
-import ru.galtor85.household_store.dto.UserCreateRequest;
 import ru.galtor85.household_store.dto.UserEditRequest;
 import ru.galtor85.household_store.dto.UserUpdatePasswordRequest;
+import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.mapper.UserToEntity;
+import ru.galtor85.household_store.repository.SecurityUserRepository;
 import ru.galtor85.household_store.repository.UserRepository;
+import ru.galtor85.household_store.security.SecurityUser;
+import ru.galtor85.household_store.security.SecurityUserFactory;
 
 import java.time.LocalDate;
 import java.util.Locale;
@@ -23,98 +26,86 @@ import java.util.Locale;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final SecurityUserRepository securityUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final MessageService messageService;
     private final UserToEntity userToEntity;
+    private final SecurityUserFactory securityUserFactory;
+    private final UserSearchService userSearchService;
 
     @Transactional
-    public User register(User user, Locale locale) {
+    public User register(User user, String rawPassword, Role role, Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
-        final Locale finalLocale = locale;
         final String email = user.getEmail();
         final String mobileNumber = user.getMobileNumber();
         final String principal = email != null ? email : mobileNumber;
 
         if (email != null && userRepository.existsByEmail(email)) {
-            String errorMessage = messageService.get(
-                    "user-service.error.user.email.exists",
-                    email
-            );
+            String errorMessage = messageService.get("user-service.error.user.email.exists", email);
             log.warn(errorMessage);
             throw new ValidationRequestException(errorMessage, principal);
         }
 
         if (mobileNumber != null && userRepository.existsByMobileNumber(mobileNumber)) {
-            String errorMessage = messageService.get(
-                    "user-service.error.user.mobile.exists",
-                    mobileNumber
-            );
+            String errorMessage = messageService.get("user-service.error.user.mobile.exists", mobileNumber);
             log.warn(errorMessage);
             throw new ValidationRequestException(errorMessage, principal);
         }
 
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-
         User savedUser = userRepository.save(user);
 
-        log.info(messageService.get(
-                "user-service.log.user.newregistered",
-                savedUser.getEmail(),
-                savedUser.getId()
-        ));
+        SecurityUser securityUser = securityUserFactory.createNew(
+                savedUser,
+                passwordEncoder.encode(rawPassword),
+                role != null ? role : Role.USER
+        );
+
+        securityUserRepository.save(securityUser);
+
+        log.info(messageService.get("user-service.log.user.newregistered", savedUser.getEmail(), savedUser.getId()));
 
         return savedUser;
+    }
+
+    @Transactional
+    public User register(User user, String rawPassword) {
+        return register(user, rawPassword, Role.USER, Locale.getDefault());
     }
 
     @Transactional(readOnly = true)
     public User login(String password, String value, Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
-        final Locale finalLocale = locale;
-        final String finalValue = value;
-
-        User user = userRepository.findByEmailOrMobileNumber(value, value)
+        SecurityUser securityUser = securityUserRepository
+                .findByEmailOrMobileNumber(value)
                 .orElseThrow(() -> {
-                    String errorMessage = messageService.get(
-                            "user-service.error.login.invalid.credentials"
-                    );
-                    log.warn(messageService.get(
-                            "user-service.log.login.failed.not.found",
-                            finalValue
-                    ));
-                    return new ValidationRequestException(errorMessage, finalValue);
+                    String errorMessage = messageService.get("user-service.error.login.invalid.credentials");
+                    log.warn(messageService.get("user-service.log.login.failed.not.found", value));
+                    return new ValidationRequestException(errorMessage, value);
                 });
 
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            String errorMessage = messageService.get(
-                    "user-service.error.login.invalid.credentials"
-            );
-            log.warn(messageService.get(
-                    "user-service.log.login.failed.wrong.password",
-                    value
-            ));
+        if (!passwordEncoder.matches(password, securityUser.getPassword())) {
+            String errorMessage = messageService.get("user-service.error.login.invalid.credentials");
+            log.warn(messageService.get("user-service.log.login.failed.wrong.password", value));
             throw new ValidationRequestException(errorMessage, value);
         }
 
-        if (!user.isActive()) {
-            String errorMessage = messageService.get(
-                    "user-service.error.login.account.deactivated"
-            );
-            log.warn(messageService.get(
-                    "user-service.log.login.failed.deactivated",
-                    value
-            ));
+        if (!securityUser.isEnabled()) {
+            String errorMessage = messageService.get("user-service.error.login.account.deactivated");
+            log.warn(messageService.get("user-service.log.login.failed.deactivated", value));
             throw new ValidationRequestException(errorMessage, value);
         }
 
-        log.info(messageService.get(
-                "user-service.log.login.success",
-                user.getEmail(),
-                user.getId()
-        ));
+        User user = userSearchService.getUserById(securityUser.getUserId());
+        log.info(messageService.get("user-service.log.login.success", user.getEmail(), user.getId()));
 
         return user;
+    }
+
+    @Transactional(readOnly = true)
+    public User login(String password, String value) {
+        return login(password, value, Locale.getDefault());
     }
 
     @Transactional
@@ -130,56 +121,75 @@ public class UserService {
     }
 
     @Transactional
-    public User passwordUpdate(User user, UserUpdatePasswordRequest request, Locale locale) {
+    public User edit(User user, UserEditRequest request) {
+        return edit(user, request, Locale.getDefault());
+    }
 
-        final Locale finalLocale = locale;
-        final String value = user.getEmail() != null ? user.getEmail() : user.getMobileNumber();
+    @Transactional
+    public User passwordUpdate(User user, UserUpdatePasswordRequest request, Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
+        final String value = user.getAuthenticationId();
+
+        // Получаем существующий SecurityUser
+        SecurityUser existingSecurityUser = securityUserRepository.findById(user.getId())
+                .orElseThrow(() -> new ValidationRequestException(
+                        messageService.get("user-service.error.security.user.not.found"), value));
+
+        // Проверка текущего пароля
         if (Strings.isBlank(request.getCurrentPassword())) {
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.current.required"),
-                    value
-            );
+                    messageService.get("user-service.validation.password.current.required"), value);
         }
 
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            log.warn("Failed password update attempt for user {}: incorrect current password",
-                    maskEmail(user.getEmail()));
+        if (!passwordEncoder.matches(request.getCurrentPassword(), existingSecurityUser.getPassword())) {
+            log.warn("Failed password update attempt for user {}: incorrect current password", maskEmail(user.getEmail()));
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.current.incorrect"),
-                    value
-            );
+                    messageService.get("user-service.validation.password.current.incorrect"), value);
         }
 
+        // Проверка нового пароля
         if (Strings.isBlank(request.getNewPassword())) {
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.new.required"),
-                    value
-            );
+                    messageService.get("user-service.validation.password.new.required"), value);
         }
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.confirm.mismatch"),
-                    value
-            );
+                    messageService.get("user-service.validation.password.confirm.mismatch"), value);
         }
 
-        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+        if (passwordEncoder.matches(request.getNewPassword(), existingSecurityUser.getPassword())) {
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.new.same.as.old"),
-                    value
-            );
+                    messageService.get("user-service.validation.password.new.same.as.old"), value);
         }
 
         validatePasswordComplexity(request.getNewPassword(), locale);
 
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        // ИСПРАВЛЕНО: передаем существующий SecurityUser в фабрику
+        SecurityUser updatedSecurityUser = securityUserFactory.withUpdatedPassword(
+                user,
+                existingSecurityUser,  // передаем существующий SecurityUser
+                passwordEncoder.encode(request.getNewPassword())
+        );
+
+        securityUserRepository.save(updatedSecurityUser);
 
         log.info("Password successfully updated for user: {}", maskEmail(user.getEmail()));
 
         return user;
+    }
+
+    @Transactional
+    public User passwordUpdate(User user, UserUpdatePasswordRequest request) {
+        return passwordUpdate(user, request, Locale.getDefault());
+    }
+
+    @Transactional(readOnly = true)
+    public SecurityUser getSecurityUserByUserId(Long userId) {
+        return securityUserRepository.findById(userId)
+                .orElseThrow(() -> new ValidationRequestException(
+                        messageService.get("user-service.error.security.user.not.found"), null));
     }
 
     private void validatePasswordComplexity(String password, Locale locale) {
@@ -190,9 +200,7 @@ public class UserService {
 
         if (!hasDigit || !hasLower || !hasUpper || !hasSpecial) {
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.new.complexity"),
-                    null
-            );
+                    messageService.get("user-service.validation.password.new.complexity"), null);
         }
     }
 
@@ -209,72 +217,6 @@ public class UserService {
                 domain;
     }
 
-    private boolean noChanges(UserCreateRequest request) {
-        return Strings.isBlank(request.getFirstName()) &&
-                Strings.isBlank(request.getLastName()) &&
-                Strings.isBlank(request.getSurname()) &&
-                Strings.isBlank(request.getEmail()) &&
-                Strings.isBlank(request.getAddress()) &&
-                Strings.isBlank(request.getBirthDate()) &&
-                Strings.isBlank(request.getMobileNumber()) &&
-                Strings.isBlank(request.getPassword());
-    }
-
-    private void updateUserFields(User user, UserCreateRequest request, Locale locale) {
-        if (Strings.isNotBlank(request.getFirstName())) {
-            user.setFirstName(request.getFirstName());
-        }
-        if (Strings.isNotBlank(request.getLastName())) {
-            user.setLastName(request.getLastName());
-        }
-        if (Strings.isNotBlank(request.getSurname())) {
-            user.setSurname(request.getSurname());
-        }
-        if (Strings.isNotBlank(request.getAddress())) {
-            user.setAddress(request.getAddress());
-        }
-        if (Strings.isNotBlank(request.getEmail())) {
-            user.setEmail(request.getEmail());
-        }
-        if (Strings.isNotBlank(request.getMobileNumber())) {
-            user.setMobileNumber(request.getMobileNumber());
-        }
-        if (request.getBirthDate() != null) {
-            try {
-                user.setBirthDate(LocalDate.parse(request.getBirthDate()));
-            } catch (Exception e) {
-                String errorMessage = messageService.get(
-                        "user-service.error.user.birthdate.invalid",
-                        request.getBirthDate()
-                );
-                throw new ValidationRequestException(errorMessage,
-                        user.getEmail() != null ? user.getEmail() : user.getMobileNumber());
-            }
-        }
-    }
-
-    // ========== ПЕРЕГРУЖЕННЫЕ МЕТОДЫ ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ ==========
-
-    @Transactional
-    public User register(User user) {
-        return register(user, Locale.getDefault());
-    }
-
-    @Transactional
-    public User passwordUpdate(User user, UserUpdatePasswordRequest request) {
-        return passwordUpdate(user, request, Locale.getDefault());
-    }
-
-    @Transactional(readOnly = true)
-    public User login(String password, String value) {
-        return login(password, value, Locale.getDefault());
-    }
-
-    @Transactional
-    public User edit(User user, UserEditRequest request) {
-        return edit(user, request, Locale.getDefault());
-    }
-
     private void checkEmailUniqueness(User user, UserEditRequest request, Locale locale) {
         if (request.getEmail() != null &&
                 !request.getEmail().equals(user.getEmail()) &&
@@ -282,8 +224,7 @@ public class UserService {
 
             throw new ValidationRequestException(
                     messageService.get("user-service.error.user.email.exists", request.getEmail()),
-                    request.getEmail()
-            );
+                    request.getEmail());
         }
     }
 
@@ -294,8 +235,7 @@ public class UserService {
 
             throw new ValidationRequestException(
                     messageService.get("user-service.error.user.mobile.exists", request.getMobileNumber()),
-                    request.getMobileNumber()
-            );
+                    request.getMobileNumber());
         }
     }
 }

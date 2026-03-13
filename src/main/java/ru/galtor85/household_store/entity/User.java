@@ -5,116 +5,59 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Period;
-import java.util.Collection;
-import java.util.Collections;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users", schema = "household_schema")
 @Entity
-public class User implements UserDetails {
+@Table(name = "users", schema = "household_schema")
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String password; // Без валидации - пароль хранится закодированным
+    @Column(unique = true)
+    private String email;
 
+    @Column(name = "mobile_number", unique = true)
+    private String mobileNumber;
+
+    @Column(name = "first_name", nullable = false)
     private String firstName;
-    private String lastName;
-    private String surname;
 
-    @Column(name = "address")
-    private String address;
+    @Column(name = "last_name", nullable = false)
+    private String lastName;
+
+    private String surname;
 
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
-    @Column(unique = true)
-    private String email; // Без валидации - валидация в DTO
+    private String address;
 
-    @Column(unique = true)
-    private String mobileNumber; // Без валидации - валидация в DTO
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role = Role.USER;
-
-    @Column(name = "creator")
     private String creator;
 
-    private boolean active;
-
     @Column(name = "created_at")
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
+    @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    @PrePersist
-    public void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    public void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PostRemove
-    public void onRemove(){
-    }
-
-    @Transient
-    public int getAge() {
-        if (birthDate == null) return 0;
-        return Period.between(birthDate, LocalDate.now()).getYears();
-    }
-
-    @Transient
-    public boolean isAdult() {
-        return getAge() >= 18;
-    }
-
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return active;
-    }
-
-
-    @Override
-    public String getUsername() {
+    public String getAuthenticationId() {
         return email != null ? email : mobileNumber;
+    }
+
+    public Integer getAge() {
+        if (birthDate == null) return null;
+        return java.time.Period.between(birthDate, LocalDate.now()).getYears();
     }
 }
