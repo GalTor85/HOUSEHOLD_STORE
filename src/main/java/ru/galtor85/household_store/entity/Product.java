@@ -11,7 +11,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @Builder
@@ -106,4 +108,41 @@ public class Product {
         variants.remove(variant);
         variant.setParentProduct(null);
     }
+
+    // Медиа
+
+    @OneToMany(mappedBy = "productId", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<ProductMedia> media = new ArrayList<>();
+
+    // Вспомогательные методы
+    public void addMedia(ProductMedia mediaItem) {
+        media.add(mediaItem);
+        mediaItem.setProductId(this.id);
+    }
+
+    public void removeMedia(ProductMedia mediaItem) {
+        media.remove(mediaItem);
+        mediaItem.setProductId(null);
+    }
+
+    public List<ProductMedia> getMainImages() {
+        return media.stream()
+                .filter(m -> m.getMediaType() == MediaType.IMAGE && m.isMain())
+                .collect(Collectors.toList());
+    }
+
+    public List<ProductMedia> getAllImages() {
+        return media.stream()
+                .filter(m -> m.getMediaType() == MediaType.IMAGE)
+                .sorted(Comparator.comparing(ProductMedia::getSortOrder))
+                .collect(Collectors.toList());
+    }
+
+    public List<ProductMedia> getVideos() {
+        return media.stream()
+                .filter(m -> m.getMediaType() == MediaType.VIDEO)
+                .collect(Collectors.toList());
+    }
+
 }

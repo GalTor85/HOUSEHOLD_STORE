@@ -67,4 +67,16 @@ public class ProductResponse {
 
     @Schema(description = "Product variants")
     private List<ProductResponse> variants;
+
+    @Schema(description = "Product media files")
+    private List<ProductMediaDto> media;
+
+    @Schema(description = "Main image URL", example = "/uploads/products/iphone-13-pro.jpg")
+    private String mainImageUrl;
+
+    @Schema(description = "All images")
+    private List<ProductMediaDto> images;
+
+    @Schema(description = "Videos")
+    private List<ProductMediaDto> videos;
 }
