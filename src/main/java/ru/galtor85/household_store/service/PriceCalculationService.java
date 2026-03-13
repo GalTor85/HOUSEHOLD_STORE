@@ -25,6 +25,8 @@ public class PriceCalculationService {
     private final ProductPriceRuleRepository productPriceRuleRepository;
     private final UserTypeAssignmentRepository userTypeAssignmentRepository;
     private final MessageService messageService;
+    private final PromoCodeUsageRepository promoCodeUsageRepository;
+
 
     public PriceCalculationResult calculatePrice(PriceCalculationRequest request) {
         PriceCalculationResult result = PriceCalculationResult.builder()
@@ -91,11 +93,16 @@ public class PriceCalculationService {
     private double getUserTypeDiscountPercent(UserType userType) {
         // Здесь можно получать из БД или конфига
         switch (userType) {
-            case WHOLESALE: return 5.0;
-            case VIP: return 10.0;
-            case PARTNER: return 7.0;
-            case EMPLOYEE: return 15.0;
-            default: return 0.0;
+            case WHOLESALE:
+                return 5.0;
+            case VIP:
+                return 10.0;
+            case PARTNER:
+                return 7.0;
+            case EMPLOYEE:
+                return 15.0;
+            default:
+                return 0.0;
         }
     }
 
@@ -186,16 +193,31 @@ public class PriceCalculationService {
             }
         }
 
+        // Проверяем общий лимит
+        if (promo.getMaxUses() != null && promo.getUsedCount() >= promo.getMaxUses()) {
+            log.warn(messageService.get("promo.code.global.limit", promoCode));
+            return currentTotal;
+        }
+
         BigDecimal discount = BigDecimal.ZERO;
         switch (promo.getDiscountType()) {
             case PERCENTAGE:
                 discount = currentTotal.multiply(promo.getDiscountValue())
-                        .divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP);
+                        .divide(BigDecimal.valueOf(100), java.math.RoundingMode.HALF_UP);
                 break;
             case FIXED_AMOUNT:
-                discount = promo.getDiscountValue();
+                discount = promo.getDiscountValue().min(currentTotal);
                 break;
         }
+
+        // Сохраняем использование промокода (можно добавить позже при оформлении заказа)
+        // PromoCodeUsage usage = PromoCodeUsage.builder()
+        //         .promoCodeId(promo.getId())
+        //         .userId(userId)
+        //         .build();
+        // promoCodeUsageRepository.save(usage);
+        // promo.incrementUsed();
+        // promoCodeRepository.save(promo);
 
         appliedDiscounts.add(PriceCalculationResult.AppliedDiscount.builder()
                 .name(messageService.get("promo.code.discount", promoCode))
@@ -206,4 +228,6 @@ public class PriceCalculationService {
 
         return currentTotal.subtract(discount);
     }
+
+
 }
