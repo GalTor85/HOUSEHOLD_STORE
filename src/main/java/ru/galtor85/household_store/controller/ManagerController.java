@@ -394,4 +394,22 @@ public class ManagerController {
                 messageService.get("manager.suppliers.fetched"),
                 suppliers));
     }
+
+    @PostMapping("/suppliers/{supplierId}/products/{productId}")
+    @Operation(summary = "Add product to supplier catalog")
+    public ResponseEntity<ApiResponse<SupplierProductDto>> addProductToSupplier(
+            @PathVariable Long supplierId,
+            @PathVariable Long productId,
+            @Valid @RequestBody SupplierProductRequest request,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        SupplierProductDto supplierProduct = managerPurchaseService.addProductToSupplier(
+                supplierId, productId, request, manager.getId(), locale);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        messageService.get("manager.supplier.product.added"),
+                        supplierProduct));
+    }
 }

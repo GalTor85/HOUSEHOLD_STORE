@@ -516,6 +516,11 @@ public class ManagerPurchaseService {
         LocalDateTime start = parseDate(finalStartDate);
         LocalDateTime end = parseDate(finalEndDate);
 
+        if (start != null && end != null && start.isAfter(end)) {
+            log.warn(messageService.get("manager.order.log.date.range", finalStartDate, finalEndDate));
+            throw new InvalidDateRangeException(start, end);
+        }
+
         OrderStatus orderStatus = null;
         if (finalStatus != null && !finalStatus.isEmpty()) {
             try {
