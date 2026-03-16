@@ -2,9 +2,9 @@ package ru.galtor85.household_store.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.advice.exception.*;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.repository.SecurityUserRepository;
 import ru.galtor85.household_store.security.SecurityUser;
@@ -16,7 +16,6 @@ import java.util.Locale;
 @Service
 @RequiredArgsConstructor
 public class UserStatusService {
-
 
     private final SecurityUserRepository securityUserRepository;
     private final UserSearchService userSearchService;
@@ -30,17 +29,15 @@ public class UserStatusService {
         // Получаем SecurityUser администратора
         SecurityUser adminSecurity = securityUserRepository.findById(adminUser.getId())
                 .orElseThrow(() -> {
-                    String error = messageService.get("user-status-service.error.admin.security.not.found", adminUser.getEmail());
-                    log.error(error);
-                    return new AccessDeniedException(error);
+                    log.error(messageService.get("user-status-service.log.admin.security.not.found", adminUser.getEmail()));
+                    return new UserNotFoundException(adminUser.getId().toString());
                 });
 
         // Получаем SecurityUser целевого пользователя
         SecurityUser targetSecurity = securityUserRepository.findById(userId)
                 .orElseThrow(() -> {
-                    String errorMessage = messageService.get("user-status-service.error.user.not.found.id", userId);
-                    log.error(errorMessage);
-                    return new RuntimeException(errorMessage);
+                    log.error(messageService.get("user-status-service.log.user.not.found.id", userId));
+                    return new UserNotFoundException(userId.toString());
                 });
 
         // Получаем бизнес-данные целевого пользователя
@@ -48,16 +45,22 @@ public class UserStatusService {
 
         // Проверяем, может ли админ управлять ролью целевого пользователя
         if (!adminSecurity.getRole().canManage(targetSecurity.getRole())) {
-            String errorMessage = messageService.get("user-status-service.error.status.insufficient.rights.manage", targetSecurity.getRole());
-            log.warn(messageService.get("user-status-service.log.status.insufficient.rights.manage", adminUser.getEmail(), targetSecurity.getRole()));
-            throw new AccessDeniedException(errorMessage);
+            log.warn(messageService.get(
+                    "user-status-service.log.status.insufficient.rights.manage",
+                    adminUser.getEmail(),
+                    targetSecurity.getRole()
+            ));
+            throw new UserAccessException(
+                    messageService.get("user-status-service.error.status.insufficient.rights.manage", targetSecurity.getRole())
+            );
         }
 
         // Нельзя деактивировать самого себя
         if (targetUser.getId().equals(adminUser.getId()) && !active) {
-            String errorMessage = messageService.get("user-status-service.error.status.deactivate.self");
-            log.warn(errorMessage);
-            throw new RuntimeException(errorMessage);
+            log.warn(messageService.get("user-status-service.log.status.deactivate.self", adminUser.getEmail()));
+            throw new UserAccessException(
+                    messageService.get("user-status-service.error.status.deactivate.self")
+            );
         }
 
         // Сохраняем старый статус для логирования
@@ -122,10 +125,10 @@ public class UserStatusService {
 
         try {
             SecurityUser adminSecurity = securityUserRepository.findById(adminUser.getId())
-                    .orElseThrow(() -> new AccessDeniedException("Admin not found"));
+                    .orElseThrow(() -> new UserNotFoundException(adminUser.getId().toString()));
 
             SecurityUser targetSecurity = securityUserRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("Target not found"));
+                    .orElseThrow(() -> new UserNotFoundException(userId.toString()));
 
             if (userId.equals(adminUser.getId())) {
                 log.debug(messageService.get("user-status-service.log.status.cannot.manage.self", adminUser.getEmail()));
@@ -134,7 +137,12 @@ public class UserStatusService {
 
             boolean canManage = adminSecurity.getRole().canManage(targetSecurity.getRole());
 
-            log.debug(messageService.get("user-status-service.log.status.can.manage", adminUser.getEmail(), userId, canManage));
+            log.debug(messageService.get(
+                    "user-status-service.log.status.can.manage",
+                    adminUser.getEmail(),
+                    userId,
+                    canManage
+            ));
 
             return canManage;
 

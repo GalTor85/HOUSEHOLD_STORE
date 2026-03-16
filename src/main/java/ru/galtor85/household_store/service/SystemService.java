@@ -5,11 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
-import ru.galtor85.household_store.dto.ApiResponse;
+import ru.galtor85.household_store.advice.exception.DatabaseConnectionException;
+import ru.galtor85.household_store.advice.exception.SystemInfoException;
 
 import javax.sql.DataSource;
 import java.lang.management.ManagementFactory;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
@@ -29,19 +31,25 @@ public class SystemService {
     public String getUptime(Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
-        Duration uptime = Duration.between(startupTime, Instant.now());
+        try {
+            Duration uptime = Duration.between(startupTime, Instant.now());
 
-        String uptimeFormat = messageService.get("system-service.system.uptime.format");
+            String uptimeFormat = messageService.get("system-service.system.uptime.format");
 
-        String uptimeString = String.format(uptimeFormat,
-                uptime.toDays(),
-                uptime.toHoursPart(),
-                uptime.toMinutesPart(),
-                uptime.toSecondsPart());
+            String uptimeString = String.format(uptimeFormat,
+                    uptime.toDays(),
+                    uptime.toHoursPart(),
+                    uptime.toMinutesPart(),
+                    uptime.toSecondsPart());
 
-        log.debug(messageService.get("system-service.log.system.uptime", uptimeString));
+            log.debug(messageService.get("system-service.log.system.uptime", uptimeString));
 
-        return uptimeString;
+            return uptimeString;
+        } catch (Exception e) {
+            log.error(messageService.get("system-service.log.system.uptime.error", e.getMessage()), e);
+            throw new SystemInfoException("uptime",
+                    messageService.get("system-service.error.uptime"), e);
+        }
     }
 
     public String checkDatabase(Locale locale) {
@@ -51,49 +59,79 @@ public class SystemService {
             if (connection.isValid(2)) {
                 log.debug(messageService.get("system-service.log.system.database.connected"));
                 return messageService.get("system-service.system.database.connected");
+            } else {
+                log.warn(messageService.get("system-service.log.system.database.invalid"));
+                throw new DatabaseConnectionException(
+                        messageService.get("system-service.error.database.invalid"));
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
             log.error(messageService.get("system-service.log.system.database.error", e.getMessage()), e);
+            throw new DatabaseConnectionException(
+                    messageService.get("system-service.error.database.connection"), e);
+        } catch (Exception e) {
+            log.error(messageService.get("system-service.log.system.database.unexpected", e.getMessage()), e);
+            throw new DatabaseConnectionException(
+                    messageService.get("system-service.error.database.unexpected"), e);
         }
-
-        return messageService.get("system-service.system.database.disconnected");
     }
 
     public String checkDiskSpace(Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
-        log.debug(messageService.get("system-service.log.system.disk.ok"));
-        return messageService.get("system-service.system.disk.ok");
+        try {
+            // TODO: Реализовать реальную проверку дискового пространства
+            log.debug(messageService.get("system-service.log.system.disk.ok"));
+            return messageService.get("system-service.system.disk.ok");
+        } catch (Exception e) {
+            log.error(messageService.get("system-service.log.system.disk.error", e.getMessage()), e);
+            throw new SystemInfoException("disk",
+                    messageService.get("system-service.error.disk"), e);
+        }
     }
 
     public String getSpringVersion(Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
-        String version = buildProperties.getVersion();
-        log.debug(messageService.get("system-service.log.system.spring.version", version));
-
-        return version;
+        try {
+            String version = buildProperties.getVersion();
+            log.debug(messageService.get("system-service.log.system.spring.version", version));
+            return version;
+        } catch (Exception e) {
+            log.error(messageService.get("system-service.log.system.spring.version.error", e.getMessage()), e);
+            throw new SystemInfoException("springVersion",
+                    messageService.get("system-service.error.spring.version"), e);
+        }
     }
 
     public String getEnvironment(Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
-        String[] activeProfiles = environment.getActiveProfiles();
-        String env = activeProfiles.length > 0 ?
-                String.join(", ", activeProfiles) : "default";
+        try {
+            String[] activeProfiles = environment.getActiveProfiles();
+            String env = activeProfiles.length > 0 ?
+                    String.join(", ", activeProfiles) : "default";
 
-        log.debug(messageService.get("system-service.log.system.environment", env));
-
-        return env;
+            log.debug(messageService.get("system-service.log.system.environment", env));
+            return env;
+        } catch (Exception e) {
+            log.error(messageService.get("system-service.log.system.environment.error", e.getMessage()), e);
+            throw new SystemInfoException("environment",
+                    messageService.get("system-service.error.environment"), e);
+        }
     }
 
     public String getServerInfo(Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
-        String serverInfo = ManagementFactory.getRuntimeMXBean().getName();
-        log.debug(messageService.get("system-service.log.system.server.info", serverInfo));
-
-        return serverInfo;
+        try {
+            String serverInfo = ManagementFactory.getRuntimeMXBean().getName();
+            log.debug(messageService.get("system-service.log.system.server.info", serverInfo));
+            return serverInfo;
+        } catch (Exception e) {
+            log.error(messageService.get("system-service.log.system.server.info.error", e.getMessage()), e);
+            throw new SystemInfoException("serverInfo",
+                    messageService.get("system-service.error.server.info"), e);
+        }
     }
 
     // Перегруженные методы для обратной совместимости (без Locale)

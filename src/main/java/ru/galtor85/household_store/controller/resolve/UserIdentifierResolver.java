@@ -2,9 +2,9 @@ package ru.galtor85.household_store.controller.resolve;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import ru.galtor85.household_store.advice.exception.IdentifierNotProvidedException;
 import ru.galtor85.household_store.dto.LoginForm;
 import ru.galtor85.household_store.service.MessageService;
 
@@ -36,11 +36,8 @@ public class UserIdentifierResolver {
             return form.getMobileNumber();
         }
 
-        String errorMessage = messageService.get(
-                "user-identifier-resolver.error.identifier.not.provided"
-        );
-        log.warn(errorMessage);
-        throw new IllegalArgumentException(errorMessage);
+        log.warn(messageService.get("user-identifier-resolver.log.identifier.not.provided"));
+        throw new IdentifierNotProvidedException();
     }
 
     public String resolve(LoginForm form) {

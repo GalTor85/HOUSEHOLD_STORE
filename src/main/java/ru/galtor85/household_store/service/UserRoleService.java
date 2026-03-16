@@ -2,9 +2,9 @@ package ru.galtor85.household_store.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.advice.exception.*;
 import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.repository.SecurityUserRepository;
@@ -32,41 +32,50 @@ public class UserRoleService {
         // Получаем SecurityUser администратора
         SecurityUser adminSecurity = securityUserRepository.findById(adminUser.getId())
                 .orElseThrow(() -> {
-                    String error = messageService.get("user-role-service.error.admin.security.not.found", adminUser.getEmail());
-                    log.error(error);
-                    return new AccessDeniedException(error);
+                    log.error(messageService.get("user-role-service.log.admin.security.not.found", adminUser.getEmail()));
+                    return new UserNotFoundException(adminUser.getId().toString());
                 });
 
         // Проверяем, может ли админ назначать эту роль
         if (!adminSecurity.getRole().canManage(newRole)) {
-            String errorMessage = messageService.get("user-role-service.error.role.insufficient.rights.assign", newRole);
-            log.warn(messageService.get("user-role-service.log.role.insufficient.rights.assign", adminUser.getEmail(), newRole));
-            throw new AccessDeniedException(errorMessage);
+            log.warn(messageService.get(
+                    "user-role-service.log.role.insufficient.rights.assign",
+                    adminUser.getEmail(),
+                    newRole
+            ));
+            throw new UserAccessException(
+                    messageService.get("user-role-service.error.role.insufficient.rights.assign", newRole)
+            );
         }
 
         // Получаем целевого пользователя (бизнес-данные)
-        User targetUser = userSearchService.getUserById(userId);
+        User targetUser = userSearchService.getUserById(userId, locale);
 
         // Получаем SecurityUser целевого пользователя
         SecurityUser targetSecurity = securityUserRepository.findById(userId)
                 .orElseThrow(() -> {
-                    String error = messageService.get("user-role-service.error.target.security.not.found", userId);
-                    log.error(error);
-                    return new RuntimeException(error);
+                    log.error(messageService.get("user-role-service.log.target.security.not.found", userId));
+                    return new UserNotFoundException(userId.toString());
                 });
 
         // Проверяем, может ли админ управлять текущей ролью пользователя
         if (!adminSecurity.getRole().canManage(targetSecurity.getRole())) {
-            String errorMessage = messageService.get("user-role-service.error.role.insufficient.rights.manage", targetSecurity.getRole());
-            log.warn(messageService.get("user-role-service.log.role.insufficient.rights.manage", adminUser.getEmail(), targetSecurity.getRole()));
-            throw new AccessDeniedException(errorMessage);
+            log.warn(messageService.get(
+                    "user-role-service.log.role.insufficient.rights.manage",
+                    adminUser.getEmail(),
+                    targetSecurity.getRole()
+            ));
+            throw new UserAccessException(
+                    messageService.get("user-role-service.error.role.insufficient.rights.manage", targetSecurity.getRole())
+            );
         }
 
         // Нельзя изменить свою собственную роль
         if (targetUser.getId().equals(adminUser.getId())) {
-            String errorMessage = messageService.get("user-role-service.error.role.change.self");
-            log.warn(errorMessage);
-            throw new RuntimeException(errorMessage);
+            log.warn(messageService.get("user-role-service.log.role.change.self", adminUser.getEmail()));
+            throw new UserAccessException(
+                    messageService.get("user-role-service.error.role.change.self")
+            );
         }
 
         // Сохраняем старую роль для логирования
@@ -103,14 +112,18 @@ public class UserRoleService {
 
         SecurityUser adminSecurity = securityUserRepository.findById(adminUser.getId())
                 .orElseThrow(() -> {
-                    String error = messageService.get("user-role-service.error.admin.security.not.found", adminUser.getEmail());
-                    log.error(error);
-                    return new AccessDeniedException(error);
+                    log.error(messageService.get("user-role-service.log.admin.security.not.found", adminUser.getEmail()));
+                    return new UserNotFoundException(adminUser.getId().toString());
                 });
 
         boolean canManage = adminSecurity.getRole().canManage(targetRole);
 
-        log.debug(messageService.get("user-role-service.log.role.can.manage", adminUser.getEmail(), targetRole, canManage));
+        log.debug(messageService.get(
+                "user-role-service.log.role.can.manage",
+                adminUser.getEmail(),
+                targetRole,
+                canManage
+        ));
 
         return canManage;
     }
@@ -126,11 +139,11 @@ public class UserRoleService {
 
         try {
             SecurityUser adminSecurity = securityUserRepository.findById(adminUser.getId())
-                    .orElseThrow(() -> new AccessDeniedException("Admin not found"));
+                    .orElseThrow(() -> new UserNotFoundException(adminUser.getId().toString()));
 
-            User targetUser = userSearchService.getUserById(userId);
+            User targetUser = userSearchService.getUserById(userId, locale);
             SecurityUser targetSecurity = securityUserRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("Target security not found"));
+                    .orElseThrow(() -> new UserNotFoundException(userId.toString()));
 
             if (targetUser.getId().equals(adminUser.getId())) {
                 log.debug(messageService.get("user-role-service.log.role.change.self.check", adminUser.getEmail()));

@@ -149,12 +149,8 @@ public class UserSearchService {
 
         return userRepository.findById(finalUserId)
                 .orElseThrow(() -> {
-                    String errorMessage = messageService.get(
-                            "user-search-service.error.user.not.found.id",
-                            finalUserId
-                    );
-                    log.error(errorMessage);
-                    return new UserNotFoundException(errorMessage);
+                    log.error(messageService.get("user-search-service.log.user.not.found.id", finalUserId));
+                    return new UserNotFoundException(finalUserId.toString());
                 });
     }
 
@@ -223,9 +219,10 @@ public class UserSearchService {
      */
     public SecurityUser getSecurityUserByUserId(Long userId) {
         return securityUserRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException(
-                        messageService.get("user-search-service.error.security.user.not.found", userId)
-                ));
+                .orElseThrow(() -> {
+                    log.error(messageService.get("user-search-service.log.security.user.not.found", userId));
+                    return new UserNotFoundException(userId.toString());
+                });
     }
 
     /**

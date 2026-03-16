@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -176,14 +177,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(UserRegistrationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserRegistrationError(
-            UserRegistrationException e, Locale locale) {
-        String message = messageService.get("global-exception-handler.auth.register.error", e.getMessage());
-        log.error("UserRegistrationException: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(message));
-    }
+
 
     @ExceptionHandler(UserAuthenticationError.class)
     public ResponseEntity<ApiResponse<Void>> handleUserAuthenticationError(
@@ -194,23 +188,8 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(TokenValidationError.class)
-    public ResponseEntity<ApiResponse<Void>> handleTokenValidationError(
-            TokenValidationError e, Locale locale) {
-        String message = messageService.get("global-exception-handler.auth.token.validation.error");
-        log.error("TokenValidationError: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(message));
-    }
 
-    @ExceptionHandler(UserLoginException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserLoginError(
-            UserLoginException e, Locale locale) {
-        String message = messageService.get("global-exception-handler.auth.login.error", e.getMessage());
-        log.error("UserLoginException: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(message));
-    }
+
 
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleUserAlreadyExists(
@@ -230,59 +209,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(UserFetchedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserFetchedException(
-            UserFetchedException e, Locale locale) {
-        String message = messageService.get("global-exception-handler.error.user.fetch");
-        log.error("UserFetchedException: {}", message);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(UserCreateException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserCreateException(
-            UserCreateException e, Locale locale) {
-        String message = messageService.get("global-exception-handler.error.user.operation", e.getMessage());
-        log.error("UserCreateException: {}", message);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(UserUpdateRoleException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserUpdateRoleException(
-            UserUpdateRoleException e, Locale locale) {
-        String message = messageService.get("global-exception-handler.error.user.operation", e.getMessage());
-        log.error("UserUpdateRoleException: {}", message);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(UserUpdateStatusException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserUpdateStatusException(
-            UserUpdateStatusException e, Locale locale) {
-        String message = messageService.get("global-exception-handler.error.user.operation", e.getMessage());
-        log.error("UserUpdateStatusException: {}", message);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(UserDeleteException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserDeleteException(
-            UserDeleteException e, Locale locale) {
-        String message = messageService.get("global-exception-handler.error.user.operation", e.getMessage());
-        log.error("UserDeleteException: {}", message);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(StatisticException.class)
-    public ResponseEntity<ApiResponse<Void>> handleStatisticException(
-            StatisticException e, Locale locale) {
-        String message = messageService.get("global-exception-handler.error.user.operation", e.getMessage());
-        log.error("StatisticException: {}", message);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(message));
-    }
 
     @ExceptionHandler(MessageNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleMessageNotFoundException(
@@ -479,8 +405,8 @@ public class GlobalExceptionHandler {
 
         String message = messageService.get(
                 "manager.order.error.date.range",
-                e.getStartDate(),
-                e.getEndDate()
+                e.getValidFrom(),
+                e.getValidTo()
         );
         log.error("InvalidDateRangeException: {}", message);
 
@@ -647,4 +573,203 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(message));
     }
+
+    // ========== AUTHENTICATION EXCEPTIONS ==========
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidCredentials(
+            InvalidCredentialsException e, Locale locale) {
+
+        String message = messageService.get("auth.error.invalid.credentials");
+        log.warn("InvalidCredentialsException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(AccountDeactivatedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccountDeactivated(
+            AccountDeactivatedException e, Locale locale) {
+
+        String message = messageService.get("auth.error.account.deactivated");
+        log.warn("AccountDeactivatedException for user {}: {}", e.getUserId(), message);
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(message));
+    }
+
+// ========== TOKEN EXCEPTIONS ==========
+
+    @ExceptionHandler(TokenExpiredException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTokenExpired(
+            TokenExpiredException e, Locale locale) {
+
+        String message = messageService.get("auth.error.token.expired");
+        log.warn("TokenExpiredException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(TokenMalformedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTokenMalformed(
+            TokenMalformedException e, Locale locale) {
+
+        String message = messageService.get("auth.error.token.malformed");
+        log.warn("TokenMalformedException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(TokenUnsupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTokenUnsupported(
+            TokenUnsupportedException e, Locale locale) {
+
+        String message = messageService.get("auth.error.token.unsupported");
+        log.warn("TokenUnsupportedException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(TokenSecurityException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTokenSecurity(
+            TokenSecurityException e, Locale locale) {
+
+        String message = messageService.get("auth.error.token.security");
+        log.warn("TokenSecurityException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvalidTokenFormatException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidTokenFormat(
+            InvalidTokenFormatException e, Locale locale) {
+
+        String message = messageService.get("auth.error.token.invalid.format");
+        log.warn("InvalidTokenFormatException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(RefreshTokenMissingException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRefreshTokenMissing(
+            RefreshTokenMissingException e, Locale locale) {
+
+        String message = messageService.get("auth.error.refresh.token.missing");
+        log.warn("RefreshTokenMissingException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(IdentifierNotProvidedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIdentifierNotProvided(
+            IdentifierNotProvidedException e, Locale locale) {
+
+        String message = messageService.get("auth.error.identifier.not.provided");
+        log.warn("IdentifierNotProvidedException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(SecurityUserNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSecurityUserNotFound(
+            SecurityUserNotFoundException e, Locale locale) {
+
+        String message = messageService.get("auth.error.security.user.not.found", e.getUserId());
+        log.error("SecurityUserNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUsernameNotFound(
+            UsernameNotFoundException e, Locale locale) {
+
+        String message = messageService.get("global-exception-handler.error.user.not.found");
+        log.error("UsernameNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    // ========== JWT AUTHENTICATION EXCEPTIONS ==========
+
+
+    @ExceptionHandler(JwtAuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthentication(
+            JwtAuthenticationException e, Locale locale) {
+
+        log.error("JwtAuthenticationException: {}", e.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(e.getMessage()));
+    }
+
+    // ========== ORDER EXCEPTIONS ==========
+
+    @ExceptionHandler(CartNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCartNotFound(
+            CartNotFoundException e, Locale locale) {
+
+        String message = messageService.get("order.error.cart.not.found", e.getUserId());
+        log.error("CartNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(CartEmptyException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCartEmpty(
+            CartEmptyException e, Locale locale) {
+
+        String message = messageService.get("order.error.cart.empty");
+        log.warn("CartEmptyException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(OrderCreationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOrderCreation(
+            OrderCreationException e, Locale locale) {
+
+        log.error("OrderCreationException for order {}: {}", e.getOrderNumber(), e.getMessage());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(e.getMessage()));
+    }
+
+    // ========== SYSTEM EXCEPTIONS ==========
+
+    @ExceptionHandler(DatabaseConnectionException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDatabaseConnectionException(
+            DatabaseConnectionException e, Locale locale) {
+
+        String message = messageService.get("system.error.database.connection");
+        log.error("DatabaseConnectionException: {}", message, e);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(SystemInfoException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSystemInfoException(
+            SystemInfoException e, Locale locale) {
+
+        String message = messageService.get("system.error.info", e.getInfoType());
+        log.error("SystemInfoException for {}: {}", e.getInfoType(), e.getMessage(), e);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(message));
+    }
+
+
+
 }

@@ -1,20 +1,22 @@
 package ru.galtor85.household_store.advice.exception;
 
+import java.time.LocalDateTime;
+
 public class InvalidDateRangeException extends RuntimeException {
-    private final String startDate;
-    private final String endDate;
+    private final LocalDateTime validFrom;
+    private final LocalDateTime validTo;
 
-    public InvalidDateRangeException(String startDate, String endDate) {
+    public InvalidDateRangeException(LocalDateTime validFrom, LocalDateTime validTo) {
         super();
-        this.startDate = startDate;
-        this.endDate = endDate;
+        this.validFrom = validFrom;
+        this.validTo = validTo;
     }
 
-    public String getStartDate() {
-        return startDate;
+    public LocalDateTime getValidFrom() {
+        return validFrom;
     }
 
-    public String getEndDate() {
-        return endDate;
+    public LocalDateTime getValidTo() {
+        return validTo;
     }
 }

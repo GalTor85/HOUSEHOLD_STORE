@@ -21,6 +21,12 @@ public interface UserTypeAssignmentRepository extends JpaRepository<UserTypeAssi
     List<UserTypeAssignment> findByUserType(UserType userType);
 
     List<UserTypeAssignment> findByAssignedBy(String assignedBy);
+    /**
+     * Найти все активные назначения для указанного типа пользователя
+     */
+    @Query("SELECT uta FROM UserTypeAssignment uta " +
+            "WHERE uta.userType = :userType AND uta.active = true")
+    List<UserTypeAssignment> findActiveByUserType(@Param("userType") UserType userType);
 
     @Query("SELECT uta FROM UserTypeAssignment uta WHERE uta.userId = :userId AND uta.active = true")
     Optional<UserTypeAssignment> findActiveByUserId(@Param("userId") Long userId);

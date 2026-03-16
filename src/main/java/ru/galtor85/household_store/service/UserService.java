@@ -6,7 +6,7 @@ import org.apache.logging.log4j.util.Strings;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.advice.exception.ValidationRequestException;
+import ru.galtor85.household_store.advice.exception.*;
 import ru.galtor85.household_store.dto.UserEditRequest;
 import ru.galtor85.household_store.dto.UserUpdatePasswordRequest;
 import ru.galtor85.household_store.entity.Role;
@@ -17,7 +17,6 @@ import ru.galtor85.household_store.repository.UserRepository;
 import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.security.SecurityUserFactory;
 
-import java.time.LocalDate;
 import java.util.Locale;
 
 @Slf4j
@@ -42,15 +41,13 @@ public class UserService {
         final String principal = email != null ? email : mobileNumber;
 
         if (email != null && userRepository.existsByEmail(email)) {
-            String errorMessage = messageService.get("user-service.error.user.email.exists", email);
-            log.warn(errorMessage);
-            throw new ValidationRequestException(errorMessage, principal);
+            log.warn(messageService.get("user-service.log.user.email.exists", email));
+            throw new UserAlreadyExistsException(email);
         }
 
         if (mobileNumber != null && userRepository.existsByMobileNumber(mobileNumber)) {
-            String errorMessage = messageService.get("user-service.error.user.mobile.exists", mobileNumber);
-            log.warn(errorMessage);
-            throw new ValidationRequestException(errorMessage, principal);
+            log.warn(messageService.get("user-service.log.user.mobile.exists", mobileNumber));
+            throw new UserAlreadyExistsException(mobileNumber);
         }
 
         User savedUser = userRepository.save(user);
@@ -80,24 +77,27 @@ public class UserService {
         SecurityUser securityUser = securityUserRepository
                 .findByEmailOrMobileNumber(value)
                 .orElseThrow(() -> {
-                    String errorMessage = messageService.get("user-service.error.login.invalid.credentials");
                     log.warn(messageService.get("user-service.log.login.failed.not.found", value));
-                    return new ValidationRequestException(errorMessage, value);
+                    return new UserAuthenticationError(
+                            messageService.get("user-service.error.login.invalid.credentials")
+                    );
                 });
 
         if (!passwordEncoder.matches(password, securityUser.getPassword())) {
-            String errorMessage = messageService.get("user-service.error.login.invalid.credentials");
             log.warn(messageService.get("user-service.log.login.failed.wrong.password", value));
-            throw new ValidationRequestException(errorMessage, value);
+            throw new UserAuthenticationError(
+                    messageService.get("user-service.error.login.invalid.credentials")
+            );
         }
 
         if (!securityUser.isEnabled()) {
-            String errorMessage = messageService.get("user-service.error.login.account.deactivated");
             log.warn(messageService.get("user-service.log.login.failed.deactivated", value));
-            throw new ValidationRequestException(errorMessage, value);
+            throw new UserNotActiveException(
+                    messageService.get("user-service.error.login.account.deactivated")
+            );
         }
 
-        User user = userSearchService.getUserById(securityUser.getUserId());
+        User user = userSearchService.getUserById(securityUser.getUserId(), locale);
         log.info(messageService.get("user-service.log.login.success", user.getEmail(), user.getId()));
 
         return user;
@@ -133,35 +133,47 @@ public class UserService {
 
         // Получаем существующий SecurityUser
         SecurityUser existingSecurityUser = securityUserRepository.findById(user.getId())
-                .orElseThrow(() -> new ValidationRequestException(
-                        messageService.get("user-service.error.security.user.not.found"), value));
+                .orElseThrow(() -> {
+                    log.error(messageService.get("user-service.log.security.user.not.found", user.getId()));
+                    return new UserNotFoundException(user.getId().toString());
+                });
 
         // Проверка текущего пароля
         if (Strings.isBlank(request.getCurrentPassword())) {
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.current.required"), value);
+                    messageService.get("user-service.validation.password.current.required"),
+                    value
+            );
         }
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), existingSecurityUser.getPassword())) {
             log.warn("Failed password update attempt for user {}: incorrect current password", maskEmail(user.getEmail()));
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.current.incorrect"), value);
+                    messageService.get("user-service.validation.password.current.incorrect"),
+                    value
+            );
         }
 
         // Проверка нового пароля
         if (Strings.isBlank(request.getNewPassword())) {
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.new.required"), value);
+                    messageService.get("user-service.validation.password.new.required"),
+                    value
+            );
         }
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.confirm.mismatch"), value);
+                    messageService.get("user-service.validation.password.confirm.mismatch"),
+                    value
+            );
         }
 
         if (passwordEncoder.matches(request.getNewPassword(), existingSecurityUser.getPassword())) {
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.new.same.as.old"), value);
+                    messageService.get("user-service.validation.password.new.same.as.old"),
+                    value
+            );
         }
 
         validatePasswordComplexity(request.getNewPassword(), locale);
@@ -188,8 +200,10 @@ public class UserService {
     @Transactional(readOnly = true)
     public SecurityUser getSecurityUserByUserId(Long userId) {
         return securityUserRepository.findById(userId)
-                .orElseThrow(() -> new ValidationRequestException(
-                        messageService.get("user-service.error.security.user.not.found"), null));
+                .orElseThrow(() -> {
+                    log.error(messageService.get("user-service.log.security.user.not.found", userId));
+                    return new UserNotFoundException(userId.toString());
+                });
     }
 
     private void validatePasswordComplexity(String password, Locale locale) {
@@ -200,7 +214,9 @@ public class UserService {
 
         if (!hasDigit || !hasLower || !hasUpper || !hasSpecial) {
             throw new ValidationRequestException(
-                    messageService.get("user-service.validation.password.new.complexity"), null);
+                    messageService.get("user-service.validation.password.new.complexity"),
+                    null
+            );
         }
     }
 
@@ -222,9 +238,8 @@ public class UserService {
                 !request.getEmail().equals(user.getEmail()) &&
                 userRepository.existsByEmail(request.getEmail())) {
 
-            throw new ValidationRequestException(
-                    messageService.get("user-service.error.user.email.exists", request.getEmail()),
-                    request.getEmail());
+            log.warn(messageService.get("user-service.log.user.email.exists", request.getEmail()));
+            throw new UserAlreadyExistsException(request.getEmail());
         }
     }
 
@@ -233,9 +248,8 @@ public class UserService {
                 !request.getMobileNumber().equals(user.getMobileNumber()) &&
                 userRepository.existsByMobileNumber(request.getMobileNumber())) {
 
-            throw new ValidationRequestException(
-                    messageService.get("user-service.error.user.mobile.exists", request.getMobileNumber()),
-                    request.getMobileNumber());
+            log.warn(messageService.get("user-service.log.user.mobile.exists", request.getMobileNumber()));
+            throw new UserAlreadyExistsException(request.getMobileNumber());
         }
     }
 }

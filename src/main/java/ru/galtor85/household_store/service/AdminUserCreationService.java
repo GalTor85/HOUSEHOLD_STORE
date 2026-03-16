@@ -2,9 +2,9 @@ package ru.galtor85.household_store.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.advice.exception.*;
 import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.repository.SecurityUserRepository;
@@ -34,20 +34,18 @@ public class AdminUserCreationService {
                             adminUser.getEmail()
                     );
                     log.error(error);
-                    return new AccessDeniedException(error);
+                    return new UserNotFoundException(adminUser.getId().toString());
                 });
 
         if (!adminSecurity.getRole().canManage(role)) {
-            String errorMessage = messageService.get(
-                    "admin-user-creation-service.error.admin.insufficient.rights.create",
-                    role
-            );
             log.warn(messageService.get(
                     "admin-user-creation-service.log.admin.insufficient.rights.create",
                     adminUser.getEmail(),
                     role
             ));
-            throw new AccessDeniedException(errorMessage);
+            throw new UserAccessException(
+                    messageService.get("admin-user-creation-service.error.admin.insufficient.rights.create", role)
+            );
         }
 
         if (newUser.getBirthDate() == null) {
@@ -110,7 +108,7 @@ public class AdminUserCreationService {
                             adminUser.getEmail()
                     );
                     log.error(error);
-                    return new AccessDeniedException(error);
+                    return new UserNotFoundException(adminUser.getId().toString());
                 });
 
         boolean canCreate = adminSecurity.getRole().canManage(role);

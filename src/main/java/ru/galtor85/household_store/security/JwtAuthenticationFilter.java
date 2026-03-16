@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,6 +19,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import ru.galtor85.household_store.advice.exception.*;
 import ru.galtor85.household_store.dto.ApiResponse;
 import ru.galtor85.household_store.service.MessageService;
 
@@ -54,32 +56,55 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = getJwtFromRequest(request);
 
-            if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
-                String email = jwtTokenProvider.getUsernameFromToken(jwt);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+            if (StringUtils.hasText(jwt)) {
+                try {
+                    if (jwtTokenProvider.validateToken(jwt)) {
+                        String email = jwtTokenProvider.getUsernameFromToken(jwt);
+                        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(
+                                        userDetails,
+                                        null,
+                                        userDetails.getAuthorities()
+                                );
+
+                        authentication.setDetails(
+                                new WebAuthenticationDetailsSource().buildDetails(request)
                         );
 
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                log.debug(messageService.get(
-                        "jwt-authentication-filter.log.auth.context.set",
-                        email
-                ));
-            } else if (StringUtils.hasText(jwt) && !jwtTokenProvider.validateToken(jwt)) {
-                log.warn(messageService.get(
-                        "jwt-authentication-filter.log.auth.token.invalid",
-                        jwt.substring(0, Math.min(10, jwt.length())) + "..."
-                ));
+                        log.debug(messageService.get(
+                                "jwt-authentication-filter.log.auth.context.set",
+                                email
+                        ));
+                    }
+                } catch (TokenExpiredException e) {
+                    log.warn(messageService.get("jwt-authentication-filter.log.token.expired"));
+                    sendApiErrorResponse(response,
+                            messageService.get("auth.error.token.expired"),
+                            HttpStatus.UNAUTHORIZED);
+                    return;
+                } catch (TokenMalformedException e) {
+                    log.warn(messageService.get("jwt-authentication-filter.log.token.malformed"));
+                    sendApiErrorResponse(response,
+                            messageService.get("auth.error.token.malformed"),
+                            HttpStatus.UNAUTHORIZED);
+                    return;
+                } catch (TokenUnsupportedException e) {
+                    log.warn(messageService.get("jwt-authentication-filter.log.token.unsupported"));
+                    sendApiErrorResponse(response,
+                            messageService.get("auth.error.token.unsupported"),
+                            HttpStatus.UNAUTHORIZED);
+                    return;
+                } catch (TokenSecurityException e) {
+                    log.warn(messageService.get("jwt-authentication-filter.log.token.security"));
+                    sendApiErrorResponse(response,
+                            messageService.get("auth.error.token.security"),
+                            HttpStatus.UNAUTHORIZED);
+                    return;
+                }
             }
 
         } catch (Exception ex) {
@@ -88,9 +113,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     ex.getMessage()
             ), ex);
 
-            sendErrorResponse(response,
+            sendApiErrorResponse(response,
                     messageService.get("jwt-authentication-filter.error.auth.failed"),
-                    HttpServletResponse.SC_UNAUTHORIZED
+                    HttpStatus.UNAUTHORIZED
             );
             return;
         }
@@ -106,17 +131,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    private void sendErrorResponse(HttpServletResponse response, String message, int status) throws IOException {
-        response.setStatus(status);
+    private void sendApiErrorResponse(HttpServletResponse response, String message, HttpStatus status) throws IOException {
+        response.setStatus(status.value());
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        ApiResponse<Void> errorResponse = ApiResponse.<Void>builder()
-                .success(false)
-                .message(message)
-                .timestamp(java.time.LocalDateTime.now())
-                .build();
-
+        ApiResponse<Void> errorResponse = ApiResponse.error(message);
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 

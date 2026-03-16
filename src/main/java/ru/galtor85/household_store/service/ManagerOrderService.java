@@ -64,7 +64,7 @@ public class ManagerOrderService {
         // 3. ПРОВЕРКА ДИАПАЗОНА ДАТ
         if (start != null && end != null && start.isAfter(end)) {
             log.warn(messageService.get("manager.order.log.date.range", startDate, endDate));
-            throw new InvalidDateRangeException(startDate, endDate);
+            throw new InvalidDateRangeException(start, end);
         }
 
         // 4. СОЗДАНИЕ ЗАПРОСА В ЗАВИСИМОСТИ ОТ ПАРАМЕТРОВ

@@ -4,7 +4,7 @@ import io.jsonwebtoken.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.advice.exception.UnauthorizedException;
+import ru.galtor85.household_store.advice.exception.*;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.service.MessageService;
 
@@ -47,19 +47,18 @@ public class JwtTokenProvider {
                 System.arraycopy(secretBytes, 0, keyBytes, 0, Math.min(secretBytes.length, 32));
             }
 
-            log.info(messageService.get("jwt-token-provider.jwt.key.created", keyBytes.length));
+            log.info(messageService.get("jwt.log.key.created", keyBytes.length));
             return new SecretKeySpec(keyBytes, "AES");
 
         } catch (Exception e) {
-            log.error(messageService.get("jwt-token-provider.jwt.key.error", e.getMessage()), e);
+            log.error(messageService.get("jwt.log.key.error", e.getMessage()), e);
             throw new RuntimeException("Encryption key initialization failed", e);
         }
     }
 
     public String createToken(SecurityUser securityUser, User user) {
-        String identify = user.getAuthenticationId();  // берем из User
-        log.info(messageService.get("jwt-token-provider.jwt.token.creating",
-                identify, securityUser.getRole()));
+        String identify = user.getAuthenticationId();
+        log.info(messageService.get("jwt.log.token.creating", identify, securityUser.getRole()));
 
         try {
             Date now = new Date();
@@ -68,7 +67,7 @@ public class JwtTokenProvider {
             Map<String, Object> claims = new HashMap<>();
             claims.put("role", securityUser.getRole().name());
             claims.put("identify", identify);
-            claims.put("userId", securityUser.getUserId());  // используем getUserId()
+            claims.put("userId", securityUser.getUserId());
             claims.put("type", "access");
 
             return Jwts.builder()
@@ -80,14 +79,14 @@ public class JwtTokenProvider {
                     .compact();
 
         } catch (Exception e) {
-            log.error(messageService.get("jwt-token-provider.jwt.token.create.error", e.getMessage()), e);
+            log.error(messageService.get("jwt.log.token.create.error", e.getMessage()), e);
             throw new RuntimeException("Failed to create encrypted JWT token", e);
         }
     }
 
     public String createRefreshToken(SecurityUser securityUser, User user) {
         String identify = user.getAuthenticationId();
-        log.info(messageService.get("jwt-token-provider.jwt.refresh.creating", identify));
+        log.info(messageService.get("jwt.log.refresh.creating", identify));
 
         try {
             Date now = new Date();
@@ -107,7 +106,7 @@ public class JwtTokenProvider {
                     .compact();
 
         } catch (Exception e) {
-            log.error(messageService.get("jwt-token-provider.jwt.refresh.create.error", e.getMessage()), e);
+            log.error(messageService.get("jwt.log.refresh.create.error", e.getMessage()), e);
             throw new RuntimeException("Failed to create refresh token", e);
         }
     }
@@ -120,18 +119,21 @@ public class JwtTokenProvider {
                     .parseEncryptedClaims(token);
             return true;
         } catch (ExpiredJwtException e) {
-            log.warn(messageService.get("jwt-token-provider.jwt.error.expired", e.getMessage()));
-            throw new UnauthorizedException(messageService.get("jwt-token-provider.jwt.error.expired", e.getMessage()));
+            log.warn(messageService.get("jwt.log.error.expired", e.getMessage()));
+            throw new TokenExpiredException();
         } catch (UnsupportedJwtException e) {
-            log.warn(messageService.get("jwt-token-provider.jwt.error.unsupported", e.getMessage()));
+            log.warn(messageService.get("jwt.log.error.unsupported", e.getMessage()));
+            throw new TokenUnsupportedException();
         } catch (MalformedJwtException e) {
-            log.warn(messageService.get("jwt-token-provider.jwt.error.malformed", e.getMessage()));
+            log.warn(messageService.get("jwt.log.error.malformed", e.getMessage()));
+            throw new TokenMalformedException();
         } catch (SecurityException e) {
-            log.warn(messageService.get("jwt-token-provider.jwt.error.security", e.getMessage()));
+            log.warn(messageService.get("jwt.log.error.security", e.getMessage()));
+            throw new TokenSecurityException();
         } catch (Exception e) {
-            log.warn(messageService.get("jwt-token-provider.jwt.error.invalid", e.getMessage()));
+            log.warn(messageService.get("jwt.log.error.invalid", e.getMessage()));
+            return false;
         }
-        return false;
     }
 
     public String getUsernameFromToken(String token) {
@@ -143,12 +145,12 @@ public class JwtTokenProvider {
                     .getPayload()
                     .getSubject();
 
-            log.debug(messageService.get("jwt-token-provider.jwt.username.extracted", username));
+            log.debug(messageService.get("jwt.log.username.extracted", username));
             return username;
 
         } catch (Exception e) {
-            log.error(messageService.get("jwt-token-provider.jwt.username.error", e.getMessage()));
-            throw new RuntimeException("Invalid or expired token", e);
+            log.error(messageService.get("jwt.log.username.error", e.getMessage()));
+            throw new TokenMalformedException();
         }
     }
 
@@ -161,12 +163,12 @@ public class JwtTokenProvider {
                     .getPayload()
                     .get("userId", Long.class);
 
-            log.debug(messageService.get("jwt-token-provider.jwt.userid.extracted", userId));
+            log.debug(messageService.get("jwt.log.userid.extracted", userId));
             return userId;
 
         } catch (Exception e) {
-            log.error(messageService.get("jwt-token-provider.jwt.userid.error", e.getMessage()));
-            throw new RuntimeException("Invalid or expired token", e);
+            log.error(messageService.get("jwt.log.userid.error", e.getMessage()));
+            throw new TokenMalformedException();
         }
     }
 
@@ -179,11 +181,11 @@ public class JwtTokenProvider {
                     .getPayload()
                     .get("role", String.class);
 
-            log.debug(messageService.get("jwt-token-provider.jwt.role.extracted", role));
+            log.debug(messageService.get("jwt.log.role.extracted", role));
             return role;
 
         } catch (Exception e) {
-            log.error(messageService.get("jwt-token-provider.jwt.role.error", e.getMessage()));
+            log.error(messageService.get("jwt.log.role.error", e.getMessage()));
             return null;
         }
     }

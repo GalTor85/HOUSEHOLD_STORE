@@ -1,11 +1,10 @@
 package ru.galtor85.household_store.service;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.advice.exception.*;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.repository.SecurityUserRepository;
 import ru.galtor85.household_store.repository.UserRepository;
@@ -30,9 +29,8 @@ public class UserDeletedService {
 
         User user = userRepository.findById(finalUserId)
                 .orElseThrow(() -> {
-                    String errorMessage = messageService.get("user-deleted-service.error.user.not.found.id", finalUserId);
-                    log.error(errorMessage);
-                    return new EntityNotFoundException(errorMessage);
+                    log.error(messageService.get("user-deleted-service.log.user.not.found.id", finalUserId));
+                    return new UserNotFoundException(finalUserId.toString());
                 });
 
         log.info(messageService.get("user-deleted-service.log.user.deleting", user.getId(), user.getEmail()));
@@ -51,43 +49,55 @@ public class UserDeletedService {
 
         SecurityUser adminSecurity = securityUserRepository.findById(finalAdminUser.getId())
                 .orElseThrow(() -> {
-                    String error = messageService.get("user-deleted-service.error.admin.security.not.found", finalAdminUser.getEmail());
-                    log.error(error);
-                    return new AccessDeniedException(error);
+                    log.error(messageService.get("user-deleted-service.log.admin.security.not.found", finalAdminUser.getEmail()));
+                    return new UserNotFoundException(finalAdminUser.getId().toString());
                 });
 
         User userToDelete = userRepository.findById(finalUserId)
                 .orElseThrow(() -> {
-                    String errorMessage = messageService.get("user-deleted-service.error.user.not.found.id", finalUserId);
-                    log.error(errorMessage);
-                    return new EntityNotFoundException(errorMessage);
+                    log.error(messageService.get("user-deleted-service.log.user.not.found.id", finalUserId));
+                    return new UserNotFoundException(finalUserId.toString());
                 });
 
         SecurityUser targetSecurity = securityUserRepository.findById(finalUserId)
                 .orElseThrow(() -> {
-                    String error = messageService.get("user-deleted-service.error.target.security.not.found", finalUserId);
-                    log.error(error);
-                    return new EntityNotFoundException(error);
+                    log.error(messageService.get("user-deleted-service.log.target.security.not.found", finalUserId));
+                    return new UserNotFoundException(finalUserId.toString());
                 });
 
         if (finalAdminUser.getId().equals(finalUserId)) {
-            String errorMessage = messageService.get("user-deleted-service.error.user.delete.self");
-            log.warn(errorMessage);
-            throw new SecurityException(errorMessage);
+            log.warn(messageService.get("user-deleted-service.log.user.delete.self"));
+            throw new UserAccessException(
+                    messageService.get("user-deleted-service.error.user.delete.self")
+            );
         }
 
         if (!adminSecurity.getRole().canManage(targetSecurity.getRole())) {
-            String errorMessage = messageService.get("user-deleted-service.error.user.delete.insufficient.rights", targetSecurity.getRole());
-            log.warn(messageService.get("user-deleted-service.log.user.delete.insufficient.rights", finalAdminUser.getEmail(), targetSecurity.getRole()));
-            throw new AccessDeniedException(errorMessage);
+            log.warn(messageService.get(
+                    "user-deleted-service.log.user.delete.insufficient.rights",
+                    finalAdminUser.getEmail(),
+                    targetSecurity.getRole()
+            ));
+            throw new UserAccessException(
+                    messageService.get("user-deleted-service.error.user.delete.insufficient.rights", targetSecurity.getRole())
+            );
         }
 
-        log.info(messageService.get("user-deleted-service.log.user.deleting.by.admin", finalAdminUser.getEmail(), userToDelete.getId(), userToDelete.getEmail()));
+        log.info(messageService.get(
+                "user-deleted-service.log.user.deleting.by.admin",
+                finalAdminUser.getEmail(),
+                userToDelete.getId(),
+                userToDelete.getEmail()
+        ));
 
         securityUserRepository.deleteByUserId(finalUserId);
         userRepository.delete(userToDelete);
 
-        log.info(messageService.get("user-deleted-service.log.user.deleted.success.by.admin", finalAdminUser.getEmail(), finalUserId));
+        log.info(messageService.get(
+                "user-deleted-service.log.user.deleted.success.by.admin",
+                finalAdminUser.getEmail(),
+                finalUserId
+        ));
     }
 
     @Transactional
@@ -97,16 +107,14 @@ public class UserDeletedService {
 
         User user = userRepository.findById(finalUserId)
                 .orElseThrow(() -> {
-                    String errorMessage = messageService.get("user-deleted-service.error.user.not.found.id", finalUserId);
-                    log.error(errorMessage);
-                    return new EntityNotFoundException(errorMessage);
+                    log.error(messageService.get("user-deleted-service.log.user.not.found.id", finalUserId));
+                    return new UserNotFoundException(finalUserId.toString());
                 });
 
         SecurityUser securityUser = securityUserRepository.findById(finalUserId)
                 .orElseThrow(() -> {
-                    String error = messageService.get("user-deleted-service.error.target.security.not.found", finalUserId);
-                    log.error(error);
-                    return new EntityNotFoundException(error);
+                    log.error(messageService.get("user-deleted-service.log.target.security.not.found", finalUserId));
+                    return new UserNotFoundException(finalUserId.toString());
                 });
 
         String anonymizedEmail = "deleted_" + user.getId() + "_" + user.getEmail();
