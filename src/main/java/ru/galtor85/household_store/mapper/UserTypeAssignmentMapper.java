@@ -1,0 +1,149 @@
+package ru.galtor85.household_store.mapper;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import ru.galtor85.household_store.dto.UserTypeAssignmentDto;
+import ru.galtor85.household_store.entity.UserType;
+import ru.galtor85.household_store.entity.UserTypeAssignment;
+import ru.galtor85.household_store.service.MessageService;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class UserTypeAssignmentMapper {
+
+    private final MessageService messageService;
+
+    /**
+     * Преобразование сущности в DTO с локализацией
+     */
+    public UserTypeAssignmentDto toDto(UserTypeAssignment assignment, Locale locale) {
+        if (assignment == null) {
+            return null;
+        }
+
+        Locale finalLocale = locale != null ? locale : Locale.getDefault();
+
+        String localizedName = messageService.get(
+                "usertype." + assignment.getUserType().name().toLowerCase()
+        );
+
+        return UserTypeAssignmentDto.builder()
+                .id(assignment.getId())
+                .userId(assignment.getUserId())
+                .userType(assignment.getUserType())
+                .userTypeName(localizedName)
+                .assignedAt(assignment.getAssignedAt())
+                .updatedAt(assignment.getUpdatedAt())
+                .assignedBy(assignment.getAssignedBy())
+                .active(assignment.isActive())
+                .validFrom(assignment.getValidFrom())
+                .validTo(assignment.getValidTo())
+                .reason(assignment.getReason())
+                .build();
+    }
+
+    /**
+     * Преобразование списка сущностей в список DTO
+     */
+    public List<UserTypeAssignmentDto> toDtoList(List<UserTypeAssignment> assignments, Locale locale) {
+        if (assignments == null) {
+            return null;
+        }
+
+        Locale finalLocale = locale != null ? locale : Locale.getDefault();
+
+        return assignments.stream()
+                .map(assignment -> toDto(assignment, finalLocale))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Преобразование DTO в сущность (для создания)
+     */
+    public UserTypeAssignment toEntity(UserTypeAssignmentDto dto) {
+        if (dto == null) {
+            return null;
+        }
+
+        return UserTypeAssignment.builder()
+                .id(dto.getId())
+                .userId(dto.getUserId())
+                .userType(dto.getUserType())
+                .assignedBy(dto.getAssignedBy())
+                .reason(dto.getReason())
+                .validFrom(dto.getValidFrom())
+                .validTo(dto.getValidTo())
+                .active(dto.isActive())
+                .build();
+    }
+
+    /**
+     * Создание сущности из параметров
+     */
+    public UserTypeAssignment createEntity(Long userId, UserType userType, String assignedBy,
+                                           String reason, LocalDateTime validFrom, LocalDateTime validTo) {
+        return UserTypeAssignment.builder()
+                .userId(userId)
+                .userType(userType)
+                .assignedBy(assignedBy)
+                .reason(reason)
+                .validFrom(validFrom != null ? validFrom : LocalDateTime.now())
+                .validTo(validTo)
+                .active(true)
+                .build();
+    }
+
+    /**
+     * Обновление существующей сущности
+     */
+    public void updateEntity(UserTypeAssignment assignment, UserTypeAssignmentDto dto) {
+        if (assignment == null || dto == null) {
+            return;
+        }
+
+        if (dto.getUserType() != null) {
+            assignment.setUserType(dto.getUserType());
+        }
+        if (dto.getReason() != null) {
+            assignment.setReason(dto.getReason());
+        }
+        if (dto.getValidFrom() != null) {
+            assignment.setValidFrom(dto.getValidFrom());
+        }
+        if (dto.getValidTo() != null) {
+            assignment.setValidTo(dto.getValidTo());
+        }
+        // active не обновляем через этот метод — для этого есть отдельные методы
+    }
+
+    /**
+     * Деактивация назначения
+     */
+    public UserTypeAssignment deactivate(UserTypeAssignment assignment) {
+        if (assignment == null) {
+            return null;
+        }
+        assignment.setActive(false);
+        assignment.setUpdatedAt(LocalDateTime.now());
+        return assignment;
+    }
+
+    /**
+     * Реактивация назначения
+     */
+    public UserTypeAssignment reactivate(UserTypeAssignment assignment) {
+        if (assignment == null) {
+            return null;
+        }
+        assignment.setActive(true);
+        assignment.setUpdatedAt(LocalDateTime.now());
+        return assignment;
+    }
+}
