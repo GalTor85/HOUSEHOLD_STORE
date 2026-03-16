@@ -33,13 +33,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o WHERE o.orderType = :orderType")
     List<Order> findByOrderType(@Param("orderType") OrderType orderType);
 
+    // ИСПРАВЛЕННЫЙ JPQL запрос с использованием CAST
     @Query("SELECT o FROM Order o WHERE " +
-            "(:userId IS NULL OR o.userId = :userId) AND " +
-            "(:supplierId IS NULL OR o.supplierId = :supplierId) AND " +
-            "(:status IS NULL OR o.status = :status) AND " +
-            "(:orderType IS NULL OR o.orderType = :orderType) AND " +
-            "(:startDate IS NULL OR o.createdAt >= :startDate) AND " +
-            "(:endDate IS NULL OR o.createdAt <= :endDate)")
+            "(cast(:userId as long) IS NULL OR o.userId = :userId) AND " +
+            "(cast(:supplierId as long) IS NULL OR o.supplierId = :supplierId) AND " +
+            "(cast(:status as string) IS NULL OR o.status = :status) AND " +
+            "(cast(:orderType as string) IS NULL OR o.orderType = :orderType) AND " +
+            "(cast(:startDate as date) IS NULL OR o.createdAt >= :startDate) AND " +
+            "(cast(:endDate as date) IS NULL OR o.createdAt <= :endDate)")
     Page<Order> searchOrders(@Param("userId") Long userId,
                              @Param("supplierId") Long supplierId,
                              @Param("status") OrderStatus status,
@@ -53,4 +54,41 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT COUNT(o) FROM Order o WHERE o.supplierId = :supplierId")
     long countBySupplierId(@Param("supplierId") Long supplierId);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
+    long countOrdersByDateRange(@Param("startDate") LocalDateTime startDate,
+                                @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate AND o.status = 'COMPLETED'")
+    BigDecimal sumRevenueByDateRange(@Param("startDate") LocalDateTime startDate,
+                                     @Param("endDate") LocalDateTime endDate);
+
+    Page<Order> findByUserIdAndStatusAndCreatedAtBetween(Long customerId, OrderStatus orderStatus, LocalDateTime start, LocalDateTime end, Pageable pageable);
+
+    Page<Order> findByUserIdAndStatusAndCreatedAtAfter(Long customerId, OrderStatus orderStatus, LocalDateTime start, Pageable pageable);
+
+    Page<Order> findByUserIdAndStatusAndCreatedAtBefore(Long customerId, OrderStatus orderStatus, LocalDateTime end, Pageable pageable);
+
+    Page<Order> findByUserIdAndCreatedAtBetween(Long customerId, LocalDateTime start, LocalDateTime end, Pageable pageable);
+
+    Page<Order> findByStatusAndCreatedAtBetween(OrderStatus orderStatus, LocalDateTime start, LocalDateTime end, Pageable pageable);
+
+    Page<Order> findByUserIdAndStatus(Long customerId, OrderStatus orderStatus, Pageable pageable);
+
+    Page<Order> findByUserIdAndCreatedAtAfter(Long customerId, LocalDateTime start, Pageable pageable);
+
+    Page<Order> findByUserIdAndCreatedAtBefore(Long customerId, LocalDateTime end, Pageable pageable);
+
+    Page<Order> findByStatusAndCreatedAtAfter(OrderStatus orderStatus, LocalDateTime start, Pageable pageable);
+
+    Page<Order> findByStatusAndCreatedAtBefore(OrderStatus orderStatus, LocalDateTime end, Pageable pageable);
+
+    Page<Order> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end, Pageable pageable);
+
+    Page<Order> findByCreatedAtAfter(LocalDateTime start, Pageable pageable);
+
+    Page<Order> findByCreatedAtBefore(LocalDateTime end, Pageable pageable);
+
+    Page<Order> findByStatus(OrderStatus orderStatus, Pageable pageable);
+
 }

@@ -32,8 +32,8 @@ public class ProductAttribute {
     private Integer order; // Порядок отображения
 
     @Column(name = "is_required")
-    private boolean required; // Обязательная ли характеристика
+    private Boolean required; // Обязательная ли характеристика
 
     @Column(name = "is_variant")
-    private boolean variant; // Является ли вариантом для выбора (для вариативных товаров)
+    private Boolean variant; // Является ли вариантом для выбора (для вариативных товаров)
 }

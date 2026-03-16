@@ -15,14 +15,64 @@ import java.math.BigDecimal;
 @Schema(description = "Supplier product DTO", title = "Supplier Product")
 public class SupplierProductDto {
 
+    @Schema(description = "Supplier product ID", example = "1")
     private Long id;
+
+    @Schema(description = "Supplier ID", example = "1")
     private Long supplierId;
+
+    // ДОБАВЛЕНО
+    @Schema(description = "Supplier name", example = "ООО 'ТехноПост'")
+    private String supplierName;
+
+    @Schema(description = "Product ID", example = "1")
     private Long productId;
+
+    // ДОБАВЛЕНО
+    @Schema(description = "Product name", example = "iPhone 13 Pro")
     private String productName;
+
+    // ДОБАВЛЕНО
+    @Schema(description = "Product SKU", example = "IPHONE-13-PRO-128")
     private String productSku;
+
+    @Schema(description = "Supplier price", example = "850.00")
     private BigDecimal supplierPrice;
+
+    @Schema(description = "Supplier SKU", example = "SUP-IPHONE-128")
     private String supplierSku;
+
+    @Schema(description = "Is main supplier", example = "true")
     private boolean mainSupplier;
+
+    @Schema(description = "Delivery time in days", example = "3")
     private Integer deliveryTime;
+
+    @Schema(description = "Minimum order quantity", example = "10")
     private Integer minOrderQuantity;
+
+    // ДОБАВЛЕНО (опциональные поля из запроса)
+    @Schema(description = "Notes about product from supplier")
+    private String notes;
+
+    @Schema(description = "Supplier's product category")
+    private String supplierCategory;
+
+    @Schema(description = "Supplier's product name")
+    private String supplierProductName;
+
+    @Schema(description = "Country of origin", example = "China")
+    private String countryOfOrigin;
+
+    @Schema(description = "HS Code", example = "8517.12.00")
+    private String hsCode;
+
+    @Schema(description = "In stock at supplier", example = "true")
+    private Boolean inStockAtSupplier;
+
+    @Schema(description = "Supplier stock quantity", example = "500")
+    private Integer supplierStockQuantity;
+
+    @Schema(description = "Estimated restock date", example = "2024-03-15")
+    private String estimatedRestockDate;
 }

@@ -69,7 +69,7 @@ public class Product {
 
     //  флаг, что товар имеет варианты (например, разные цвета/размеры)
     @Column(name = "has_variants")
-    private boolean hasVariants;
+    private Boolean hasVariants;
 
     // ссылка на родительский товар (для вариантов)
     @ManyToOne(fetch = FetchType.LAZY)
@@ -137,7 +137,7 @@ public class Product {
 
     public List<ProductMedia> getMainImages() {
         return media.stream()
-                .filter(m -> m.getMediaType() == MediaType.IMAGE && m.isMain())
+                .filter(m -> m.getMediaType() == MediaType.IMAGE && m.getIsMain())
                 .collect(Collectors.toList());
     }
 

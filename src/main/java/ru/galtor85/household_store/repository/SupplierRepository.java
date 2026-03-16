@@ -23,6 +23,19 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
 
     Page<Supplier> findByStatus(SupplierStatus status, Pageable pageable);
 
+    @Query(value = "SELECT * FROM household_schema.suppliers s WHERE " +
+            "(:name IS NULL OR CAST(s.name AS TEXT) ILIKE CONCAT('%', CAST(:name AS TEXT), '%')) AND " +
+            "(:status IS NULL OR s.status = CAST(:status AS TEXT)) " +
+            "ORDER BY s.name ASC",
+            countQuery = "SELECT COUNT(*) FROM household_schema.suppliers s WHERE " +
+                    "(:name IS NULL OR CAST(s.name AS TEXT) ILIKE CONCAT('%', CAST(:name AS TEXT), '%')) AND " +
+                    "(:status IS NULL OR s.status = CAST(:status AS TEXT))",
+            nativeQuery = true)
+    Page<Supplier> searchSuppliersNative(@Param("name") String name,
+                                         @Param("status") String status,
+                                         Pageable pageable);
+
+    // Можно оставить старый метод для совместимости, если нужно
     @Query("SELECT s FROM Supplier s WHERE " +
             "(:name IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
             "(:status IS NULL OR s.status = :status)")

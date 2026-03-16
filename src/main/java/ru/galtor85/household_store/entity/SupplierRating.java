@@ -38,7 +38,7 @@ public class SupplierRating {
     private Long orderId; // ID заказа (для проверки)
 
     @Column(name = "is_verified")
-    private boolean verified; // Подтвержденный отзыв
+    private Boolean verified; // Подтвержденный отзыв
 
     @Column(name = "created_at")
     @CreationTimestamp

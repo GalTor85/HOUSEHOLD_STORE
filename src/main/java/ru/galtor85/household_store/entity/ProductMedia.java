@@ -56,7 +56,7 @@ public class ProductMedia {
     private Integer sortOrder; // Порядок сортировки
 
     @Column(name = "is_main")
-    private boolean isMain; // Главное изображение
+    private Boolean isMain; // Главное изображение
 
     @Column(name = "width")
     private Integer width; // Ширина (для изображений)

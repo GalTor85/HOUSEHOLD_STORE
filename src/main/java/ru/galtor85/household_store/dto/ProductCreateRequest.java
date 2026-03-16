@@ -17,21 +17,19 @@ public class ProductCreateRequest {
 
     @NotBlank(message = "{product.validation.sku.empty}")
     @Size(min = 3, max = 50, message = "{product.validation.sku.size}")
-    @Schema(description = "SKU (Stock Keeping Unit)", example = "IPHONE-13-PRO-128")
+    @Schema(description = "SKU (Stock Keeping Unit)", example = "IPHONE-13-PRO-128", required = true)
     private String sku;
 
-    // ДОБАВЛЕНО: штрих-код
     @Size(min = 8, max = 20, message = "{product.validation.barcode.size}")
     @Schema(description = "Barcode (EAN-13, UPC)", example = "4601234567890")
     private String barcode;
 
-    // ДОБАВЛЕНО: формат штрих-кода
     @Schema(description = "Barcode format", example = "EAN_13")
     private String barcodeFormat;
 
     @NotBlank(message = "{product.validation.name.empty}")
     @Size(min = 2, max = 100, message = "{product.validation.name.size}")
-    @Schema(description = "Product name", example = "iPhone 13 Pro")
+    @Schema(description = "Product name", example = "iPhone 13 Pro", required = true)
     private String name;
 
     @Size(max = 500, message = "{product.validation.description.size}")
@@ -41,7 +39,7 @@ public class ProductCreateRequest {
     @NotNull(message = "{product.validation.price.empty}")
     @DecimalMin(value = "0.01", message = "{product.validation.price.min}")
     @DecimalMax(value = "999999.99", message = "{product.validation.price.max}")
-    @Schema(description = "Price", example = "999.99")
+    @Schema(description = "Price", example = "999.99", required = true)
     private BigDecimal price;
 
     @Min(value = 0, message = "{product.validation.quantity.min}")
@@ -61,13 +59,15 @@ public class ProductCreateRequest {
     @Schema(description = "Image URL", example = "/images/products/iphone-13-pro.jpg")
     private String imageUrl;
 
-    @Schema(description = "Active status", example = "true")
+    // ИСПРАВЛЕНО: boolean -> Boolean
+    @Schema(description = "Active status", example = "true", defaultValue = "true")
     private Boolean active;
 
     @Schema(description = "Product attributes")
     private List<ProductAttributeDto> attributes;
 
-    @Schema(description = "Has variants", example = "false")
+
+    @Schema(description = "Has variants", example = "false", defaultValue = "false")
     private Boolean hasVariants;
 
     @Schema(description = "Parent product ID", example = "1")

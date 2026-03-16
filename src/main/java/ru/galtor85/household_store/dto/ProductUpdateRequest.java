@@ -19,12 +19,10 @@ public class ProductUpdateRequest {
     @Schema(description = "SKU (Stock Keeping Unit)", example = "IPHONE-13-PRO-128")
     private String sku;
 
-    // ДОБАВЛЕНО: штрих-код
     @Size(min = 8, max = 20, message = "{product.validation.barcode.size}")
     @Schema(description = "Barcode (EAN-13, UPC)", example = "4601234567890")
     private String barcode;
 
-    // ДОБАВЛЕНО: формат штрих-кода
     @Schema(description = "Barcode format", example = "EAN_13")
     private String barcodeFormat;
 
@@ -58,12 +56,14 @@ public class ProductUpdateRequest {
     @Schema(description = "Image URL", example = "/images/products/iphone-13-pro.jpg")
     private String imageUrl;
 
+
     @Schema(description = "Active status", example = "true")
     private Boolean active;
 
     @Schema(description = "Product attributes")
     private List<ProductAttributeDto> attributes;
 
+    // ИСПРАВЛЕНО: boolean -> Boolean
     @Schema(description = "Has variants", example = "false")
     private Boolean hasVariants;
 

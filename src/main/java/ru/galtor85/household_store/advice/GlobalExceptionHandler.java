@@ -298,4 +298,353 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error(message));
     }
+
+    // ========== PRODUCT EXCEPTIONS ==========
+
+    @ExceptionHandler(ProductAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleProductAlreadyExists(
+            ProductAlreadyExistsException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.product.error.exists",
+                e.getField(),
+                e.getValue()
+        );
+
+        log.error("ProductAlreadyExistsException: {} - {}: {}",
+                message, e.getField(), e.getValue());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleProductNotFound(
+            ProductNotFoundException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.product.error.not.found",
+                e.getProductId()
+        );
+
+        log.error("ProductNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvalidStockOperationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidStockOperation(
+            InvalidStockOperationException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.stock.error.negative",
+                e.getCurrentStock()
+        );
+
+        log.error("InvalidStockOperationException: Current stock: {}, Requested change: {} - {}",
+                e.getCurrentStock(), e.getRequestedChange(), message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvalidPriceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidPrice(
+            InvalidPriceException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.price.error.invalid",
+                e.getInvalidPrice() != null ? e.getInvalidPrice().toString() : "null"
+        );
+
+        log.error("InvalidPriceException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(ProductVariantException.class)
+    public ResponseEntity<ApiResponse<Void>> handleProductVariantException(
+            ProductVariantException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.product.variant.error",
+                e.getParentProductId()
+        );
+
+        log.error("ProductVariantException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(BulkOperationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBulkOperationException(
+            BulkOperationException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.bulk.operation.error",
+                e.getSuccessfulCount(),
+                e.getProductIds().size()
+        );
+
+        log.error("BulkOperationException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                .body(ApiResponse.error(message));
+    }
+
+    // ========== ORDER EXCEPTIONS ==========
+
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOrderNotFound(
+            OrderNotFoundException e, Locale locale) {
+
+        String message = messageService.get("manager.order.error.not.found", e.getOrderId());
+        log.error("OrderNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvalidOrderStatusException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidOrderStatus(
+            InvalidOrderStatusException e, Locale locale) {
+
+        String message = messageService.get("manager.order.error.invalid.status", e.getInvalidStatus());
+        log.error("InvalidOrderStatusException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidStatusTransition(
+            InvalidStatusTransitionException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.order.error.invalid.status.transition",
+                e.getCurrentStatus(),
+                e.getNewStatus()
+        );
+        log.error("InvalidStatusTransitionException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(OrderItemNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOrderItemNotFound(
+            OrderItemNotFoundException e, Locale locale) {
+
+        String message = messageService.get("manager.order.error.item.not.found", e.getItemId());
+        log.error("OrderItemNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(OrderModificationNotAllowedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOrderModificationNotAllowed(
+            OrderModificationNotAllowedException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.order.error.cannot.modify",
+                e.getCurrentStatus()
+        );
+        log.error("OrderModificationNotAllowedException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvalidOrderTypeException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidOrderType(
+            InvalidOrderTypeException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.order.error.not.customer.order",
+                e.getOrderId()
+        );
+        log.error("InvalidOrderTypeException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvalidDateRangeException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidDateRange(
+            InvalidDateRangeException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.order.error.date.range",
+                e.getStartDate(),
+                e.getEndDate()
+        );
+        log.error("InvalidDateRangeException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(OrderItemAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOrderItemAlreadyExists(
+            OrderItemAlreadyExistsException e, Locale locale) {
+
+        String message = messageService.get("manager.order.error.item.exists", e.getProductId());
+        log.error("OrderItemAlreadyExistsException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInsufficientStock(
+            InsufficientStockException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.order.error.insufficient.stock",
+                e.getProductName(),
+                e.getAvailableStock()
+        );
+        log.error("InsufficientStockException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvalidQuantityException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidQuantity(
+            InvalidQuantityException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.order.error.invalid.quantity",
+                e.getInvalidQuantity() != null ? e.getInvalidQuantity().toString() : "null"
+        );
+        log.error("InvalidQuantityException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    // ========== SUPPLIER EXCEPTIONS ==========
+
+    @ExceptionHandler(SupplierNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSupplierNotFound(
+            SupplierNotFoundException e, Locale locale) {
+
+        String message = messageService.get("manager.supplier.error.not.found", e.getSupplierId());
+        log.error("SupplierNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(SupplierInactiveException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSupplierInactive(
+            SupplierInactiveException e, Locale locale) {
+
+        String message = messageService.get("manager.purchase.error.supplier.inactive", e.getCurrentStatus());
+        log.error("SupplierInactiveException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(SupplierAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSupplierAlreadyExists(
+            SupplierAlreadyExistsException e, Locale locale) {
+
+        String message = messageService.get("manager.supplier.error." + e.getField() + ".exists", e.getValue());
+        log.error("SupplierAlreadyExistsException: {} - {}: {}", e.getMessage(), e.getField(), e.getValue());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+// ========== PURCHASE ORDER EXCEPTIONS ==========
+
+    @ExceptionHandler(ProductNotFromSupplierException.class)
+    public ResponseEntity<ApiResponse<Void>> handleProductNotFromSupplier(
+            ProductNotFromSupplierException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.purchase.error.product.not.from.supplier",
+                e.getProductId(),
+                e.getSupplierId()
+        );
+        log.error("ProductNotFromSupplierException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(PurchaseOrderDetailsNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handlePurchaseOrderDetailsNotFound(
+            PurchaseOrderDetailsNotFoundException e, Locale locale) {
+
+        String message = messageService.get("manager.purchase.error.purchase.details.not.found", e.getOrderId());
+        log.error("PurchaseOrderDetailsNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(CannotReceivePurchaseOrderException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCannotReceivePurchaseOrder(
+            CannotReceivePurchaseOrderException e, Locale locale) {
+
+        String message = messageService.get("manager.purchase.error.cannot.receive", e.getCurrentStatus());
+        log.error("CannotReceivePurchaseOrderException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+// ========== SUPPLIER PRODUCT EXCEPTIONS ==========
+
+    @ExceptionHandler(SupplierProductAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSupplierProductAlreadyExists(
+            SupplierProductAlreadyExistsException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.supplier.error.product.already.added",
+                e.getProductId(),
+                e.getSupplierId()
+        );
+        log.error("SupplierProductAlreadyExistsException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(SupplierProductNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSupplierProductNotFound(
+            SupplierProductNotFoundException e, Locale locale) {
+
+        String message = messageService.get("manager.supplier.product.error.not.found", e.getSupplierProductId());
+        log.error("SupplierProductNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+// ========== WRITE-OFF EXCEPTIONS ==========
+
+    @ExceptionHandler(WriteOffInsufficientStockException.class)
+    public ResponseEntity<ApiResponse<Void>> handleWriteOffInsufficientStock(
+            WriteOffInsufficientStockException e, Locale locale) {
+
+        String message = messageService.get(
+                "manager.writeoff.error.insufficient.stock",
+                e.getProductId(),
+                e.getAvailableStock(),
+                e.getRequestedQuantity()
+        );
+        log.error("WriteOffInsufficientStockException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
 }

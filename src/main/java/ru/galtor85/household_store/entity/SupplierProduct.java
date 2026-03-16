@@ -39,7 +39,7 @@ public class SupplierProduct {
     private String supplierSku; // Артикул поставщика
 
     @Column(name = "is_main_supplier")
-    private boolean mainSupplier; // Основной поставщик
+    private Boolean mainSupplier; // Основной поставщик
 
     @Column(name = "delivery_time")
     private Integer deliveryTime; // Срок поставки от этого поставщика

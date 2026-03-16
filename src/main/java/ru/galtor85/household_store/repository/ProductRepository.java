@@ -15,16 +15,17 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-
     Optional<Product> findBySku(String sku);
 
     Optional<Product> findByBarcode(String barcode);
 
-    boolean existsBySku(String sku);
+    Boolean existsBySku(String sku);
 
-    boolean existsByBarcode(String barcode);
+    Boolean  existsByBarcode(String barcode);
 
     List<Product> findByActiveTrue();
+
+    Page<Product> findByActive(boolean active, Pageable pageable);
 
     Page<Product> findByActiveTrue(Pageable pageable);
 
@@ -32,7 +33,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     List<Product> findByBrandAndActiveTrue(String brand);
 
-    // Для поиска по нескольким параметрам все равно нужен @Query
+    List<Product> findByQuantityInStockLessThan(int threshold);
+
     @Query("SELECT p FROM Product p WHERE " +
             "(:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
             "(:category IS NULL OR p.category = :category) AND " +
@@ -47,8 +49,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                  @Param("maxPrice") BigDecimal maxPrice,
                                  Pageable pageable);
 
-    // Spring Data JPA сам реализует эти методы
-    List<String> findDistinctCategoryByActiveTrue();
+    @Query("SELECT DISTINCT p.category FROM Product p WHERE p.category IS NOT NULL AND p.active = true")
+    List<String> findAllCategories();
 
-    List<String> findDistinctBrandByActiveTrue();
+    @Query("SELECT DISTINCT p.brand FROM Product p WHERE p.brand IS NOT NULL AND p.active = true")
+    List<String> findAllBrands();
 }
