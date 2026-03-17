@@ -2,6 +2,7 @@ package ru.galtor85.household_store.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import ru.galtor85.household_store.advice.exception.CustomAuthenticationException;
 import ru.galtor85.household_store.dto.*;
 import ru.galtor85.household_store.entity.User;
@@ -24,10 +26,11 @@ import ru.galtor85.household_store.service.ManagerProductService;
 import ru.galtor85.household_store.service.ManagerPurchaseService;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
+@SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/manager")
@@ -116,6 +119,7 @@ public class ManagerController {
             @RequestParam(defaultValue = "asc") String sortDir,
             @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
 
+
         Page<ProductDto> products = managerProductService.getProducts(
                 name, category, brand, active, page, size, sortBy, sortDir, locale);
 
@@ -167,6 +171,86 @@ public class ManagerController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get(messageKey),
                 product));
+    }
+
+    @PostMapping("/products/{productId}/media")
+    @Operation(summary = "Upload media files for a product")
+    public ResponseEntity<ApiResponse<List<ProductMediaDto>>> uploadProductMedia(
+            @PathVariable
+            @Parameter(description = "Product ID", example = "1", required = true)
+            Long productId,
+
+            @RequestParam("files")
+            @Parameter(description = "Media files to upload")
+            MultipartFile[] files,
+
+            @RequestParam(required = false)
+            @Parameter(description = "Media metadata as JSON array")
+            String metadata,
+
+            @RequestHeader(name = "Accept-Language", required = false)
+            Locale locale) {
+
+        User manager = getCurrentManager();
+
+        // Добавим логирование для отладки
+        log.info("=== ЗАГРУЗКА ФАЙЛОВ ===");
+        log.info("Product ID: {}", productId);
+        log.info("Manager ID: {}", manager.getId());
+        log.info("Locale: {}", locale);
+
+        if (files != null) {
+            log.info("Количество файлов: {}", files.length);
+            for (int i = 0; i < files.length; i++) {
+                MultipartFile file = files[i];
+                log.info("Файл {}: {}", i, file.getOriginalFilename());
+                log.info("  - Размер: {} байт", file.getSize());
+                log.info("  - Content-Type: {}", file.getContentType());
+                log.info("  - Пустой: {}", file.isEmpty());
+            }
+        } else {
+            log.info("files = null");
+        }
+
+        log.info("Metadata: {}", metadata);
+
+        // КОНВЕРТИРУЕМ МАССИВ В СПИСОК
+        List<MultipartFile> fileList = Arrays.asList(files);
+
+        List<ProductMediaDto> media = managerProductService.uploadMedia(
+                productId, fileList, metadata, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.product.media.uploaded"),
+                media));
+    }
+
+    @DeleteMapping("/media/{mediaId}")
+    @Operation(summary = "Delete a media file")
+    public ResponseEntity<ApiResponse<Void>> deleteMedia(
+            @PathVariable Long mediaId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        managerProductService.deleteMedia(mediaId, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.product.media.deleted"),
+                null));
+    }
+
+    @PutMapping("/media/{mediaId}/main")
+    @Operation(summary = "Set media as main image")
+    public ResponseEntity<ApiResponse<Void>> setMainMedia(
+            @PathVariable Long mediaId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        managerProductService.setMainMedia(mediaId, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.product.media.main.set"),
+                null));
     }
 
     // ========== PURCHASE MANAGEMENT ==========

@@ -1,5 +1,7 @@
 package ru.galtor85.household_store.config;
 
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
@@ -13,6 +15,10 @@ import org.springframework.context.i18n.LocaleContextHolder;
 
 import java.util.Locale;
 
+@SecurityScheme(name = "Bearer Authentication",
+        type = SecuritySchemeType.HTTP,
+        scheme = "bearer",
+        bearerFormat = "JWT")
 @Configuration
 @RequiredArgsConstructor
 public class SwaggerGeneralConfig {
@@ -22,12 +28,7 @@ public class SwaggerGeneralConfig {
 
     @Bean(name = "baseOpenAPI")
     public OpenAPI customOpenAPI() {
-
         Locale locale = LocaleContextHolder.getLocale();
-
-        System.out.println("=== ТЕКУЩАЯ ЛОКАЛИЗАЦИЯ ЗАПРОСА: " + locale);
-        System.out.println("=== ЯЗЫК ЗАПРОСА: " + locale.getLanguage());
-
         return new OpenAPI()
                 .info(new Info()
                         .title(swaggerGeneralMessageSource.getMessage("swagger-general-config.app.name", null, locale))

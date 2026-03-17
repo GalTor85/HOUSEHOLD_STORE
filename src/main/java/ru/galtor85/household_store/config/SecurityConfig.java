@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -26,6 +25,7 @@ import ru.galtor85.household_store.security.JwtAuthenticationFilter;
 import ru.galtor85.household_store.service.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+
 import java.util.Arrays;
 
 @Slf4j
@@ -37,6 +37,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final MessageService messageService;
+    private final ObjectMapper objectMapper;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -75,6 +76,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/api/v1/",
+                                "/api/v1/media/**",
                                 "/api/v1/health",
                                 "/api/v1/info",
                                 "/api/v1/ping",
@@ -111,7 +113,8 @@ public class SecurityConfig {
                                     request.getRequestURI(), authException.getMessage()));
 
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setContentType("application/json;charset=UTF-8");  // ИЗМЕНЕНО
+                            response.setCharacterEncoding("UTF-8");  // ДОБАВЛЕНО
 
                             ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
                                     .success(false)
@@ -119,14 +122,16 @@ public class SecurityConfig {
                                     .path(request.getRequestURI())
                                     .build();
 
-                            response.getWriter().write(new ObjectMapper().writeValueAsString(apiResponse));
+                            // Используем существующий ObjectMapper с поддержкой JavaTime
+                            response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             log.warn(messageService.get("security-config.log.error.access.denied",
                                     request.getRequestURI(), accessDeniedException.getMessage()));
 
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setContentType("application/json;charset=UTF-8");  // ИЗМЕНЕНО
+                            response.setCharacterEncoding("UTF-8");  // ДОБАВЛЕНО
 
                             ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
                                     .success(false)
@@ -134,7 +139,7 @@ public class SecurityConfig {
                                     .path(request.getRequestURI())
                                     .build();
 
-                            response.getWriter().write(new ObjectMapper().writeValueAsString(apiResponse));
+                            response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
                         })
                 );
 

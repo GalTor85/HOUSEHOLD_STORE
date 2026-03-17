@@ -1,0 +1,13 @@
+package ru.galtor85.household_store.util;
+
+import org.springframework.stereotype.Component;
+
+import java.util.UUID;
+
+@Component
+public class NumberGenerator {
+
+    public String generatePurchaseOrderNumber() {
+        return "PO-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+}

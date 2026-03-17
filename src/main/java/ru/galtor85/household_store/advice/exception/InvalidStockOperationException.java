@@ -5,7 +5,7 @@ public class InvalidStockOperationException extends RuntimeException {
     private final int requestedChange;
 
     public InvalidStockOperationException(int currentStock, int requestedChange) {
-        super(); // Не передаем хардкодное сообщение
+        super();
         this.currentStock = currentStock;
         this.requestedChange = requestedChange;
     }

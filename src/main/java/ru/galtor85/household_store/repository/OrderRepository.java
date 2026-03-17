@@ -30,6 +30,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findByStatus(OrderStatus status);
 
+    Page<Order> findByOrderType(OrderType orderType, Pageable pageable);
+
+    @Query("SELECT o FROM Order o WHERE " +
+            "LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :term, '%')) OR " +
+            "LOWER(o.notes) LIKE LOWER(CONCAT('%', :term, '%'))")
+    Page<Order> searchByTerm(@Param("term") String term, Pageable pageable);
+
     @Query("SELECT o FROM Order o WHERE o.orderType = :orderType")
     List<Order> findByOrderType(@Param("orderType") OrderType orderType);
 

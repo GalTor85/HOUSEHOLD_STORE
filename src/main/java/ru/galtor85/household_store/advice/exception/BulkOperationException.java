@@ -7,7 +7,7 @@ public class BulkOperationException extends RuntimeException {
     private final int successfulCount;
 
     public BulkOperationException(List<Long> productIds, int successfulCount) {
-        super(); // Не передаем хардкодное сообщение
+        super();
         this.productIds = productIds;
         this.successfulCount = successfulCount;
     }

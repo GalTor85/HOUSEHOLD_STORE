@@ -1,7 +1,6 @@
-package ru.galtor85.household_store.mapper;
+package ru.galtor85.household_store.converter;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.OrderDto;
 import ru.galtor85.household_store.dto.OrderItemDto;
@@ -11,26 +10,18 @@ import ru.galtor85.household_store.service.MessageService;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
-
-@Slf4j
 @Component
 @RequiredArgsConstructor
-public class OrderMapper {
+public class OrderConverter {
 
     private final MessageService messageService;
-    private final OrderItemMapper orderItemMapper;
 
-    /**
-     * Преобразование сущности в DTO
-     */
-    public OrderDto toDto(Order order, Locale locale) {
-        if (order == null) {
-            return null;
-        }
-
-        List<OrderItemDto> itemDtos = order.getItems() != null ?
-                orderItemMapper.toDtoList(order.getItems(), locale) : null;
+    public OrderDto convertToDto(Order order, Locale locale) {
+        List<OrderItemDto> itemDtos = order.getItems().stream()
+                .map(this::convertItemToDto)
+                .collect(Collectors.toList());
 
         String localizedStatus = messageService.get("order.status." + order.getStatus().name());
 
@@ -49,18 +40,23 @@ public class OrderMapper {
                 .shippingAmount(order.getShippingAmount())
                 .taxAmount(order.getTaxAmount())
                 .paymentMethod(order.getPaymentMethod())
-                .paymentDetails(order.getPaymentDetails())
                 .shippingAddress(order.getShippingAddress())
-                .billingAddress(order.getBillingAddress())
                 .trackingNumber(order.getTrackingNumber())
                 .estimatedDelivery(order.getEstimatedDelivery())
-                .deliveredAt(order.getDeliveredAt())
-                .cancelledAt(order.getCancelledAt())
-                .cancellationReason(order.getCancellationReason())
-                .createdBy(order.getCreatedBy())
-                .notes(order.getNotes())
                 .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
+                .notes(order.getNotes())
+                .build();
+    }
+
+    public OrderItemDto convertItemToDto(OrderItem item) {
+        return OrderItemDto.builder()
+                .id(item.getId())
+                .productId(item.getProductId())
+                .productName(item.getProductName())
+                .productSku(item.getProductSku())
+                .quantity(item.getQuantity())
+                .price(item.getPrice())
+                .totalPrice(item.getTotalPrice())
                 .build();
     }
 }

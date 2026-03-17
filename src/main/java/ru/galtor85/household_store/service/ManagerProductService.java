@@ -8,10 +8,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import ru.galtor85.household_store.advice.exception.*;
-import ru.galtor85.household_store.dto.ProductCreateRequest;
-import ru.galtor85.household_store.dto.ProductDto;
-import ru.galtor85.household_store.dto.ProductUpdateRequest;
+import ru.galtor85.household_store.dto.*;
 import ru.galtor85.household_store.entity.Product;
 import ru.galtor85.household_store.entity.ProductAttribute;
 import ru.galtor85.household_store.mapper.ProductAttributeMapper;
@@ -20,6 +19,7 @@ import ru.galtor85.household_store.repository.ProductAttributeRepository;
 import ru.galtor85.household_store.repository.ProductRepository;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -34,6 +34,7 @@ public class ManagerProductService {
     private final ProductMapper productMapper;
     private final ProductAttributeMapper attributeMapper;
     private final MessageService messageService;
+    private final ProductMediaService mediaService;
 
     // ========== CRUD OPERATIONS ==========
 
@@ -183,6 +184,35 @@ public class ManagerProductService {
         Locale finalLocale = locale;
         return products.map(product -> productMapper.toDto(product, finalLocale));
     }
+    /**
+     * Загрузка медиа для продукта (делегируем в ProductMediaService)
+     */
+    public List<ProductMediaDto> uploadMedia(Long productId, List<MultipartFile> files,
+                                             String metadataJson, Long managerId, Locale locale) {
+        return mediaService.uploadMedia(productId, files, metadataJson, managerId, locale);
+    }
+
+    /**
+     * Удаление медиа
+     */
+    public void deleteMedia(Long mediaId, Long managerId, Locale locale) {
+        mediaService.deleteMedia(mediaId, managerId, locale);
+    }
+
+    /**
+     * Установка главного изображения
+     */
+    public void setMainMedia(Long mediaId, Long managerId, Locale locale) {
+        mediaService.setMainMedia(mediaId, managerId, locale);
+    }
+
+    /**
+     * Получение всех медиа продукта
+     */
+    public List<ProductMediaDto> getProductMedia(Long productId, Locale locale) {
+        return mediaService.getProductMedia(productId, locale);
+    }
+
 
     // ========== INVENTORY MANAGEMENT ==========
 

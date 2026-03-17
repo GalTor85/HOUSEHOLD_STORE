@@ -1,10 +1,12 @@
 package ru.galtor85.household_store.config;
 
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
+import org.springframework.format.FormatterRegistry;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
@@ -13,6 +15,21 @@ import java.util.Locale;
 
 @Configuration
 public class I18nConfig implements WebMvcConfigurer {
+
+    @Configuration
+    public class WebConfig implements WebMvcConfigurer {
+
+        /**
+         * Конвертер для Swagger, преобразует строку в Locale
+         */
+        @Autowired
+        private StringToLocaleConverter stringToLocaleConverter;
+
+        @Override
+        public void addFormatters(FormatterRegistry registry) {
+            registry.addConverter(stringToLocaleConverter);
+        }
+    }
 
     @Bean
     public LocaleResolver localeResolver() {
@@ -36,7 +53,8 @@ public class I18nConfig implements WebMvcConfigurer {
         messageSource.setBasename("classpath:swagger/swagger-general");
         messageSource.setDefaultEncoding("UTF-8");
         messageSource.setFallbackToSystemLocale(false);
-        return messageSource;  }
+        return messageSource;
+    }
 }
 
 

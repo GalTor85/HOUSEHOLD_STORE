@@ -7,8 +7,11 @@ import ru.galtor85.household_store.dto.ProductAttributeDto;
 import ru.galtor85.household_store.dto.ProductCreateRequest;
 import ru.galtor85.household_store.dto.ProductDto;
 import ru.galtor85.household_store.dto.ProductUpdateRequest;
+import ru.galtor85.household_store.entity.MediaType;
 import ru.galtor85.household_store.entity.Product;
 import ru.galtor85.household_store.entity.ProductAttribute;
+import ru.galtor85.household_store.entity.ProductMedia;
+import ru.galtor85.household_store.repository.ProductMediaRepository;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.util.ArrayList;
@@ -23,6 +26,8 @@ public class ProductMapper {
 
     private final MessageService messageService;
     private final ProductAttributeMapper attributeMapper;
+    private final ProductMediaRepository mediaRepository;  // Добавлено
+    private final ProductMediaMapper mediaMapper;          // Добавлено
 
     /**
      * Преобразование запроса на создание в сущность Product
@@ -111,6 +116,16 @@ public class ProductMapper {
                         .map(v -> toDto(v, locale))
                         .collect(Collectors.toList()) : new ArrayList<>();
 
+        // Получаем медиа для продукта
+        List<ProductMedia> mediaList = mediaRepository.findByProductIdOrdered(product.getId());
+
+        // Находим главное изображение
+        String mainImageUrl = mediaList.stream()
+                .filter(m -> Boolean.TRUE.equals(m.getIsMain()))
+                .findFirst()
+                .map(m -> "/api/v1/media/" + m.getId())
+                .orElse(product.getImageUrl()); // Если нет главного, используем imageUrl из продукта
+
         return ProductDto.builder()
                 .id(product.getId())
                 .sku(product.getSku())
@@ -128,6 +143,19 @@ public class ProductMapper {
                 .parentProductId(product.getParentProduct() != null ? product.getParentProduct().getId() : null)
                 .attributes(attributeDtos)
                 .variants(variantDtos)
+                .media(mediaMapper.toDtoList(mediaList))  // Все медиа
+                .mainImageUrl(mainImageUrl)  // URL главного изображения
+                .images(mediaList.stream()
+                        .filter(m -> m.getMediaType() == MediaType.IMAGE)
+                        .map(mediaMapper::toDto)
+                        .collect(Collectors.toList()))  // Только изображения
+                .videos(mediaList.stream()
+                        .filter(m -> m.getMediaType() == MediaType.VIDEO)
+                        .map(mediaMapper::toDto)
+                        .collect(Collectors.toList()))  // Только видео
+                .supplierId(product.getSupplierId())
+                .supplierPrice(product.getSupplierPrice())
+                .supplierSku(product.getSupplierSku())
                 .createdAt(product.getCreatedAt() != null ? product.getCreatedAt().toString() : null)
                 .updatedAt(product.getUpdatedAt() != null ? product.getUpdatedAt().toString() : null)
                 .createdBy(product.getCreatedBy())

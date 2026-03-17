@@ -7,9 +7,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Data
 @Builder
@@ -28,6 +28,9 @@ public class ApiResponse<T> {
 
     @Schema(description = "Response data payload")
     private T data;
+
+    @Schema(description = "Additional details about the response")
+    private Map<String, Object> details;
 
     @Schema(description = "Response timestamp", example = "2024-01-01T12:00:00")
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -50,6 +53,24 @@ public class ApiResponse<T> {
         return ApiResponse.<T>builder()
                 .success(false)
                 .message(message)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static <T> ApiResponse<T> error(String message, Map<String, Object> details) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .message(message)
+                .details(details)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static <T> ApiResponse<T> error(String message, String path) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .message(message)
+                .path(path)
                 .timestamp(LocalDateTime.now())
                 .build();
     }

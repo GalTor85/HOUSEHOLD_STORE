@@ -30,12 +30,18 @@ public class ProductMedia {
     @Column(name = "product_id", nullable = false)
     private Long productId; // ID товара (связь по ID)
 
+    @Column(name = "uploaded_by")
+    private Long uploadedBy; // ID пользователя, загрузившего файл
+
     @Enumerated(EnumType.STRING)
     @Column(name = "media_type", nullable = false)
     private MediaType mediaType;
 
     @Column(name = "file_name", nullable = false)
     private String fileName; // Имя файла
+
+    @Column(name = "original_file_name")
+    private String originalFileName;
 
     @Column(name = "file_path", nullable = false)
     private String filePath; // Путь к файлу (URL)
