@@ -3,6 +3,8 @@ package ru.galtor85.household_store.mapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.galtor85.household_store.dto.AttributeCreateRequest;
+import ru.galtor85.household_store.dto.AttributeUpdateRequest;
 import ru.galtor85.household_store.dto.ProductAttributeDto;
 import ru.galtor85.household_store.entity.Product;
 import ru.galtor85.household_store.entity.ProductAttribute;
@@ -19,64 +21,98 @@ public class ProductAttributeMapper {
 
     private final MessageService messageService;
 
-    /**
-     * Преобразование DTO в сущность
-     */
-    public ProductAttribute toEntity(ProductAttributeDto dto, Product product) {
-        if (dto == null) {
+    public ProductAttribute toEntity(AttributeCreateRequest request, Product product) {
+        if (request == null) {
             return null;
         }
 
         return ProductAttribute.builder()
-                .id(dto.getId())
+                .name(request.getName())
+                .value(request.getValue())
+                .order(request.getOrder() != null ? request.getOrder() : 0)
+                .required(request.getRequired() != null ? request.getRequired() : false)
+                .variant(request.getVariant() != null ? request.getVariant() : false)
                 .product(product)
-                .name(dto.getName())
-                .value(dto.getValue())
-                .order(dto.getOrder() != null ? dto.getOrder() : 0)
-                .required(dto.getRequired())
-                .variant(dto.getVariant())
                 .build();
     }
 
-    /**
-     * Преобразование сущности в DTO
-     */
-    public ProductAttributeDto toDto(ProductAttribute entity, Locale locale) {
-        if (entity == null) {
+    public ProductAttribute toEntity(AttributeUpdateRequest request, Product product) {
+        if (request == null) {
+            return null;
+        }
+
+        return ProductAttribute.builder()
+                .id(request.getId())  // ID нужен для обновления
+                .name(request.getName())
+                .value(request.getValue())
+                .order(request.getOrder())
+                .required(request.getRequired())
+                .variant(request.getVariant())
+                .product(product)
+                .build();
+    }
+
+    public void updateEntity(ProductAttribute attribute, AttributeUpdateRequest request) {
+        if (attribute == null || request == null) {
+            return;
+        }
+
+        if (request.getName() != null) {
+            attribute.setName(request.getName());
+        }
+        if (request.getValue() != null) {
+            attribute.setValue(request.getValue());
+        }
+        if (request.getOrder() != null) {
+            attribute.setOrder(request.getOrder());
+        }
+        if (request.getRequired() != null) {
+            attribute.setRequired(request.getRequired());
+        }
+        if (request.getVariant() != null) {
+            attribute.setVariant(request.getVariant());
+        }
+    }
+
+    public List<ProductAttribute> toEntityList(List<?> requests, Product product) {
+        if (requests == null) {
+            return null;
+        }
+
+        return requests.stream()
+                .map(req -> {
+                    if (req instanceof AttributeCreateRequest) {
+                        return toEntity((AttributeCreateRequest) req, product);
+                    } else if (req instanceof AttributeUpdateRequest) {
+                        return toEntity((AttributeUpdateRequest) req, product);
+                    }
+                    return null;
+                })
+                .collect(Collectors.toList());
+    }
+
+    public ProductAttributeDto toDto(ProductAttribute attribute, Locale locale) {
+        if (attribute == null) {
             return null;
         }
 
         return ProductAttributeDto.builder()
-                .id(entity.getId())
-                .name(entity.getName())
-                .value(entity.getValue())
-                .order(entity.getOrder())
-                .required(entity.getRequired())
-                .variant(entity.getVariant())
+                .id(attribute.getId())
+                .name(attribute.getName())
+                .value(attribute.getValue())
+                .order(attribute.getOrder())
+                .required(attribute.getRequired())
+                .variant(attribute.getVariant())
                 .build();
     }
 
-    /**
-     * Преобразование списка сущностей в список DTO
-     */
-    public List<ProductAttributeDto> toDtoList(List<ProductAttribute> entities, Locale locale) {
-        if (entities == null) {
+    public List<ProductAttributeDto> toDtoList(List<ProductAttribute> attributes, Locale locale) {
+        if (attributes == null) {
             return null;
         }
-        return entities.stream()
-                .map(e -> toDto(e, locale))
-                .collect(Collectors.toList());
-    }
 
-    /**
-     * Преобразование списка DTO в список сущностей
-     */
-    public List<ProductAttribute> toEntityList(List<ProductAttributeDto> dtos, Product product) {
-        if (dtos == null) {
-            return null;
-        }
-        return dtos.stream()
-                .map(d -> toEntity(d, product))
+        return attributes.stream()
+                .map(attr -> toDto(attr, locale))
                 .collect(Collectors.toList());
     }
 }

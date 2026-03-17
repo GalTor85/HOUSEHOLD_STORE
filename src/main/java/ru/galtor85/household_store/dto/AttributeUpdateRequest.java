@@ -1,6 +1,7 @@
 package ru.galtor85.household_store.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,10 +11,11 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Attribute ID (optional for creation)", title = "Product Attribute")
-public class ProductAttributeDto {
+@Schema(description = "Product attribute update request", title = "Attribute Update Request")
+public class AttributeUpdateRequest {
 
-    @Schema(description = "Attribute ID", example = "1")
+    @NotNull(message = "{attribute.validation.id.empty}")
+    @Schema(description = "Attribute ID", example = "1", required = true)
     private Long id;
 
     @Schema(description = "Attribute name", example = "Color")
@@ -25,11 +27,9 @@ public class ProductAttributeDto {
     @Schema(description = "Display order", example = "1")
     private Integer order;
 
-    // ИСПРАВЛЕНО: boolean -> Boolean
-    @Schema(description = "Is required", example = "true", defaultValue = "false")
+    @Schema(description = "Is required", example = "true")
     private Boolean required;
 
-    // ИСПРАВЛЕНО: boolean -> Boolean
-    @Schema(description = "Is variant attribute", example = "false", defaultValue = "false")
+    @Schema(description = "Is variant attribute", example = "false")
     private Boolean variant;
 }

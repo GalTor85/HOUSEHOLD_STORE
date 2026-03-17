@@ -44,8 +44,8 @@ public class ProductCreateRequest {
 
     @Min(value = 0, message = "{product.validation.quantity.min}")
     @Max(value = 999999, message = "{product.validation.quantity.max}")
-    @Schema(description = "Quantity in stock", example = "10")
-    private Integer quantityInStock;
+    @Schema(description = "Quantity in stock", example = "10", defaultValue = "0")
+    private Integer quantityInStock = 0;  // Значение по умолчанию
 
     @Size(max = 50, message = "{product.validation.category.size}")
     @Schema(description = "Category", example = "Electronics")
@@ -59,20 +59,42 @@ public class ProductCreateRequest {
     @Schema(description = "Image URL", example = "/images/products/iphone-13-pro.jpg")
     private String imageUrl;
 
-    // ИСПРАВЛЕНО: boolean -> Boolean
     @Schema(description = "Active status", example = "true", defaultValue = "true")
-    private Boolean active;
+    private Boolean active = true;  // Значение по умолчанию
 
     @Schema(description = "Product attributes")
-    private List<ProductAttributeDto> attributes;
-
+    private List<AttributeCreateRequest> attributes;
 
     @Schema(description = "Has variants", example = "false", defaultValue = "false")
-    private Boolean hasVariants;
+    private Boolean hasVariants = false;  // Значение по умолчанию
 
     @Schema(description = "Parent product ID", example = "1")
     private Long parentProductId;
 
-    @Schema(description = "Product variants")
-    private List<ProductCreateRequest> variants;
+    @Schema(description = "Product variants", defaultValue = "[]")
+    private List<ProductCreateRequest> variants;  // По умолчанию null
+
+    @Schema(description = "Weight in kg", example = "0.5", defaultValue = "0.0")
+    private Double weightKg;  // Значение по умолчанию
+
+    @Schema(description = "Volume in cubic meters", example = "0.001", defaultValue = "0.0")
+    private Double volumeM3;  // Значение по умолчанию
+
+    @Schema(description = "Requires refrigeration", example = "false", defaultValue = "false")
+    private boolean requiresRefrigeration = false;  // Значение по умолчанию
+
+    @Schema(description = "Requires freezing", example = "false", defaultValue = "false")
+    private boolean requiresFreezing = false;  // Значение по умолчанию
+
+    @Schema(description = "Is hazardous material", example = "false", defaultValue = "false")
+    private boolean hazardous = false;  // Переименовано с isHazardous на hazardous
+
+    @Schema(description = "Is oversized", example = "false", defaultValue = "false")
+    private boolean oversize = false;  // Переименовано с isOversize на oversize
+
+    @Schema(description = "Is liquid", example = "false", defaultValue = "false")
+    private boolean liquid = false;  // Переименовано с isLiquid на liquid
+
+    @Schema(description = "Is palletized", example = "false", defaultValue = "false")
+    private boolean palletized = false;  // Переименовано с isPalletized на palletized
 }

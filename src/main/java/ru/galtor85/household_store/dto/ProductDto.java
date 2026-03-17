@@ -96,4 +96,28 @@ public class ProductDto {
 
     @Schema(description = "Created by (user ID or email)", example = "manager@example.com")
     private String createdBy;
+
+    @Schema(description = "Weight in kg", example = "0.5")
+    private Double weightKg;
+
+    @Schema(description = "Volume in cubic meters", example = "0.001")
+    private Double volumeM3;
+
+    @Schema(description = "Requires refrigeration", example = "false")
+    private boolean requiresRefrigeration;
+
+    @Schema(description = "Requires freezing", example = "false")
+    private boolean requiresFreezing;
+
+    @Schema(description = "Is hazardous material", example = "false")
+    private boolean isHazardous;
+
+    @Schema(description = "Is oversized", example = "false")
+    private boolean isOversize;
+
+    @Schema(description = "Is liquid", example = "false")
+    private boolean isLiquid;
+
+    @Schema(description = "Is palletized", example = "false")
+    private boolean isPalletized;
 }

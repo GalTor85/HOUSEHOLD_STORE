@@ -29,8 +29,11 @@ public class SupplierCreateRequest {
     @Schema(description = "Contact email", example = "info@technopost.ru")
     private String email;
 
-    @Pattern(regexp = "^\\+?[0-9\\-\\s]{10,15}$", message = "{supplier.validation.phone.invalid}")
-    @Schema(description = "Contact phone", example = "+7 (495) 123-45-67")
+    @Pattern(
+            regexp = "^\\+?[1-9][0-9]{7,14}$",
+            message = "{supplier.validation.phone.invalid}"
+    )
+    @Schema(description = "Contact phone", example = "+74951234567")
     private String phone;
 
     @Schema(description = "Website", example = "https://www.technopost.ru")

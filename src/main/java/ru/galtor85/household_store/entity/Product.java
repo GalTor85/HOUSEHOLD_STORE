@@ -97,6 +97,31 @@ public class Product {
     @Column(name = "supplier_sku")
     private String supplierSku; // Артикул поставщика
 
+    @Column(name = "weight_kg")
+    private Double weightKg;           // Вес в кг
+
+    @Column(name = "volume_m3")
+    private Double volumeM3;           // Объем в м³
+
+    @Column(name = "requires_refrigeration")
+    private Boolean requiresRefrigeration;  // Требует охлаждения
+
+    @Column(name = "requires_freezing")
+    private Boolean requiresFreezing;       // Требует заморозки
+
+    @Column(name = "is_hazardous")
+    private Boolean isHazardous;            // Опасный груз
+
+    @Column(name = "is_oversize")
+    private Boolean isOversize;              // Негабарит
+
+    @Column(name = "is_liquid")
+    private Boolean isLiquid;                // Жидкость
+
+    @Column(name = "is_palletized")
+    private Boolean isPalletized;            // Паллетированный груз
+
+
     // Вспомогательные методы
     public void addAttribute(ProductAttribute attribute) {
         attributes.add(attribute);

@@ -8,6 +8,11 @@ public class SupplierNotFoundException extends RuntimeException {
         this.supplierId = supplierId;
     }
 
+    public SupplierNotFoundException() {
+        super();
+        this.supplierId = null;
+    }
+
     public Long getSupplierId() {
         return supplierId;
     }

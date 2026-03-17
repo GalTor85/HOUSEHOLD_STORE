@@ -16,14 +16,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ru.galtor85.household_store.advice.exception.CustomAuthenticationException;
+import ru.galtor85.household_store.advice.exception.WarehouseNotFoundException;
 import ru.galtor85.household_store.dto.*;
 import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.security.SecurityUser;
-import ru.galtor85.household_store.service.MessageService;
-import ru.galtor85.household_store.service.UserSearchService;
-import ru.galtor85.household_store.service.ManagerOrderService;
-import ru.galtor85.household_store.service.ManagerProductService;
-import ru.galtor85.household_store.service.ManagerPurchaseService;
+import ru.galtor85.household_store.service.*;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -44,6 +41,7 @@ public class ManagerController {
     private final ManagerOrderService managerOrderService;
     private final UserSearchService userSearchService;
     private final MessageService messageService;
+    private final WarehouseService warehouseService;
 
     private SecurityUser getCurrentSecurityUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -495,5 +493,198 @@ public class ManagerController {
                 .body(ApiResponse.success(
                         messageService.get("manager.supplier.product.added"),
                         supplierProduct));
+    }
+
+    // ========== WAREHOUSE MANAGEMENT ==========
+
+    @PostMapping("/warehouses")
+    @Operation(summary = "Create a new warehouse")
+    public ResponseEntity<ApiResponse<WarehouseDto>> createWarehouse(
+            @Valid @RequestBody WarehouseCreateRequest request,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        WarehouseDto warehouse = warehouseService.createWarehouse(
+                request, manager.getId(), locale);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        messageService.get("manager.warehouse.created"),
+                        warehouse));
+    }
+
+    @GetMapping("/warehouses")
+    @Operation(summary = "Get list of warehouses")
+    public ResponseEntity<ApiResponse<Page<WarehouseDto>>> getWarehouses(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        Page<WarehouseDto> warehouses = warehouseService.getWarehouses(search, page, size, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.warehouses.fetched"),
+                warehouses));
+    }
+
+    @GetMapping("/warehouses/{warehouseId}")
+    @Operation(summary = "Get warehouse by ID")
+    public ResponseEntity<ApiResponse<WarehouseDto>> getWarehouse(
+            @PathVariable Long warehouseId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        // Можно добавить метод в сервис для получения одного склада
+        Page<WarehouseDto> warehouses = warehouseService.getWarehouses(null, 0, 1, locale);
+        WarehouseDto warehouse = warehouses.getContent().stream()
+                .filter(w -> w.getId().equals(warehouseId))
+                .findFirst()
+                .orElseThrow(() -> new WarehouseNotFoundException(warehouseId));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.warehouse.fetched"),
+                warehouse));
+    }
+
+    // ========== STORAGE CELL MANAGEMENT ==========
+
+    @PostMapping("/warehouses/{warehouseId}/cells")
+    @Operation(summary = "Add a storage cell to warehouse")
+    public ResponseEntity<ApiResponse<StorageCellDto>> addStorageCell(
+            @PathVariable Long warehouseId,
+            @Valid @RequestBody StorageCellCreateRequest request,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        StorageCellDto cell = warehouseService.addCell(
+                warehouseId, request, manager.getId(), locale);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        messageService.get("manager.cell.created"),
+                        cell));
+    }
+
+    @GetMapping("/warehouses/{warehouseId}/cells")
+    @Operation(summary = "Get all cells in warehouse")
+    public ResponseEntity<ApiResponse<List<StorageCellDto>>> getWarehouseCells(
+            @PathVariable Long warehouseId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+
+        List<StorageCellDto> cells = warehouseService.getWarehouseCells(warehouseId, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.cells.fetched"),
+                cells));
+    }
+
+    @GetMapping("/warehouses/{warehouseId}/cells/available")
+    @Operation(summary = "Get available cells by type")
+    public ResponseEntity<ApiResponse<List<StorageCellDto>>> getAvailableCells(
+            @PathVariable Long warehouseId,
+            @RequestParam(required = false) String cellType,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        ru.galtor85.household_store.entity.CellType type = cellType != null ?
+                ru.galtor85.household_store.entity.CellType.valueOf(cellType.toUpperCase()) : null;
+
+        List<StorageCellDto> cells = warehouseService.getAvailableCells(warehouseId, type, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.cells.available.fetched"),
+                cells));
+    }
+
+    @GetMapping("/cells/{cellId}")
+    @Operation(summary = "Get cell by ID")
+    public ResponseEntity<ApiResponse<StorageCellDto>> getCell(
+            @PathVariable Long cellId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        // Можно добавить метод в сервис
+        StorageCellDto cell = warehouseService.getCellById(cellId, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.cell.fetched"),
+                cell));
+    }
+
+    @PutMapping("/cells/{cellId}/assign")
+    @Operation(summary = "Assign product to cell")
+    public ResponseEntity<ApiResponse<StorageCellDto>> assignProductToCell(
+            @PathVariable Long cellId,
+            @RequestParam Long productId,
+            @RequestParam int quantity,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        StorageCellDto cell = warehouseService.assignProductToCell(
+                cellId, productId, quantity, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.cell.product.assigned"),
+                cell));
+    }
+
+    @PutMapping("/cells/{cellId}/clear")
+    @Operation(summary = "Clear cell (remove product)")
+    public ResponseEntity<ApiResponse<StorageCellDto>> clearCell(
+            @PathVariable Long cellId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        StorageCellDto cell = warehouseService.clearCell(cellId, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.cell.cleared"),
+                cell));
+    }
+
+    // ========== ADVANCED RECEIVING ==========
+
+    @PutMapping("/purchases/{orderId}/receive-with-stock")
+    @Operation(summary = "Receive purchase order and place items in warehouse cells")
+    public ResponseEntity<ApiResponse<OrderDto>> receivePurchaseOrderWithStock(
+            @PathVariable Long orderId,
+            @Valid @RequestBody ReceiveAndStockRequest request,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        OrderDto order = managerPurchaseService.receivePurchaseOrderWithStock(
+                orderId, request, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.purchase.received.with.stock"),
+                order));
+    }
+
+    // ========== STOCK MOVEMENTS ==========
+
+    @GetMapping("/movements/product/{productId}")
+    @Operation(summary = "Get stock movements for product")
+    public ResponseEntity<ApiResponse<List<StockMovementDto>>> getProductMovements(
+            @PathVariable Long productId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        // Добавить метод в сервис
+        List<StockMovementDto> movements = warehouseService.getProductMovements(productId, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.movements.fetched"),
+                movements));
+    }
+
+    @GetMapping("/movements/cell/{cellId}")
+    @Operation(summary = "Get stock movements for cell")
+    public ResponseEntity<ApiResponse<List<StockMovementDto>>> getCellMovements(
+            @PathVariable Long cellId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        List<StockMovementDto> movements = warehouseService.getCellMovements(cellId, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.movements.fetched"),
+                movements));
     }
 }

@@ -9,6 +9,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.advice.exception.CannotReceivePurchaseOrderException;
+import ru.galtor85.household_store.advice.exception.InvalidOrderTypeException;
+import ru.galtor85.household_store.advice.exception.OrderNotFoundException;
+import ru.galtor85.household_store.advice.exception.PurchaseOrderDetailsNotFoundException;
 import ru.galtor85.household_store.builder.OrderBuilder;
 import ru.galtor85.household_store.builder.PurchaseOrderBuilder;
 import ru.galtor85.household_store.builder.SupplierProductBuilder;
@@ -16,12 +20,16 @@ import ru.galtor85.household_store.converter.OrderConverter;
 import ru.galtor85.household_store.converter.SupplierProductConverter;
 import ru.galtor85.household_store.dto.*;
         import ru.galtor85.household_store.entity.*;
-        import ru.galtor85.household_store.mapper.SupplierMapper;
+import ru.galtor85.household_store.mapper.OrderMapper;
+import ru.galtor85.household_store.mapper.SupplierMapper;
+import ru.galtor85.household_store.processor.PurchaseReceivingProcessor;
 import ru.galtor85.household_store.repository.*;
         import ru.galtor85.household_store.util.*;
 
         import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Locale;
 
 @Slf4j
@@ -35,9 +43,12 @@ public class ManagerPurchaseService {
     private final SupplierProductRepository supplierProductRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final MessageService messageService;
+    private final WarehouseService warehouseService;
+    private final PurchaseReceivingProcessor receivingProcessor;
 
     // Мапперы
     private final SupplierMapper supplierMapper;
+    private final OrderMapper orderMapper;
 
     // Конвертеры
     private final OrderConverter orderConverter;
@@ -251,6 +262,62 @@ public class ManagerPurchaseService {
         return orderConverter.convertToDto(order, locale);
     }
 
+    @Transactional
+    public OrderDto receivePurchaseOrderWithStock(Long orderId, ReceiveAndStockRequest request,
+                                                  Long managerId, Locale locale) {
+        locale = locale != null ? locale : Locale.getDefault();
+
+        // 1. Находим заказ
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> {
+                    log.error(messageService.get("manager.order.log.not.found", orderId));
+                    return new OrderNotFoundException(orderId);
+                });
+
+        // Проверяем, что это закупка
+        if (order.getOrderType() != OrderType.PURCHASE) {
+            log.error(messageService.get("manager.purchase.log.not.purchase.order", orderId));
+            throw new InvalidOrderTypeException(orderId, "PURCHASE");
+        }
+
+        // 2. Проверяем статус для приемки
+        if (order.getStatus() != OrderStatus.PROCESSING && order.getStatus() != OrderStatus.PENDING) {
+            log.error(messageService.get("manager.purchase.log.cannot.receive", order.getStatus()));
+            throw new CannotReceivePurchaseOrderException(order.getStatus());
+        }
+
+        // 3. Находим детали закупки
+        PurchaseOrder purchaseOrder = purchaseOrderRepository.findByOrderId(orderId)
+                .orElseThrow(() -> {
+                    log.error(messageService.get("manager.purchase.log.purchase.details.not.found", orderId));
+                    return new PurchaseOrderDetailsNotFoundException(orderId);
+                });
+
+        // 4. Обновляем статусы
+        order.setStatus(OrderStatus.DELIVERED);
+        purchaseOrder.setActualDelivery(LocalDate.from(request.getReceivedAt() != null ?
+                request.getReceivedAt() : LocalDateTime.now()));
+        purchaseOrder.setReceivedBy(managerId);
+        purchaseOrder.setQualityCheck(request.getQualityCheck());
+        purchaseOrder.setPaymentStatus(request.getPaymentStatus() != null ?
+                request.getPaymentStatus() : purchaseOrder.getPaymentStatus());
+
+        orderRepository.save(order);
+        purchaseOrderRepository.save(purchaseOrder);
+
+        log.info(messageService.get("manager.purchase.received.with.stock.log",
+                orderId, request.getItems().size(), managerId));
+
+        // 5. Возвращаем DTO (метод convertToDto должен быть определен)
+        return orderMapper.toDto(order, locale);
+    }
+
+    private Long determineWarehouseForOrder(Order order) {
+        // TODO: Реализовать логику определения склада
+        // Может быть из настроек поставщика, типа товара и т.д.
+        return 1L; // По умолчанию первый склад
+    }
+
     // ========== PRIVATE HELPER METHODS ==========
 
     private void updateStockFromOrder(Order order) {
@@ -264,4 +331,5 @@ public class ManagerPurchaseService {
                     product.getQuantityInStock()));
         }
     }
+
 }
