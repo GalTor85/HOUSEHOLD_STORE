@@ -121,6 +121,17 @@ public class Product {
     @Column(name = "is_palletized")
     private Boolean isPalletized;            // Паллетированный груз
 
+    @Column(name = "warehouse_id")
+    private Long warehouseId; // Прямое назначение склада (приоритет 1)
+
+    @Column(name = "category_warehouse_id")
+    private Long categoryWarehouseId; // Склад из категории (приоритет 2)
+
+    // Поле для детального учета по складам
+    @OneToMany(mappedBy = "productId", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ProductStock> stocks = new ArrayList<>();
+
 
     // Вспомогательные методы
     public void addAttribute(ProductAttribute attribute) {

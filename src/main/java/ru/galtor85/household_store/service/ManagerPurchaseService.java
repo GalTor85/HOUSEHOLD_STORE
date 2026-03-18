@@ -43,8 +43,7 @@ public class ManagerPurchaseService {
     private final SupplierProductRepository supplierProductRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final MessageService messageService;
-    private final WarehouseService warehouseService;
-    private final PurchaseReceivingProcessor receivingProcessor;
+
 
     // Мапперы
     private final SupplierMapper supplierMapper;
@@ -92,16 +91,27 @@ public class ManagerPurchaseService {
                                          Long managerId, Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
+        // 1. Проверка
         Order order = entityFinder.findPurchaseOrderById(orderId);
         validationHelper.validateOrderForReceiving(order);
 
-        PurchaseOrder purchaseOrder = entityFinder.findPurchaseOrderDetails(orderId);
-        updateStockFromOrder(order);
-        purchaseOrderBuilder.updateForReceiving(purchaseOrder, request, managerId);
+        // 2. Проверка на повторную приемку
+        if (order.getDeliveredAt() != null) {
+            throw new IllegalStateException("Order already received");
+        }
 
+        PurchaseOrder purchaseOrder = entityFinder.findPurchaseOrderDetails(orderId);
+
+        // 3. Обновление остатков (блокировка записей)
+        updateStockFromOrder(order);
+
+        // 4. Создание движений товаров
+       // createStockMovements(order, managerId);
+
+        // 5. Обновление статусов
+        purchaseOrderBuilder.updateForReceiving(purchaseOrder, request, managerId);
         order.setStatus(OrderStatus.DELIVERED);
-        orderRepository.save(order);
-        purchaseOrderRepository.save(purchaseOrder);
+        order.setDeliveredAt(LocalDateTime.now());
 
         log.info(messageService.get("manager.purchase.received.log", orderId, managerId));
 

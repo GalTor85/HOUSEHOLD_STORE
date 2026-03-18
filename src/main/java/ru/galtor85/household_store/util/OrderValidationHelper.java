@@ -19,6 +19,8 @@ public class OrderValidationHelper {
 
     private final MessageService messageService;
 
+    // ========== ПАРСИНГ И ВАЛИДАЦИЯ СТАТУСОВ ==========
+
     public OrderStatus parseOrderStatus(String status) {
         if (status == null || status.trim().isEmpty()) {
             return null;
@@ -39,6 +41,100 @@ public class OrderValidationHelper {
             throw new InvalidOrderStatusException(status);
         }
     }
+
+    /**
+     * Валидация перехода статуса для клиентского заказа (RETAIL/WHOLESALE)
+     */
+    public void validateStatusTransition(Order order, OrderStatus newStatus) {
+        OrderStatus currentStatus = order.getStatus();
+
+        boolean isValid = switch (currentStatus) {
+            case PENDING ->
+                    newStatus == OrderStatus.PAID ||
+                            newStatus == OrderStatus.CANCELLED;
+
+            case PAID ->
+                    newStatus == OrderStatus.PROCESSING ||
+                            newStatus == OrderStatus.CANCELLED ||
+                            newStatus == OrderStatus.REFUNDED;
+
+            case PROCESSING ->
+                    newStatus == OrderStatus.SHIPPED ||
+                            newStatus == OrderStatus.CANCELLED;
+
+            case SHIPPED ->
+                    newStatus == OrderStatus.DELIVERED;
+
+            case DELIVERED ->
+                    newStatus == OrderStatus.COMPLETED ||
+                            newStatus == OrderStatus.REFUNDED;
+
+            case COMPLETED ->
+                    newStatus == OrderStatus.REFUNDED;
+
+            default -> false;
+        };
+
+        if (!isValid) {
+            log.warn(messageService.get(
+                    "order.error.invalid.status.transition",
+                    currentStatus, newStatus
+            ));
+            throw new InvalidStatusTransitionException(currentStatus, newStatus);
+        }
+    }
+
+    /**
+     * Валидация перехода статуса для закупки (PURCHASE)
+     */
+    public void validatePurchaseStatusTransition(Order order, OrderStatus newStatus) {
+        OrderStatus currentStatus = order.getStatus();
+
+        boolean isValid = switch (currentStatus) {
+            case PENDING ->
+                    newStatus == OrderStatus.PAID ||           // Оплатили поставщику
+                            newStatus == OrderStatus.PROCESSING ||     // Начали обработку
+                            newStatus == OrderStatus.CANCELLED;        // Отменили закупку
+
+            case PAID ->
+                    newStatus == OrderStatus.PROCESSING ||     // Начали обработку после оплаты
+                            newStatus == OrderStatus.SHIPPED ||        // Поставщик отгрузил
+                            newStatus == OrderStatus.CANCELLED ||      // Отмена с возвратом денег
+                            newStatus == OrderStatus.REFUNDED;         // Возврат денег
+
+            case PROCESSING ->
+                    newStatus == OrderStatus.SHIPPED ||        // Поставщик отгрузил
+                            newStatus == OrderStatus.DELIVERED ||      // Товар принят на склад
+                            newStatus == OrderStatus.CANCELLED;        // Отмена в процессе
+
+            case SHIPPED ->
+                    newStatus == OrderStatus.DELIVERED ||           // Товар доставлен
+                            newStatus == OrderStatus.PARTIALLY_RECEIVED;    // Частично получен
+
+            case PARTIALLY_RECEIVED ->
+                    newStatus == OrderStatus.DELIVERED ||      // Полностью получен
+                            newStatus == OrderStatus.COMPLETED;        // Завершен (если частично достаточно)
+
+            case DELIVERED ->
+                    newStatus == OrderStatus.COMPLETED ||      // Закупка завершена
+                            newStatus == OrderStatus.RETURNED;         // Возврат поставщику
+
+            case COMPLETED ->
+                    newStatus == OrderStatus.RETURNED;         // Возврат поставщику
+
+            default -> false;
+        };
+
+        if (!isValid) {
+            log.warn(messageService.get(
+                    "purchase.error.invalid.status.transition",
+                    currentStatus, newStatus
+            ));
+            throw new InvalidStatusTransitionException(currentStatus, newStatus);
+        }
+    }
+
+    // ========== ВАЛИДАЦИЯ ЦЕН И КОЛИЧЕСТВА ==========
 
     public void validatePrice(BigDecimal price) {
         if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
@@ -61,6 +157,8 @@ public class OrderValidationHelper {
         }
     }
 
+    // ========== ВАЛИДАЦИЯ МОДИФИКАЦИИ ЗАКАЗА ==========
+
     public void validateOrderModifiable(Order order, OrderStatus... allowedStatuses) {
         for (OrderStatus allowed : allowedStatuses) {
             if (order.getStatus() == allowed) {
@@ -80,27 +178,7 @@ public class OrderValidationHelper {
         }
     }
 
-    public void validateStatusTransition(Order order, OrderStatus newStatus) {
-        OrderStatus currentStatus = order.getStatus();
-
-        boolean isValid = switch (currentStatus) {
-            case PENDING -> newStatus == OrderStatus.PAID || newStatus == OrderStatus.CANCELLED;
-            case PAID -> newStatus == OrderStatus.PROCESSING || newStatus == OrderStatus.CANCELLED || newStatus == OrderStatus.REFUNDED;
-            case PROCESSING -> newStatus == OrderStatus.SHIPPED || newStatus == OrderStatus.CANCELLED;
-            case SHIPPED -> newStatus == OrderStatus.DELIVERED;
-            case DELIVERED -> newStatus == OrderStatus.COMPLETED || newStatus == OrderStatus.REFUNDED;
-            default -> false;
-        };
-
-        if (!isValid) {
-            log.warn(messageService.get(
-                    "manager.order.log.invalid.status.transition",
-                    currentStatus,
-                    newStatus
-            ));
-            throw new InvalidStatusTransitionException(currentStatus, newStatus);
-        }
-    }
+    // ========== ВАЛИДАЦИЯ НАЛИЧИЯ ТОВАРА ==========
 
     public void validateProductAvailability(Product product, int requestedQuantity) {
         if (product.getQuantityInStock() < requestedQuantity) {

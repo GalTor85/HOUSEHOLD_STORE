@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,6 +22,7 @@ import ru.galtor85.household_store.service.*;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -41,6 +43,7 @@ public class AdminRestController {
     private final UserToEntity userToEntity;
     private final UserMapper userMapper;
     private final MessageService messageService;
+    private final RollbackService rollbackService;
 
     private SecurityUser getCurrentSecurityUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -237,6 +240,55 @@ public class AdminRestController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("admin-rest-controller.stats.fetched"),
                 responseStats));
+    }
+
+    @GetMapping("/rollback-requests/pending")
+    @Operation(summary = "Get pending rollback requests")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Page<RollbackApprovalDto>>> getPendingRollbacks(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        Page<RollbackApprovalDto> approvals = rollbackService.getPendingRollbacks(page, size, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("admin.rollback.pending.fetched"),
+                approvals));
+    }
+
+    @PutMapping("/rollback-requests/{approvalId}/approve")
+    @Operation(summary = "Approve rollback request")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<RollbackApprovalDto>> approveRollback(
+            @PathVariable Long approvalId,
+            @RequestParam String comments,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User admin = getCurrentAdmin();
+        RollbackApprovalDto approval = rollbackService.approveRollback(
+                approvalId, comments, admin.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("admin.rollback.approved"),
+                approval));
+    }
+
+    @PutMapping("/rollback-requests/{approvalId}/reject")
+    @Operation(summary = "Reject rollback request")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<RollbackApprovalDto>> rejectRollback(
+            @PathVariable Long approvalId,
+            @RequestParam String comments,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User admin = getCurrentAdmin();
+        RollbackApprovalDto approval = rollbackService.rejectRollback(
+                approvalId, comments, admin.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("admin.rollback.rejected"),
+                approval));
     }
 
     private boolean hasSearchCriteria(String mobileNumber, String email,

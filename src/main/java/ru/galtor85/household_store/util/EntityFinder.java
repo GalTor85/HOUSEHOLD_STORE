@@ -86,4 +86,23 @@ public class EntityFinder {
                     return new ProductNotFromSupplierException(productId, supplierId);
                 });
     }
+
+    public Order findCustomerOrderById(Long orderId) {
+        Order order = findOrderById(orderId);
+        if (order.getOrderType() != OrderType.RETAIL && order.getOrderType() != OrderType.WHOLESALE) {
+            log.error(messageService.get("manager.order.log.not.customer.order", orderId));
+            throw new InvalidOrderTypeException(orderId, "RETAIL or WHOLESALE");
+        }
+        return order;
+    }
+
+    public OrderItem findOrderItem(Order order, Long itemId) {
+        return order.getItems().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.error(messageService.get("manager.order.log.item.not.found", itemId));
+                    return new OrderItemNotFoundException(itemId);
+                });
+    }
 }

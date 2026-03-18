@@ -16,6 +16,7 @@ import ru.galtor85.household_store.advice.exception.*;
 import ru.galtor85.household_store.dto.ApiResponse;
 import ru.galtor85.household_store.service.MessageService;
 
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
@@ -638,12 +639,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SupplierNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleSupplierNotFound(
             SupplierNotFoundException e, Locale locale) {
+        if (e.getSupplierId() != null) {
 
         String message = messageService.get("manager.supplier.error.not.found", e.getSupplierId());
         log.error("SupplierNotFoundException: {}", message);
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(message));
+    } else {
+        String message = messageService.get("manager.suppliers.error.not.found");
+        log.error("SupplierNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
     }
 
     @ExceptionHandler(SupplierInactiveException.class)
@@ -895,6 +904,292 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
+    // ========== WAREHOUSE EXCEPTIONS ==========
+
+    @ExceptionHandler(WarehouseNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleWarehouseNotFound(
+            WarehouseNotFoundException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message;
+        if (e.getWarehouseId() != null) {
+            message = messageService.get("warehouse.error.not.found.id", e.getWarehouseId());
+        } else if (e.getWarehouseCode() != null) {
+            message = messageService.get("warehouse.error.not.found.code", e.getWarehouseCode());
+        } else {
+            message = messageService.get("warehouse.error.not.found");
+        }
+
+        log.error("WarehouseNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(WarehouseAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleWarehouseAlreadyExists(
+            WarehouseAlreadyExistsException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "warehouse.error.already.exists",
+                e.getField(),
+                e.getValue()
+        );
+
+        log.error("WarehouseAlreadyExistsException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+// ========== CELL EXCEPTIONS ==========
+
+    @ExceptionHandler(CellNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCellNotFound(
+            CellNotFoundException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message;
+        if (e.getCellId() != null) {
+            message = messageService.get("cell.error.not.found.id", e.getCellId());
+        } else  if (e.getCellCode() != null && e.getWarehouseId() != null) {
+            message = messageService.get("cell.error.not.found.code",
+                    e.getCellCode(), e.getWarehouseId());
+        } else {
+            message = messageService.get("cells.error.not.found");
+        }
+
+        log.error("CellNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(CellAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCellAlreadyExists(
+            CellAlreadyExistsException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "cell.error.already.exists",
+                e.getCellCode(),
+                e.getWarehouseId()
+        );
+
+        log.error("CellAlreadyExistsException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(CellAlreadyOccupiedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCellAlreadyOccupied(
+            CellAlreadyOccupiedException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message;
+        if (e.getCellId() != null) {
+            message = messageService.get(
+                    "cell.error.already.occupied.id",
+                    e.getCellId(),
+                    e.getCurrentProductId()
+            );
+        } else {
+            message = messageService.get(
+                    "cell.error.already.occupied.code",
+                    e.getCellCode(),
+                    e.getCurrentProductId()
+            );
+        }
+
+        log.error("CellAlreadyOccupiedException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(CellAlreadyEmptyException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCellAlreadyEmpty(
+            CellAlreadyEmptyException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message;
+        if (e.getCellId() != null) {
+            message = messageService.get("cell.error.already.empty.id", e.getCellId());
+        } else {
+            message = messageService.get("cell.error.already.empty.code", e.getCellCode());
+        }
+
+        log.warn("CellAlreadyEmptyException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InsufficientCellCapacityException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInsufficientCellCapacity(
+            InsufficientCellCapacityException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message;
+        if (e.getCellId() != null) {
+            message = messageService.get(
+                    "cell.error.insufficient.capacity.id",
+                    e.getCellId(),
+                    e.getAvailableQuantity(),
+                    e.getRequestedQuantity()
+            );
+        } else {
+            message = messageService.get(
+                    "cell.error.insufficient.capacity.code",
+                    e.getCellCode(),
+                    e.getAvailableQuantity(),
+                    e.getRequestedQuantity()
+            );
+        }
+
+        log.error("InsufficientCellCapacityException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(IncompatibleCellTypeException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIncompatibleCellType(
+            IncompatibleCellTypeException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message;
+        if (e.getCellId() != null) {
+            message = messageService.get(
+                    "cell.error.incompatible.type.id",
+                    e.getCellId(),
+                    e.getCellType(),
+                    e.getRequiredType()
+            );
+        } else {
+            message = messageService.get(
+                    "cell.error.incompatible.type.code",
+                    e.getCellCode(),
+                    e.getCellType(),
+                    e.getRequiredType()
+            );
+        }
+
+        log.error("IncompatibleCellTypeException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(CellWeightLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCellWeightLimitExceeded(
+            CellWeightLimitExceededException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "cell.error.weight.limit.exceeded",
+                e.getCellId(),
+                e.getMaxWeight(),
+                e.getRequestedWeight()
+        );
+
+        log.error("CellWeightLimitExceededException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(CellVolumeLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCellVolumeLimitExceeded(
+            CellVolumeLimitExceededException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "cell.error.volume.limit.exceeded",
+                e.getCellId(),
+                e.getMaxVolume(),
+                e.getRequestedVolume()
+        );
+
+        log.error("CellVolumeLimitExceededException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+// ========== STOCK MOVEMENT EXCEPTIONS ==========
+
+    @ExceptionHandler(StockMovementNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleStockMovementNotFound(
+            StockMovementNotFoundException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "movement.error.not.found",
+                e.getMovementId()
+        );
+
+        log.error("StockMovementNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvalidStockMovementException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidStockMovement(
+            InvalidStockMovementException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "movement.error.invalid",
+                e.getReason(),
+                e.getProductId()
+        );
+
+        log.error("InvalidStockMovementException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(NoAvailableCellException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoAvailableCell(
+            NoAvailableCellException e, Locale locale) {
+
+        String message = messageService.get("cell.error.no.available",
+                e.getWarehouseId(), e.getRequiredType());
+        log.error("NoAvailableCellException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(NoSuitableCellException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoSuitableCell(
+            NoSuitableCellException e, Locale locale) {
+
+        String message = messageService.get("cell.error.no.suitable",
+                e.getWarehouseId(), e.getRequiredType(), e.getProductId());
+        log.error("NoSuitableCellException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
     // =========================================================================
     // БЛОК 14: СООБЩЕНИЯ И РЕСУРСЫ
     // =========================================================================
@@ -921,6 +1216,159 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(message));
+    }
+
+    // ========== ROLLBACK EXCEPTIONS ==========
+
+    @ExceptionHandler(RollbackAlreadyPendingException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRollbackAlreadyPending(
+            RollbackAlreadyPendingException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "error.rollback.already.pending",
+                e.getOrderId()
+        );
+
+        log.warn("RollbackAlreadyPendingException for order {}: {}",
+                e.getOrderId(), message);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(RollbackApprovalNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRollbackApprovalNotFound(
+            RollbackApprovalNotFoundException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "error.rollback.approval.not.found",
+                e.getApprovalId()
+        );
+
+        log.error("RollbackApprovalNotFoundException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(RollbackExecutionException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRollbackExecution(
+            RollbackExecutionException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "error.rollback.execution.failed",
+                e.getOrderId(),
+                e.getErrorDetails()
+        );
+
+        log.error("RollbackExecutionException for order {}: {}",
+                e.getOrderId(), e.getMessage(), e);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(RollbackFinalStatusException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRollbackFinalStatus(
+            RollbackFinalStatusException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String localizedStatus = messageService.get(
+                "order.status." + e.getCurrentStatus().name()
+        );
+
+        String message = messageService.get(
+                "error.rollback.final.status",
+                localizedStatus
+        );
+
+        log.warn("RollbackFinalStatusException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(RollbackAlreadyProcessedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRollbackAlreadyProcessed(
+            RollbackAlreadyProcessedException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get("error.rollback.already.processed");
+
+        log.warn("RollbackAlreadyProcessedException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(RollbackInvalidTransitionException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRollbackInvalidTransition(
+            RollbackInvalidTransitionException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String localizedCurrent = messageService.get(
+                "order.status." + e.getCurrentStatus().name()
+        );
+        String localizedTarget = messageService.get(
+                "order.status." + e.getTargetStatus().name()
+        );
+
+        String message = messageService.get(
+                "error.rollback.invalid.transition",
+                localizedCurrent,
+                localizedTarget
+        );
+
+        log.warn("RollbackInvalidTransitionException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(RollbackInvalidStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRollbackInvalidState(
+            RollbackInvalidStateException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "error.rollback.invalid.state",
+                e.getOrderId(),
+                messageService.get("order.status." + e.getCurrentStatus().name()),
+                e.getDetails()
+        );
+
+        log.warn("RollbackInvalidStateException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(RollbackTimeoutException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRollbackTimeout(
+            RollbackTimeoutException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "error.rollback.timeout",
+                e.getOrderId(),
+                e.getDeliveredAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
+        );
+
+        log.warn("RollbackTimeoutException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(message));
     }
 

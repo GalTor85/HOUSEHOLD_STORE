@@ -19,6 +19,8 @@ import ru.galtor85.household_store.advice.exception.CustomAuthenticationExceptio
 import ru.galtor85.household_store.advice.exception.WarehouseNotFoundException;
 import ru.galtor85.household_store.dto.*;
 import ru.galtor85.household_store.entity.User;
+import ru.galtor85.household_store.entity.Warehouse;
+import ru.galtor85.household_store.mapper.WarehouseMapper;
 import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.*;
 
@@ -26,6 +28,7 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 @SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
@@ -42,6 +45,11 @@ public class ManagerController {
     private final UserSearchService userSearchService;
     private final MessageService messageService;
     private final WarehouseService warehouseService;
+    private final RollbackService rollbackService;
+    private final CategoryWarehouseService categoryWarehouseService;
+    private final StockService stockService;
+    private final WarehouseMapper warehouseMapper;
+
 
     private SecurityUser getCurrentSecurityUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -430,6 +438,24 @@ public class ManagerController {
                 order));
     }
 
+    @PostMapping("/orders/{orderId}/rollback-request")
+    @Operation(summary = "Request order status rollback")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<RollbackApprovalDto>> requestRollback(
+            @PathVariable Long orderId,
+            @Valid @RequestBody RollbackRequest request,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        request.setOrderId(orderId); // Убеждаемся, что ID совпадает
+        RollbackApprovalDto approval = rollbackService.requestRollback(
+                request, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.rollback.requested"),
+                approval));
+    }
+
     // ========== SUPPLIER MANAGEMENT ==========
 
     @PostMapping("/suppliers")
@@ -686,5 +712,268 @@ public class ManagerController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.movements.fetched"),
                 movements));
+    }
+
+    @PostMapping("/categories/warehouse")
+    @Operation(summary = "Assign category to warehouse")
+    public ResponseEntity<ApiResponse<CategoryWarehouseDto>> assignCategoryToWarehouse(
+            @Valid @RequestBody CategoryWarehouseRequest request,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        CategoryWarehouseDto assignment = categoryWarehouseService.assignCategoryToWarehouse(
+                request, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.category.assigned"),
+                assignment));
+    }
+
+    @PutMapping("/categories/{category}/warehouse")
+    @Operation(summary = "Update category warehouse assignment")
+    public ResponseEntity<ApiResponse<CategoryWarehouseDto>> updateCategoryAssignment(
+            @PathVariable String category,
+            @Valid @RequestBody CategoryWarehouseRequest request,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        CategoryWarehouseDto assignment = categoryWarehouseService.updateCategoryAssignment(
+                category, request, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.category.updated"),
+                assignment));
+    }
+
+    @DeleteMapping("/categories/{category}/warehouse")
+    @Operation(summary = "Delete category warehouse assignment")
+    public ResponseEntity<ApiResponse<Void>> deleteCategoryAssignment(
+            @PathVariable String category,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        categoryWarehouseService.deleteCategoryAssignment(category, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.category.deleted"),
+                null));
+    }
+
+    @GetMapping("/categories/{category}/warehouse")
+    @Operation(summary = "Get category warehouse assignment")
+    public ResponseEntity<ApiResponse<CategoryWarehouseDto>> getCategoryAssignment(
+            @PathVariable String category,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        CategoryWarehouseDto assignment = categoryWarehouseService.getCategoryAssignment(category, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.category.fetched"),
+                assignment));
+    }
+
+    @GetMapping("/categories/warehouse/all")
+    @Operation(summary = "Get all category warehouse assignments")
+    public ResponseEntity<ApiResponse<List<CategoryWarehouseDto>>> getAllAssignments(
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        List<CategoryWarehouseDto> assignments = categoryWarehouseService.getAllAssignments(locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.categories.fetched"),
+                assignments));
+    }
+
+    @PostMapping("/categories/warehouse/bulk")
+    @Operation(summary = "Bulk assign categories to warehouse")
+    public ResponseEntity<ApiResponse<List<CategoryWarehouseDto>>> bulkAssignCategories(
+            @Valid @RequestBody BulkCategoryWarehouseRequest request,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        List<CategoryWarehouseDto> assignments = categoryWarehouseService.bulkAssignCategories(
+                request, manager.getId(), locale);
+
+        String message = assignments.size() == request.getCategories().size() ?
+                "manager.categories.bulk.assigned.all" :
+                "manager.categories.bulk.assigned.partial";
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get(message, assignments.size(), request.getCategories().size()),
+                assignments));
+    }
+
+    @GetMapping("/warehouses/{warehouseId}/categories")
+    @Operation(summary = "Get all categories assigned to warehouse")
+    public ResponseEntity<ApiResponse<CategoryWarehouseListDto>> getCategoriesByWarehouse(
+            @PathVariable Long warehouseId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        CategoryWarehouseListDto categories = categoryWarehouseService
+                .getCategoriesByWarehouse(warehouseId, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.warehouse.categories.fetched"),
+                categories));
+    }
+
+    @PutMapping("/categories/priority")
+    @Operation(summary = "Update priority for multiple categories")
+    public ResponseEntity<ApiResponse<Void>> updateCategoriesPriority(
+            @RequestParam List<String> categories,
+            @RequestParam Integer priority,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        categoryWarehouseService.updateCategoriesPriority(categories, priority, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.categories.priority.updated"),
+                null));
+    }
+
+    @DeleteMapping("/categories/bulk")
+    @Operation(summary = "Delete multiple category assignments")
+    public ResponseEntity<ApiResponse<Void>> deleteCategories(
+            @RequestParam List<String> categories,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        User manager = getCurrentManager();
+        categoryWarehouseService.deleteCategories(categories, manager.getId(), locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.categories.bulk.deleted"),
+                null));
+    }
+
+    @GetMapping("/warehouses/{warehouseId}/stock")
+    @Operation(summary = "Get stock by warehouse")
+    public ResponseEntity<ApiResponse<Page<ProductStockDto>>> getStockByWarehouse(
+            @PathVariable Long warehouseId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "productName") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        Page<ProductStockDto> stocks = stockService.getStockByWarehouse(
+                warehouseId, page, size, sortBy, sortDir, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.warehouse.stock.fetched"),
+                stocks));
+    }
+
+    @GetMapping("/products/{productId}/stock")
+    @Operation(summary = "Get product stock across all warehouses")
+    public ResponseEntity<ApiResponse<List<ProductStockDto>>> getProductStock(
+            @PathVariable Long productId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        List<ProductStockDto> stocks = stockService.getProductStockAcrossAllWarehouses(productId, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.product.stock.fetched"),
+                stocks));
+    }
+
+    @GetMapping("/warehouses/{warehouseId}/products/{productId}/stock")
+    @Operation(summary = "Get product stock at specific warehouse")
+    public ResponseEntity<ApiResponse<ProductStockDto>> getProductStockAtWarehouse(
+            @PathVariable Long warehouseId,
+            @PathVariable Long productId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        ProductStockDto stock = stockService.getProductStockAtWarehouse(productId, warehouseId, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.product.warehouse.stock.fetched"),
+                stock));
+    }
+
+    @GetMapping("/warehouses/stock/summary")
+    @Operation(summary = "Get stock summary for all warehouses")
+    public ResponseEntity<ApiResponse<List<WarehouseStockSummaryDto>>> getAllWarehousesSummary(
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        List<WarehouseStockSummaryDto> summaries = stockService.getAllWarehousesSummary(locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.all.warehouses.summary"),
+                summaries));
+    }
+
+    @GetMapping("/warehouses/{warehouseId}/stock/low")
+    @Operation(summary = "Get low stock items in warehouse")
+    public ResponseEntity<ApiResponse<List<ProductStockDto>>> getLowStockItems(
+            @PathVariable Long warehouseId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        List<ProductStockDto> lowStock = stockService.getLowStockItems(warehouseId, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.warehouse.low.stock"),
+                lowStock));
+    }
+
+    @GetMapping("/warehouses/{warehouseId}/stock/search")
+    @Operation(summary = "Search stock in warehouse")
+    public ResponseEntity<ApiResponse<Page<ProductStockDto>>> searchStock(
+            @PathVariable Long warehouseId,
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        Page<ProductStockDto> stocks = stockService.searchStockOnWarehouse(
+                warehouseId, query, page, size, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.warehouse.stock.search"),
+                stocks));
+    }
+
+    @GetMapping("/products/{productId}/stock/distribution")
+    @Operation(summary = "Get product stock distribution across warehouses")
+    public ResponseEntity<ApiResponse<ProductStockDistributionDto>> getProductStockDistribution(
+            @PathVariable Long productId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        ProductStockDistributionDto distribution =
+                stockService.getProductStockDistribution(productId, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.product.stock.distribution"),
+                distribution));
+    }
+
+    @GetMapping("/products/{productId}/stock/total")
+    @Operation(summary = "Get total stock for product across all warehouses")
+    public ResponseEntity<ApiResponse<Integer>> getTotalProductStock(
+            @PathVariable Long productId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        Integer total = stockService.getTotalStockForProduct(productId, locale);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.product.stock.total"),
+                total));
+    }
+
+    @GetMapping("/products/{productId}/warehouses")
+    @Operation(summary = "Find warehouses where product is stored")
+    public ResponseEntity<ApiResponse<List<WarehouseDto>>> findWarehousesWithProduct(
+            @PathVariable Long productId,
+            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+
+        List<Warehouse> warehouses = stockService.findWarehousesWithProduct(productId, locale);
+
+        List<WarehouseDto> warehouseDtos = warehouses.stream()
+                .map(warehouseMapper::toDto)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.product.warehouses.found"),
+                warehouseDtos));
     }
 }

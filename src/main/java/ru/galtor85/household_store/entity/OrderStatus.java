@@ -1,12 +1,19 @@
 package ru.galtor85.household_store.entity;
 
 public enum OrderStatus {
-    PENDING,        // Ожидает оплаты
+    // Общие статусы
+    PENDING,        // Ожидание
     PAID,           // Оплачен
     PROCESSING,     // В обработке
-    SHIPPED,        // Отправлен
     DELIVERED,      // Доставлен
     COMPLETED,      // Завершен
     CANCELLED,      // Отменен
-    REFUNDED        // Возвращен
+
+    // Статусы для заказов покупателей
+    SHIPPED,        // Отгружен
+    REFUNDED,       // Возврат денег
+    RETURNED,       // Товар возвращен
+
+    // Статусы для закупок
+    PARTIALLY_RECEIVED  // Частично получен
 }
