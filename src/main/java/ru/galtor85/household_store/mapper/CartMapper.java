@@ -10,8 +10,7 @@ import ru.galtor85.household_store.entity.CartItem;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Slf4j
 @Component
@@ -24,15 +23,17 @@ public class CartMapper {
     /**
      * Преобразование сущности в DTO
      */
-    public CartDto toDto(Cart cart, Locale locale) {
+    public CartDto toDto(Cart cart) {
         if (cart == null) {
             return null;
         }
 
         List<CartItemDto> itemDtos = cart.getItems() != null ?
-                cartItemMapper.toDtoList(cart.getItems(), locale) : null;
+                cartItemMapper.toDtoList(cart.getItems()) : null;
 
         String localizedStatus = messageService.get("cart.status." + cart.getStatus().name());
+
+        String localizedCategory = determineCartCategory(cart);
 
         return CartDto.builder()
                 .id(cart.getId())
@@ -40,11 +41,20 @@ public class CartMapper {
                 .status(cart.getStatus())
                 .localizedStatus(localizedStatus)
                 .items(itemDtos)
+                .category(localizedCategory)
                 .totalAmount(cart.getTotalAmount())
                 .itemsCount(cart.getItemsCount())
                 .createdAt(cart.getCreatedAt())
                 .updatedAt(cart.getUpdatedAt())
                 .expiresAt(cart.getExpiresAt())
                 .build();
+    }
+
+    private String determineCartCategory(Cart cart) {
+        return cart.getItems().stream()
+                .map(CartItem::getCategory)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
     }
 }

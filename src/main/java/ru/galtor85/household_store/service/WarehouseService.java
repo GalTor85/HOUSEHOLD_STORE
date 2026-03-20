@@ -8,20 +8,23 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.advice.exception.*;
-import ru.galtor85.household_store.builder.StorageCellBuilder;
+import ru.galtor85.household_store.advice.exception.CellNotFoundException;
+import ru.galtor85.household_store.advice.exception.WarehouseNotFoundException;
 import ru.galtor85.household_store.dto.*;
-import ru.galtor85.household_store.entity.*;
+import ru.galtor85.household_store.entity.CellType;
+import ru.galtor85.household_store.entity.Product;
+import ru.galtor85.household_store.entity.StorageCell;
+import ru.galtor85.household_store.entity.Warehouse;
 import ru.galtor85.household_store.mapper.StorageCellMapper;
 import ru.galtor85.household_store.mapper.WarehouseMapper;
-import ru.galtor85.household_store.processor.CellAssignmentProcessor;
-import ru.galtor85.household_store.repository.*;
-import ru.galtor85.household_store.util.CellValidationHelper;
-import ru.galtor85.household_store.util.ProductValidator;
+import ru.galtor85.household_store.processor.*;
+import ru.galtor85.household_store.repository.StorageCellRepository;
+import ru.galtor85.household_store.repository.WarehouseRepository;
+import ru.galtor85.household_store.validator.CellValidationHelper;
+import ru.galtor85.household_store.validator.ProductValidator;
+import ru.galtor85.household_store.validator.WarehouseValidator;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -34,66 +37,45 @@ public class WarehouseService {
     private final WarehouseMapper warehouseMapper;
     private final StorageCellMapper cellMapper;
     private final MessageService messageService;
-    private final StockMovementRepository stockMovementRepository;
-    private final ProductRepository productRepository;
-    private final UserRepository userRepository;
 
-    // Утилиты
+    // Валидаторы
+    private final WarehouseValidator warehouseValidator;
     private final ProductValidator productValidator;
     private final CellValidationHelper cellValidationHelper;
 
-    // Билдеры
-    private final StorageCellBuilder cellBuilder;
-
     // Процессоры
+    private final WarehouseManagementProcessor warehouseProcessor;
+    private final CellManagementProcessor cellProcessor;
     private final CellAssignmentProcessor assignmentProcessor;
+    private final WarehouseStockMovementProcessor movementProcessor;
 
     // ========== WAREHOUSE MANAGEMENT ==========
 
     @Transactional
-    public WarehouseDto createWarehouse(WarehouseCreateRequest request, Long createdBy, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
+    public WarehouseDto createWarehouse(WarehouseCreateRequest request, Long createdBy) {
+        // Валидация уникальности
+        warehouseValidator.validateWarehouseCodeUnique(request.getCode());
 
-        // Проверка уникальности кода
-        if (warehouseRepository.existsByCode(request.getCode())) {
-            log.warn(messageService.get("warehouse.log.code.exists", request.getCode()));
-            throw new WarehouseAlreadyExistsException("code", request.getCode());
-        }
-
-        // Генерация штрих-кода, если не указан
+        // Генерация или проверка штрих-кода
         if (request.getBarcode() == null || request.getBarcode().isEmpty()) {
-            request.setBarcode(generateWarehouseBarcode(request.getCode()));
+            request.setBarcode(warehouseProcessor.generateWarehouseBarcode(request.getCode()));
             request.setBarcodeFormat("CODE_128");
         } else {
-            // Проверка уникальности штрих-кода
-            if (warehouseRepository.existsByBarcode(request.getBarcode())) {
-                log.warn(messageService.get("warehouse.log.barcode.exists", request.getBarcode()));
-                throw new WarehouseAlreadyExistsException("barcode", request.getBarcode());
-            }
+            warehouseValidator.validateWarehouseBarcodeUnique(request.getBarcode());
         }
 
-        Warehouse warehouse = warehouseMapper.toEntity(request, createdBy);
-        Warehouse savedWarehouse = warehouseRepository.save(warehouse);
-
-        log.info(messageService.get("warehouse.log.created",
-                savedWarehouse.getCode(), savedWarehouse.getId(), createdBy));
-
-        return warehouseMapper.toDto(savedWarehouse);
+        // Создание склада
+        return warehouseProcessor.createWarehouse(request, createdBy);
     }
 
     @Transactional(readOnly = true)
-    public Page<WarehouseDto> getWarehouses(String search, int page, int size, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public Page<WarehouseDto> getWarehouses(String search, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("code").ascending());
 
         Page<Warehouse> warehouses;
         if (search != null && !search.isEmpty()) {
             warehouses = warehouseRepository.searchWarehouses(search, pageable);
-            if (warehouses.isEmpty()) {
-                log.warn(messageService.get("warehouse.log.not.found", search));
-                throw new WarehouseNotFoundException(search);
-            }
+            warehouseValidator.validateWarehouseSearchResult(!warehouses.isEmpty(), search);
         } else {
             warehouses = warehouseRepository.findAll(pageable);
             if (warehouses.isEmpty()){
@@ -110,40 +92,16 @@ public class WarehouseService {
 
     @Transactional
     public StorageCellDto addCell(Long warehouseId, StorageCellCreateRequest request,
-                                  Long createdBy, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        Warehouse warehouse = findWarehouseById(warehouseId);
-
-        // Проверка уникальности кода ячейки в рамках склада
-        if (storageCellRepository.findByCodeAndWarehouseId(request.getCode(), warehouseId).isPresent()) {
-            log.warn(messageService.get("cell.log.code.exists", request.getCode(), warehouseId));
-            throw new CellAlreadyExistsException(request.getCode(), warehouseId);
-        }
-
-        // Генерация штрих-кода для ячейки
-        String cellBarcode = generateCellBarcode(warehouse.getCode(), request.getCode());
-
-        StorageCell cell = cellBuilder.buildFromRequest(request, warehouse, cellBarcode);
-        StorageCell savedCell = storageCellRepository.save(cell);
-
-        // Обновляем использованную емкость склада
-        warehouse.setUsedCapacity(warehouse.getUsedCapacity() + 1);
-        warehouseRepository.save(warehouse);
-
-        log.info(messageService.get("cell.log.created",
-                savedCell.getCode(), warehouseId, createdBy));
-
-        return cellMapper.toDto(savedCell);
+                                  Long createdBy) {
+        Warehouse warehouse = warehouseValidator.validateWarehouseExists(warehouseId);
+        return cellProcessor.addCell(warehouse, request, createdBy);
     }
 
     @Transactional
     public StorageCellDto assignProductToCell(Long cellId, Long productId,
-                                              int quantity, Long assignedBy, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+                                              int quantity, Long assignedBy) {
         // Находим ячейку
-        StorageCell cell = findCellById(cellId);
+        StorageCell cell = cellProcessor.findCellById(cellId);
 
         // Находим и валидируем продукт
         Product product = productValidator.findAndValidateProduct(productId, quantity);
@@ -161,31 +119,20 @@ public class WarehouseService {
     }
 
     @Transactional
-    public StorageCellDto clearCell(Long cellId, Long clearedBy, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        StorageCell cell = findCellById(cellId);
+    public StorageCellDto clearCell(Long cellId, Long clearedBy) {
+        StorageCell cell = cellProcessor.findCellById(cellId);
 
         if (!cell.getIsOccupied()) {
             log.warn(messageService.get("cell.log.already.empty", cellId));
             return cellMapper.toDto(cell);
         }
 
-        Long productId = cell.getCurrentProductId();
-        int quantity = cell.getCurrentQuantity();
-
-        cellBuilder.clearCell(cell);
-        StorageCell updatedCell = storageCellRepository.save(cell);
-
-        log.info(messageService.get("cell.log.cleared", cellId, productId, quantity, clearedBy));
-
+        StorageCell updatedCell = cellProcessor.clearCell(cell, clearedBy);
         return cellMapper.toDto(updatedCell);
     }
 
     @Transactional(readOnly = true)
-    public List<StorageCellDto> getAvailableCells(Long warehouseId, CellType cellType, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public List<StorageCellDto> getAvailableCells(Long warehouseId, CellType cellType) {
         List<StorageCell> cells = storageCellRepository
                 .findAvailableCellsByType(warehouseId, cellType);
 
@@ -197,41 +144,14 @@ public class WarehouseService {
                 .collect(Collectors.toList());
     }
 
-    // ========== PRIVATE METHODS ==========
-
-    private Warehouse findWarehouseById(Long id) {
-        return warehouseRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.error(messageService.get("warehouse.log.not.found", id));
-                    return new WarehouseNotFoundException(id);
-                });
-    }
-
-    private StorageCell findCellById(Long id) {
-        return storageCellRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.error(messageService.get("cell.log.not.found", id));
-                    return new CellNotFoundException(id);
-                });
-    }
-
-    private String generateWarehouseBarcode(String warehouseCode) {
-        return "WH-" + warehouseCode + "-" + UUID.randomUUID().toString().substring(0, 8);
-    }
-
-    private String generateCellBarcode(String warehouseCode, String cellCode) {
-        return "CELL-" + warehouseCode + "-" + cellCode;
-    }
-
-    // В WarehouseService.java добавьте:
-
-    public StorageCellDto getCellById(Long cellId, Locale locale) {
-        StorageCell cell = storageCellRepository.findById(cellId)
-                .orElseThrow(() -> new CellNotFoundException(cellId));
+    public StorageCellDto getCellById(Long cellId) {
+        StorageCell cell = cellProcessor.findCellById(cellId);
         return cellMapper.toDto(cell);
     }
 
-    public List<StorageCellDto> getWarehouseCells(Long warehouseId, Locale locale) {
+    public List<StorageCellDto> getWarehouseCells(Long warehouseId) {
+        warehouseValidator.validateWarehouseExists(warehouseId);
+
         List<StorageCell> cells = storageCellRepository.findByWarehouseId(warehouseId);
 
         if (cells.isEmpty()) {
@@ -244,88 +164,15 @@ public class WarehouseService {
                 .collect(Collectors.toList());
     }
 
+    // ========== STOCK MOVEMENTS ==========
+
     @Transactional(readOnly = true)
-    public List<StockMovementDto> getProductMovements(Long productId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        List<StockMovement> movements = stockMovementRepository.findByProductId(productId);
-
-        log.debug(messageService.get("movement.log.fetched.product",
-                movements.size(), productId));
-
-        Locale finalLocale = locale;
-        return movements.stream()
-                .map(movement -> convertToMovementDto(movement, finalLocale))
-                .collect(Collectors.toList());
+    public List<StockMovementDto> getProductMovements(Long productId) {
+        return movementProcessor.getProductMovements(productId);
     }
 
     @Transactional(readOnly = true)
-    public List<StockMovementDto> getCellMovements(Long cellId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        List<StockMovement> movements = stockMovementRepository
-                .findByFromCellIdOrToCellId(cellId, cellId);
-
-        log.debug(messageService.get("movement.log.fetched.cell",
-                movements.size(), cellId));
-
-        Locale finalLocale = locale;
-        return movements.stream()
-                .map(movement -> convertToMovementDto(movement, finalLocale))
-                .collect(Collectors.toList());
-    }
-
-    private StockMovementDto convertToMovementDto(StockMovement movement, Locale locale) {
-        Product product = productRepository.findById(movement.getProductId()).orElse(null);
-
-        String fromCellCode = null;
-        String fromWarehouseName = null;
-        if (movement.getFromCellId() != null) {
-            StorageCell fromCell = storageCellRepository.findById(movement.getFromCellId()).orElse(null);
-            if (fromCell != null) {
-                fromCellCode = fromCell.getCode();
-                fromWarehouseName = fromCell.getWarehouse().getName();
-            }
-        }
-
-        String toCellCode = null;
-        String toWarehouseName = null;
-        if (movement.getToCellId() != null) {
-            StorageCell toCell = storageCellRepository.findById(movement.getToCellId()).orElse(null);
-            if (toCell != null) {
-                toCellCode = toCell.getCode();
-                toWarehouseName = toCell.getWarehouse().getName();
-            }
-        }
-
-        String performedByName = null;
-        if (movement.getPerformedBy() != null) {
-            User user = userRepository.findById(movement.getPerformedBy()).orElse(null);
-            performedByName = user != null ? user.getEmail() : null;
-        }
-
-        String localizedType = messageService.get("movement.type." + movement.getMovementType().name());
-
-        return StockMovementDto.builder()
-                .id(movement.getId())
-                .productId(movement.getProductId())
-                .productName(product != null ? product.getName() : null)
-                .productSku(product != null ? product.getSku() : null)
-                .fromCellId(movement.getFromCellId())
-                .fromCellCode(fromCellCode)
-                .fromWarehouseName(fromWarehouseName)
-                .toCellId(movement.getToCellId())
-                .toCellCode(toCellCode)
-                .toWarehouseName(toWarehouseName)
-                .quantity(movement.getQuantity())
-                .movementType(movement.getMovementType())
-                .localizedMovementType(localizedType)
-                .referenceType(movement.getReferenceType())
-                .referenceId(movement.getReferenceId())
-                .performedBy(movement.getPerformedBy())
-                .performedByName(performedByName)
-                .notes(movement.getNotes())
-                .createdAt(movement.getCreatedAt())
-                .build();
+    public List<StockMovementDto> getCellMovements(Long cellId) {
+        return movementProcessor.getCellMovements(cellId);
     }
 }

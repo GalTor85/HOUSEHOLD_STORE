@@ -14,7 +14,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Locale;
 
 @Slf4j
 @Service
@@ -28,9 +27,7 @@ public class SystemService {
 
     private final Instant startupTime = Instant.now();
 
-    public String getUptime(Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public String getUptime() {
         try {
             Duration uptime = Duration.between(startupTime, Instant.now());
 
@@ -52,9 +49,7 @@ public class SystemService {
         }
     }
 
-    public String checkDatabase(Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public String checkDatabase() {
         try (Connection connection = dataSource.getConnection()) {
             if (connection.isValid(2)) {
                 log.debug(messageService.get("system-service.log.system.database.connected"));
@@ -75,9 +70,7 @@ public class SystemService {
         }
     }
 
-    public String checkDiskSpace(Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public String checkDiskSpace() {
         try {
             // TODO: Реализовать реальную проверку дискового пространства
             log.debug(messageService.get("system-service.log.system.disk.ok"));
@@ -89,9 +82,7 @@ public class SystemService {
         }
     }
 
-    public String getSpringVersion(Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public String getSpringVersion() {
         try {
             String version = buildProperties.getVersion();
             log.debug(messageService.get("system-service.log.system.spring.version", version));
@@ -103,9 +94,7 @@ public class SystemService {
         }
     }
 
-    public String getEnvironment(Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public String getEnvironment() {
         try {
             String[] activeProfiles = environment.getActiveProfiles();
             String env = activeProfiles.length > 0 ?
@@ -120,9 +109,7 @@ public class SystemService {
         }
     }
 
-    public String getServerInfo(Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public String getServerInfo() {
         try {
             String serverInfo = ManagementFactory.getRuntimeMXBean().getName();
             log.debug(messageService.get("system-service.log.system.server.info", serverInfo));
@@ -132,30 +119,5 @@ public class SystemService {
             throw new SystemInfoException("serverInfo",
                     messageService.get("system-service.error.server.info"), e);
         }
-    }
-
-    // Перегруженные методы для обратной совместимости (без Locale)
-    public String getUptime() {
-        return getUptime(Locale.getDefault());
-    }
-
-    public String checkDatabase() {
-        return checkDatabase(Locale.getDefault());
-    }
-
-    public String checkDiskSpace() {
-        return checkDiskSpace(Locale.getDefault());
-    }
-
-    public String getSpringVersion() {
-        return getSpringVersion(Locale.getDefault());
-    }
-
-    public String getEnvironment() {
-        return getEnvironment(Locale.getDefault());
-    }
-
-    public String getServerInfo() {
-        return getServerInfo(Locale.getDefault());
     }
 }

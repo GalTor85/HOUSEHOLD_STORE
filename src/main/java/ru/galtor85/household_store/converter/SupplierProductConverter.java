@@ -9,8 +9,6 @@ import ru.galtor85.household_store.entity.SupplierProduct;
 import ru.galtor85.household_store.repository.ProductRepository;
 import ru.galtor85.household_store.repository.SupplierRepository;
 
-import java.util.Locale;
-
 @Component
 @RequiredArgsConstructor
 public class SupplierProductConverter {
@@ -19,7 +17,7 @@ public class SupplierProductConverter {
     private final SupplierRepository supplierRepository;
 
     public SupplierProductDto convertToDto(SupplierProduct sp, Long productId,
-                                           Long supplierId, Locale locale) {
+                                           Long supplierId) {
         Product product = productRepository.findById(productId).orElse(null);
         Supplier supplier = supplierRepository.findById(supplierId).orElse(null);
 

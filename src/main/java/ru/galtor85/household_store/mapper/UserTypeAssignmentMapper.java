@@ -10,7 +10,6 @@ import ru.galtor85.household_store.service.MessageService;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -23,12 +22,10 @@ public class UserTypeAssignmentMapper {
     /**
      * Преобразование сущности в DTO с локализацией
      */
-    public UserTypeAssignmentDto toDto(UserTypeAssignment assignment, Locale locale) {
+    public UserTypeAssignmentDto toDto(UserTypeAssignment assignment) {
         if (assignment == null) {
             return null;
         }
-
-        Locale finalLocale = locale != null ? locale : Locale.getDefault();
 
         String localizedName = messageService.get(
                 "usertype." + assignment.getUserType().name().toLowerCase()
@@ -52,15 +49,13 @@ public class UserTypeAssignmentMapper {
     /**
      * Преобразование списка сущностей в список DTO
      */
-    public List<UserTypeAssignmentDto> toDtoList(List<UserTypeAssignment> assignments, Locale locale) {
+    public List<UserTypeAssignmentDto> toDtoList(List<UserTypeAssignment> assignments) {
         if (assignments == null) {
             return null;
         }
 
-        Locale finalLocale = locale != null ? locale : Locale.getDefault();
-
         return assignments.stream()
-                .map(assignment -> toDto(assignment, finalLocale))
+                .map(this::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -120,7 +115,6 @@ public class UserTypeAssignmentMapper {
         if (dto.getValidTo() != null) {
             assignment.setValidTo(dto.getValidTo());
         }
-        // active не обновляем через этот метод — для этого есть отдельные методы
     }
 
     /**

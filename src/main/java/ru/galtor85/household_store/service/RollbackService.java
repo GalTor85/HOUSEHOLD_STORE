@@ -8,17 +8,19 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.advice.exception.*;
+import ru.galtor85.household_store.advice.exception.OrderNotFoundException;
+import ru.galtor85.household_store.advice.exception.RollbackApprovalNotFoundException;
 import ru.galtor85.household_store.dto.RollbackApprovalDto;
 import ru.galtor85.household_store.dto.RollbackRequest;
-import ru.galtor85.household_store.entity.*;
+import ru.galtor85.household_store.entity.ApprovalStatus;
+import ru.galtor85.household_store.entity.Order;
+import ru.galtor85.household_store.entity.OrderStatus;
+import ru.galtor85.household_store.entity.RollbackApproval;
 import ru.galtor85.household_store.mapper.RollbackApprovalMapper;
+import ru.galtor85.household_store.processor.*;
 import ru.galtor85.household_store.repository.OrderRepository;
 import ru.galtor85.household_store.repository.RollbackApprovalRepository;
-import ru.galtor85.household_store.repository.UserRepository;
-
-import java.time.LocalDateTime;
-import java.util.Locale;
+import ru.galtor85.household_store.validator.RollbackValidator;
 
 @Slf4j
 @Service
@@ -27,177 +29,117 @@ public class RollbackService {
 
     private final RollbackApprovalRepository approvalRepository;
     private final OrderRepository orderRepository;
-    private final ManagerOrderService orderService;
     private final RollbackApprovalMapper approvalMapper;
     private final MessageService messageService;
 
+    // Валидаторы
+    private final RollbackValidator validator;
+
+    // Процессоры
+    private final RollbackTargetStatusProcessor targetStatusProcessor;
+    private final RollbackRequestProcessor requestProcessor;
+    private final RollbackDecisionProcessor decisionProcessor;
+    private final RollbackExecutionProcessor executionProcessor;
 
     // ========== МЕНЕДЖЕР: запрос на откат ==========
 
     @Transactional
-    public RollbackApprovalDto requestRollback(RollbackRequest request, Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
+    public RollbackApprovalDto requestRollback(RollbackRequest request, Long managerId) {
+        log.info(messageService.get("rollback.request.start", request.getOrderId(), managerId));
 
         // Проверяем существование заказа
-        Order order = orderRepository.findById(request.getOrderId())
-                .orElseThrow(() -> {
-                    log.error(messageService.get("manager.order.log.not.found", request.getOrderId()));
-                    return new OrderNotFoundException(request.getOrderId());
-                });
+        Order order = findOrderById(request.getOrderId());
 
         // Проверяем, нет ли уже активного запроса
-        if (approvalRepository.existsByOrderIdAndApprovalStatus(
-                request.getOrderId(), ApprovalStatus.PENDING)) {
-            log.warn(messageService.get("rollback.log.already.pending", request.getOrderId()));
-            throw new RollbackAlreadyPendingException(request.getOrderId());
-        }
+        validator.validateNoPendingRollback(request.getOrderId());
 
         // Проверяем, можно ли откатить этот статус
-        validateRollbackPossibility(order, locale);
+        validator.validateRollbackPossibility(order);
 
         // Определяем целевой статус
-        OrderStatus targetStatus = determineTargetStatus(order);
+        OrderStatus targetStatus = targetStatusProcessor.determineTargetStatus(order);
 
         // Создаем запрос
-        RollbackApproval approval = RollbackApproval.builder()
-                .orderId(request.getOrderId())
-                .currentStatus(order.getStatus().name())
-                .targetStatus(targetStatus.name())
-                .requestedById(managerId)
-                .reason(request.getReason())
-                .comments(request.getComments())
-                .approvalStatus(ApprovalStatus.PENDING)
-                .build();
+        RollbackApproval saved = requestProcessor.createRequest(order, request, managerId, targetStatus);
 
-        RollbackApproval saved = approvalRepository.save(approval);
+        log.info(messageService.get("rollback.request.complete", saved.getId(), request.getOrderId()));
 
-        log.info(messageService.get("rollback.log.requested",
-                request.getOrderId(), managerId));
-
-        return approvalMapper.toDto(saved, locale);
+        return approvalMapper.toDto(saved);
     }
 
     // ========== АДМИНИСТРАТОР: просмотр запросов ==========
 
     @Transactional(readOnly = true)
-    public Page<RollbackApprovalDto> getPendingRollbacks(int page, int size, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public Page<RollbackApprovalDto> getPendingRollbacks(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("requestedAt").descending());
 
         Page<RollbackApproval> approvals = approvalRepository
                 .findByApprovalStatus(ApprovalStatus.PENDING, pageable);
 
-        Locale finalLocale = locale;
-        return approvals.map(approval -> approvalMapper.toDto(approval, finalLocale));
+        log.debug(messageService.get("rollback.pending.fetched", approvals.getTotalElements()));
+
+        return approvals.map(approvalMapper::toDto);
     }
 
-    // ========== АДМИНИСТРАТОР: одобрение/отклонение ==========
+    // ========== АДМИНИСТРАТОР: одобрение ==========
 
     @Transactional
-    public RollbackApprovalDto approveRollback(Long approvalId, String adminComments,
-                                               Long adminId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
+    public RollbackApprovalDto approveRollback(Long approvalId, String adminComments, Long adminId) {
+        log.info(messageService.get("rollback.approve.start", approvalId, adminId));
 
-        RollbackApproval approval = approvalRepository.findById(approvalId)
+        // Находим запрос
+        RollbackApproval approval = findApprovalById(approvalId);
+
+        // Проверяем, что запрос еще в обработке
+        validator.validateApprovalPending(approval);
+
+        // Выполняем откат
+        Order order = findOrderById(approval.getOrderId());
+        executionProcessor.executeRollback(order, approval.getReason(), adminId);
+
+        // Обновляем статус запроса
+        RollbackApproval updated = decisionProcessor.approve(approval, adminComments, adminId);
+
+        log.info(messageService.get("rollback.approve.complete", approvalId, order.getId()));
+
+        return approvalMapper.toDto(updated);
+    }
+
+    // ========== АДМИНИСТРАТОР: отклонение ==========
+
+    @Transactional
+    public RollbackApprovalDto rejectRollback(Long approvalId, String adminComments, Long adminId) {
+        log.info(messageService.get("rollback.reject.start", approvalId, adminId));
+
+        // Находим запрос
+        RollbackApproval approval = findApprovalById(approvalId);
+
+        // Проверяем, что запрос еще в обработке
+        validator.validateApprovalPending(approval);
+
+        // Отклоняем запрос
+        RollbackApproval updated = decisionProcessor.reject(approval, adminComments, adminId);
+
+        log.info(messageService.get("rollback.reject.complete", approvalId));
+
+        return approvalMapper.toDto(updated);
+    }
+
+    // ========== PRIVATE HELPER METHODS ==========
+
+    private Order findOrderById(Long orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> {
+                    log.error(messageService.get("manager.order.log.not.found", orderId));
+                    return new OrderNotFoundException(orderId);
+                });
+    }
+
+    private RollbackApproval findApprovalById(Long approvalId) {
+        return approvalRepository.findById(approvalId)
                 .orElseThrow(() -> {
                     log.error(messageService.get("rollback.log.not.found", approvalId));
                     return new RollbackApprovalNotFoundException(approvalId);
                 });
-
-        if (approval.getApprovalStatus() != ApprovalStatus.PENDING) {
-            throw new IllegalStateException(
-                    messageService.get("rollback.error.already.processed")
-            );
-        }
-
-        // Выполняем откат через существующий сервис
-        Order order = orderRepository.findById(approval.getOrderId())
-                .orElseThrow(() -> new OrderNotFoundException(approval.getOrderId()));
-
-        try {
-            // Вызываем метод отката из ManagerOrderService
-            orderService.rollbackOrderStatus(
-                    approval.getOrderId(),
-                    approval.getReason(),
-                    adminId,
-                    locale
-            );
-
-            // Обновляем статус запроса
-            approval.setApprovalStatus(ApprovalStatus.APPROVED);
-            approval.setReviewedById(adminId);
-            approval.setAdminComments(adminComments);
-            approval.setReviewedAt(LocalDateTime.now());
-
-            log.info(messageService.get("rollback.log.approved",
-                    approval.getOrderId(), adminId));
-
-        } catch (Exception e) {
-            log.error(messageService.get("rollback.log.approval.failed",
-                    approval.getOrderId(), e.getMessage()));
-            throw new RollbackExecutionException(approval.getOrderId(), e.getMessage());
-        }
-
-        RollbackApproval updated = approvalRepository.save(approval);
-        return approvalMapper.toDto(updated, locale);
-    }
-
-    @Transactional
-    public RollbackApprovalDto rejectRollback(Long approvalId, String adminComments,
-                                              Long adminId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        RollbackApproval approval = approvalRepository.findById(approvalId)
-                .orElseThrow(() -> {
-                    log.error(messageService.get("rollback.log.not.found", approvalId));
-                    return new RollbackApprovalNotFoundException(approvalId);
-                });
-
-        if (approval.getApprovalStatus() != ApprovalStatus.PENDING) {
-            throw new IllegalStateException(
-                    messageService.get("rollback.error.already.processed")
-            );
-        }
-
-        approval.setApprovalStatus(ApprovalStatus.REJECTED);
-        approval.setReviewedById(adminId);
-        approval.setAdminComments(adminComments);
-        approval.setReviewedAt(LocalDateTime.now());
-
-        RollbackApproval updated = approvalRepository.save(approval);
-
-        log.info(messageService.get("rollback.log.rejected",
-                approval.getOrderId(), adminId));
-
-        return approvalMapper.toDto(updated, locale);
-    }
-
-    // ========== PRIVATE METHODS ==========
-
-    private void validateRollbackPossibility(Order order, Locale locale) {
-        OrderStatus status = order.getStatus();
-
-        if (status == OrderStatus.COMPLETED ||
-                status == OrderStatus.CANCELLED ||
-                status == OrderStatus.REFUNDED ||
-                status == OrderStatus.RETURNED) {
-
-            throw new IllegalStateException(
-                    messageService.get("rollback.error.final.status", status)
-            );
-        }
-    }
-
-    private OrderStatus determineTargetStatus(Order order) {
-        return switch (order.getStatus()) {
-            case PAID -> OrderStatus.PENDING;
-            case PROCESSING -> OrderStatus.PAID;
-            case SHIPPED -> OrderStatus.PROCESSING;
-            case DELIVERED -> OrderStatus.SHIPPED;
-            default -> throw new IllegalStateException(
-                    "Cannot determine target status for " + order.getStatus()
-            );
-        };
     }
 }

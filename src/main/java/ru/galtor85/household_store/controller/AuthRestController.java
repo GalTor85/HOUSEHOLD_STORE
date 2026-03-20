@@ -28,7 +28,7 @@ public class AuthRestController {
     public ResponseEntity<ApiResponse<AuthResponse>> register(
             @Valid @RequestBody UserCreateRequest request) {
 
-        AuthResponse authResponse = authService.register(request, null);
+        AuthResponse authResponse = authService.register(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
@@ -42,7 +42,7 @@ public class AuthRestController {
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginForm request) {
 
-        AuthResponse authResponse = authService.login(request, null);
+        AuthResponse authResponse = authService.login(request);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("auth.success.login"),
@@ -71,7 +71,7 @@ public class AuthRestController {
     public ResponseEntity<ApiResponse<UserResponse>> validateToken(
             @RequestHeader("Authorization") String token) {
 
-        UserResponse userResponse = authService.validateToken(token, null);
+        UserResponse userResponse = authService.validateToken(token);
 
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -86,7 +86,7 @@ public class AuthRestController {
     public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
             @RequestBody RefreshTokenRequest request) {
 
-        AuthResponse authResponse = authService.refreshToken(request.getRefreshToken(), null);
+        AuthResponse authResponse = authService.refreshToken(request.getRefreshToken());
 
         return ResponseEntity.ok(
                 ApiResponse.success(

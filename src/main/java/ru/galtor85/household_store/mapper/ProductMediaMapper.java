@@ -7,18 +7,14 @@ import ru.galtor85.household_store.dto.ProductMediaDto;
 import ru.galtor85.household_store.dto.ProductMediaUploadDto;
 import ru.galtor85.household_store.entity.MediaType;
 import ru.galtor85.household_store.entity.ProductMedia;
-import ru.galtor85.household_store.service.MessageService;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ProductMediaMapper {
-
-    private final MessageService messageService;
 
     /**
      * Преобразование сущности в DTO

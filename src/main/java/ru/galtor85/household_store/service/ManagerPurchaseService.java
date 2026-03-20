@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.service;
 
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -9,28 +8,22 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.advice.exception.CannotReceivePurchaseOrderException;
-import ru.galtor85.household_store.advice.exception.InvalidOrderTypeException;
-import ru.galtor85.household_store.advice.exception.OrderNotFoundException;
-import ru.galtor85.household_store.advice.exception.PurchaseOrderDetailsNotFoundException;
 import ru.galtor85.household_store.builder.OrderBuilder;
 import ru.galtor85.household_store.builder.PurchaseOrderBuilder;
-import ru.galtor85.household_store.builder.SupplierProductBuilder;
 import ru.galtor85.household_store.converter.OrderConverter;
-import ru.galtor85.household_store.converter.SupplierProductConverter;
 import ru.galtor85.household_store.dto.*;
-        import ru.galtor85.household_store.entity.*;
+import ru.galtor85.household_store.entity.*;
 import ru.galtor85.household_store.mapper.OrderMapper;
 import ru.galtor85.household_store.mapper.SupplierMapper;
-import ru.galtor85.household_store.processor.PurchaseReceivingProcessor;
+import ru.galtor85.household_store.processor.*;
 import ru.galtor85.household_store.repository.*;
-        import ru.galtor85.household_store.util.*;
+import ru.galtor85.household_store.util.*;
+import ru.galtor85.household_store.validator.ValidationHelper;
 
-        import java.math.BigDecimal;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Locale;
+import java.time.format.DateTimeFormatter;
 
 @Slf4j
 @Service
@@ -38,37 +31,37 @@ import java.util.Locale;
 public class ManagerPurchaseService {
 
     private final OrderRepository orderRepository;
-    private final ProductRepository productRepository;
     private final SupplierRepository supplierRepository;
-    private final SupplierProductRepository supplierProductRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final MessageService messageService;
-
+    private final CellBasedReceivingProcessor cellBasedReceivingProcessor;
 
     // Мапперы
     private final SupplierMapper supplierMapper;
-    private final OrderMapper orderMapper;
 
     // Конвертеры
     private final OrderConverter orderConverter;
-    private final SupplierProductConverter supplierProductConverter;
 
     // Билдеры
     private final OrderBuilder orderBuilder;
     private final PurchaseOrderBuilder purchaseOrderBuilder;
-    private final SupplierProductBuilder supplierProductBuilder;
 
     // Утилиты
     private final EntityFinder entityFinder;
     private final ValidationHelper validationHelper;
     private final DateParser dateParser;
 
+    // Процессоры
+    private final PurchaseReceivingProcessor receivingProcessor;
+    private final OrderStatusUpdateProcessor statusUpdateProcessor;
+    private final WriteOffProcessor writeOffProcessor;
+    private final SupplierProductProcessor supplierProductProcessor;
+    private final PurchaseOrderQueryProcessor queryProcessor;
+
     // ========== PURCHASE ORDER CREATION ==========
 
     @Transactional
-    public OrderDto createPurchaseOrder(PurchaseOrderCreateRequest request, Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public OrderDto createPurchaseOrder(PurchaseOrderCreateRequest request, Long managerId) {
         entityFinder.findActiveSupplierById(request.getSupplierId());
 
         Order order = orderBuilder.buildPurchaseOrder(request, managerId);
@@ -83,65 +76,144 @@ public class ManagerPurchaseService {
         log.info(messageService.get("manager.purchase.created.log",
                 order.getOrderNumber(), request.getSupplierId(), managerId));
 
-        return orderConverter.convertToDto(savedOrder, locale);
+        return orderConverter.convertToDto(savedOrder);
     }
 
-    @Transactional
-    public OrderDto receivePurchaseOrder(Long orderId, ReceiveOrderRequest request,
-                                         Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
+    // ========== RECEIVE PURCHASE ORDER ==========
 
+    @Transactional
+    public OrderDto receivePurchaseOrder(Long orderId, ReceiveAndStockRequest request, Long managerId) {
         // 1. Проверка
         Order order = entityFinder.findPurchaseOrderById(orderId);
         validationHelper.validateOrderForReceiving(order);
 
-        // 2. Проверка на повторную приемку
-        if (order.getDeliveredAt() != null) {
-            throw new IllegalStateException("Order already received");
-        }
-
+        // 2. Детали закупки
         PurchaseOrder purchaseOrder = entityFinder.findPurchaseOrderDetails(orderId);
 
-        // 3. Обновление остатков (блокировка записей)
-        updateStockFromOrder(order);
+        // 3. Обработка приемки
+        PurchaseReceivingProcessor.ReceivingResult result = receivingProcessor.processReceiving(
+                order, purchaseOrder, request, managerId);
 
-        // 4. Создание движений товаров
-       // createStockMovements(order, managerId);
+        // 4. Обновление статуса
+        statusUpdateProcessor.updateAfterReceiving(order, purchaseOrder, result, request, managerId);
 
-        // 5. Обновление статусов
-        purchaseOrderBuilder.updateForReceiving(purchaseOrder, request, managerId);
-        order.setStatus(OrderStatus.DELIVERED);
+        // 5. Сохранение
+        orderRepository.save(order);
+        purchaseOrderRepository.save(purchaseOrder);
+
+        log.info(messageService.get("manager.purchase.received.log",
+                orderId, managerId, result.getMovements().size()));
+
+        return orderConverter.convertToDto(order);
+    }
+
+    @Transactional
+    public OrderDto receivePurchaseOrderWithStock(Long orderId, ReceiveAndStockRequest request, Long managerId) {
+        // 1. Проверка заказа
+        Order order = entityFinder.findPurchaseOrderById(orderId);
+        validationHelper.validateOrderForReceiving(order);
+
+        // 2. Детали закупки
+        PurchaseOrder purchaseOrder = entityFinder.findPurchaseOrderDetails(orderId);
+
+        // 3. Обработка приемки с размещением по ячейкам
+        CellBasedReceivingProcessor.CellBasedReceivingResult result =
+                cellBasedReceivingProcessor.processReceivingWithCells(
+                        order, request.getItems(), request.getWarehouseId(), managerId);
+
+        // 4. Обновление статуса заказа
+        if (result.isFullyReceived()) {
+            order.setStatus(OrderStatus.DELIVERED);
+            log.info(messageService.get("purchase.order.fully.received", order.getId()));
+        } else {
+            order.setStatus(OrderStatus.PARTIALLY_RECEIVED);
+            log.info(messageService.get("purchase.order.partially.received", order.getId()));
+
+            if (!result.getFailedItems().isEmpty()) {
+                log.warn(messageService.get("purchase.order.failed.items",
+                        result.getFailedItems().size(), order.getId()));
+            }
+        }
+
+        // 5. Установка даты приемки
         order.setDeliveredAt(LocalDateTime.now());
 
-        log.info(messageService.get("manager.purchase.received.log", orderId, managerId));
+        // 6. Обновление информации в purchaseOrder
+        purchaseOrder.setActualDelivery(LocalDate.now());
+        purchaseOrder.setReceivedBy(managerId);
+        purchaseOrder.setQualityCheck(request.getQualityCheck());
 
-        return orderConverter.convertToDto(order, locale);
+        if (request.getPaymentStatus() != null) {
+            purchaseOrder.setPaymentStatus(request.getPaymentStatus());
+        }
+
+        // 7. Добавление заметки о приемке
+        addCellBasedReceivingNote(order, request, result, managerId);
+
+        // 8. Сохранение
+        orderRepository.save(order);
+        purchaseOrderRepository.save(purchaseOrder);
+
+        log.info(messageService.get("manager.purchase.received.with.stock.log",
+                orderId, managerId, result.getMovements().size(), result.getPlacements().size()));
+
+        return orderConverter.convertToDto(order);
+    }
+
+    private void addCellBasedReceivingNote(Order order, ReceiveAndStockRequest request,
+                                           CellBasedReceivingProcessor.CellBasedReceivingResult result,
+                                           Long managerId) {
+
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        StringBuilder note = new StringBuilder();
+
+        note.append(messageService.get("purchase.receiving.note.header",
+                timestamp, managerId));
+
+        if (result.isFullyReceived()) {
+            note.append(messageService.get("purchase.receiving.note.fully.received"));
+        } else {
+            note.append(messageService.get("purchase.receiving.note.partially.received"));
+        }
+
+        note.append(messageService.get("purchase.receiving.note.cells.used",
+                result.getPlacements().size()));
+
+        if (request.getQualityCheck() != null) {
+            note.append(request.getQualityCheck() ?
+                    messageService.get("purchase.receiving.note.quality.passed") :
+                    messageService.get("purchase.receiving.note.quality.failed"));
+        }
+
+        if (!result.getFailedItems().isEmpty()) {
+            note.append(messageService.get("purchase.receiving.note.failed.items",
+                    result.getFailedItems().size()));
+        }
+
+        if (request.getNotes() != null && !request.getNotes().isEmpty()) {
+            note.append(messageService.get("purchase.receiving.note.notes",
+                    request.getNotes()));
+        }
+
+        String currentNotes = order.getNotes();
+        if (currentNotes == null || currentNotes.isEmpty()) {
+            order.setNotes(note.toString());
+        } else {
+            order.setNotes(currentNotes + "\n" + note.toString());
+        }
     }
 
     // ========== STOCK WRITE-OFF ==========
 
     @Transactional
-    public void writeOffStock(StockWriteOffRequest request, Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        for (StockWriteOffItem item : request.getItems()) {
-            Product product = entityFinder.findProductById(item.getProductId());
-            validationHelper.validateStockAvailability(product, item.getQuantity());
-
-            product.setQuantityInStock(product.getQuantityInStock() - item.getQuantity());
-            productRepository.save(product);
-
-            log.info(messageService.get("manager.writeoff.executed.log",
-                    item.getProductId(), item.getQuantity(), request.getReason(), managerId));
-        }
+    public void writeOffStock(StockWriteOffRequest request, Long managerId) {
+        writeOffProcessor.processWriteOff(request, managerId);
     }
 
     // ========== SUPPLIER MANAGEMENT ==========
 
     @Transactional
-    public SupplierDto createSupplier(SupplierCreateRequest request, Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public SupplierDto createSupplier(SupplierCreateRequest request, Long managerId) {
         validationHelper.validateSupplierUniqueness(request);
 
         Supplier supplier = supplierMapper.toEntity(request, managerId);
@@ -150,13 +222,11 @@ public class ManagerPurchaseService {
         log.info(messageService.get("manager.supplier.created.log",
                 savedSupplier.getName(), savedSupplier.getId(), managerId));
 
-        return supplierMapper.toDto(savedSupplier, locale);
+        return supplierMapper.toDto(savedSupplier);
     }
 
     @Transactional
-    public SupplierDto updateSupplier(Long supplierId, SupplierUpdateRequest request, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public SupplierDto updateSupplier(Long supplierId, SupplierUpdateRequest request) {
         Supplier supplier = entityFinder.findSupplierById(supplierId);
         validationHelper.validateSupplierUniquenessOnUpdate(supplier, request);
 
@@ -165,78 +235,36 @@ public class ManagerPurchaseService {
 
         log.info(messageService.get("manager.supplier.updated.log", updatedSupplier.getId()));
 
-        return supplierMapper.toDto(updatedSupplier, locale);
+        return supplierMapper.toDto(updatedSupplier);
     }
 
     @Transactional(readOnly = true)
-    public Page<SupplierDto> getSuppliers(String name, String status, int page, int size, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public Page<SupplierDto> getSuppliers(String name, String status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "name"));
         Page<Supplier> suppliers = supplierRepository.searchSuppliersNative(name, status, pageable);
 
         log.debug(messageService.get("manager.suppliers.fetched.log", suppliers.getTotalElements()));
 
-        Locale finalLocale = locale;
-        return suppliers.map(supplier -> supplierMapper.toDto(supplier, finalLocale));
+        return suppliers.map(supplierMapper::toDto);
     }
 
     // ========== SUPPLIER PRODUCT MANAGEMENT ==========
 
     @Transactional
     public SupplierProductDto addProductToSupplier(Long supplierId, Long productId,
-                                                   SupplierProductRequest request,
-                                                   Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        entityFinder.findSupplierById(supplierId);
-        entityFinder.findProductById(productId);
-        validationHelper.validateProductNotLinked(supplierId, productId);
-
-        SupplierProduct supplierProduct = supplierProductBuilder.buildFromRequest(request, supplierId, productId);
-
-        if (request.getMainSupplier()) {
-            supplierProductBuilder.resetMainSupplierFlag(productId);
-        }
-
-        SupplierProduct saved = supplierProductRepository.save(supplierProduct);
-
-        log.info(messageService.get("manager.supplier.product.added.log", productId, supplierId, managerId));
-
-        return supplierProductConverter.convertToDto(saved, productId, supplierId, locale);
+                                                   SupplierProductRequest request, Long managerId) {
+        return supplierProductProcessor.addProductToSupplier(supplierId, productId, request, managerId);
     }
 
     @Transactional
     public SupplierProductDto updateSupplierProduct(Long supplierProductId,
-                                                    SupplierProductRequest request,
-                                                    Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        SupplierProduct supplierProduct = entityFinder.findSupplierProductById(supplierProductId);
-        supplierProductBuilder.updateFromRequest(supplierProduct, request);
-
-        if (request.getMainSupplier() && !supplierProduct.getMainSupplier()) {
-            supplierProductBuilder.resetMainSupplierFlag(supplierProduct.getProductId());
-            supplierProduct.setMainSupplier(true);
-        }
-
-        SupplierProduct updated = supplierProductRepository.save(supplierProduct);
-
-        log.info(messageService.get("manager.supplier.product.updated.log", supplierProductId, managerId));
-
-        return supplierProductConverter.convertToDto(updated,
-                updated.getProductId(), updated.getSupplierId(), locale);
+                                                    SupplierProductRequest request, Long managerId) {
+        return supplierProductProcessor.updateSupplierProduct(supplierProductId, request, managerId);
     }
 
     @Transactional
-    public void removeProductFromSupplier(Long supplierProductId, Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        SupplierProduct supplierProduct = entityFinder.findSupplierProductById(supplierProductId);
-        supplierProductRepository.delete(supplierProduct);
-
-        log.info(messageService.get("manager.supplier.product.removed.log",
-                supplierProduct.getProductId(), supplierProduct.getSupplierId(), managerId));
+    public void removeProductFromSupplier(Long supplierProductId, Long managerId) {
+        supplierProductProcessor.removeProductFromSupplier(supplierProductId, managerId);
     }
 
     // ========== PURCHASE ORDER QUERIES ==========
@@ -244,9 +272,7 @@ public class ManagerPurchaseService {
     @Transactional(readOnly = true)
     public Page<OrderDto> getPurchaseOrders(Long supplierId, String status,
                                             String startDate, String endDate,
-                                            int page, int size, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+                                            int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         LocalDateTime start = dateParser.parseDate(startDate);
@@ -255,91 +281,12 @@ public class ManagerPurchaseService {
         validationHelper.validateDateRange(start, end, startDate, endDate);
 
         OrderStatus orderStatus = dateParser.parseOrderStatus(status);
-        Page<Order> orders = orderRepository.searchOrders(
-                null, supplierId, orderStatus, OrderType.PURCHASE, start, end, pageable);
-
-        log.debug(messageService.get("manager.purchase.fetched.log", orders.getTotalElements()));
-
-        Locale finalLocale = locale;
-        return orders.map(order -> orderConverter.convertToDto(order, finalLocale));
+        return queryProcessor.getPurchaseOrders(supplierId, orderStatus, start, end, pageable);
     }
 
     @Transactional(readOnly = true)
-    public OrderDto getPurchaseOrderById(Long orderId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public OrderDto getPurchaseOrderById(Long orderId) {
         Order order = entityFinder.findPurchaseOrderById(orderId);
-        return orderConverter.convertToDto(order, locale);
+        return orderConverter.convertToDto(order);
     }
-
-    @Transactional
-    public OrderDto receivePurchaseOrderWithStock(Long orderId, ReceiveAndStockRequest request,
-                                                  Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        // 1. Находим заказ
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> {
-                    log.error(messageService.get("manager.order.log.not.found", orderId));
-                    return new OrderNotFoundException(orderId);
-                });
-
-        // Проверяем, что это закупка
-        if (order.getOrderType() != OrderType.PURCHASE) {
-            log.error(messageService.get("manager.purchase.log.not.purchase.order", orderId));
-            throw new InvalidOrderTypeException(orderId, "PURCHASE");
-        }
-
-        // 2. Проверяем статус для приемки
-        if (order.getStatus() != OrderStatus.PROCESSING && order.getStatus() != OrderStatus.PENDING) {
-            log.error(messageService.get("manager.purchase.log.cannot.receive", order.getStatus()));
-            throw new CannotReceivePurchaseOrderException(order.getStatus());
-        }
-
-        // 3. Находим детали закупки
-        PurchaseOrder purchaseOrder = purchaseOrderRepository.findByOrderId(orderId)
-                .orElseThrow(() -> {
-                    log.error(messageService.get("manager.purchase.log.purchase.details.not.found", orderId));
-                    return new PurchaseOrderDetailsNotFoundException(orderId);
-                });
-
-        // 4. Обновляем статусы
-        order.setStatus(OrderStatus.DELIVERED);
-        purchaseOrder.setActualDelivery(LocalDate.from(request.getReceivedAt() != null ?
-                request.getReceivedAt() : LocalDateTime.now()));
-        purchaseOrder.setReceivedBy(managerId);
-        purchaseOrder.setQualityCheck(request.getQualityCheck());
-        purchaseOrder.setPaymentStatus(request.getPaymentStatus() != null ?
-                request.getPaymentStatus() : purchaseOrder.getPaymentStatus());
-
-        orderRepository.save(order);
-        purchaseOrderRepository.save(purchaseOrder);
-
-        log.info(messageService.get("manager.purchase.received.with.stock.log",
-                orderId, request.getItems().size(), managerId));
-
-        // 5. Возвращаем DTO (метод convertToDto должен быть определен)
-        return orderMapper.toDto(order, locale);
-    }
-
-    private Long determineWarehouseForOrder(Order order) {
-        // TODO: Реализовать логику определения склада
-        // Может быть из настроек поставщика, типа товара и т.д.
-        return 1L; // По умолчанию первый склад
-    }
-
-    // ========== PRIVATE HELPER METHODS ==========
-
-    private void updateStockFromOrder(Order order) {
-        for (OrderItem item : order.getItems()) {
-            Product product = entityFinder.findProductById(item.getProductId());
-            product.setQuantityInStock(product.getQuantityInStock() + item.getQuantity());
-            productRepository.save(product);
-
-            log.debug(messageService.get("manager.purchase.stock.updated.log",
-                    product.getId(), product.getQuantityInStock() - item.getQuantity(),
-                    product.getQuantityInStock()));
-        }
-    }
-
 }

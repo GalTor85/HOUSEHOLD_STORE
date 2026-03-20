@@ -5,10 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.OrderItemDto;
 import ru.galtor85.household_store.entity.OrderItem;
-import ru.galtor85.household_store.service.MessageService;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -16,12 +14,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OrderItemMapper {
 
-    private final MessageService messageService;
-
     /**
      * Преобразование сущности в DTO
      */
-    public OrderItemDto toDto(OrderItem item, Locale locale) {
+    public OrderItemDto toDto(OrderItem item) {
         if (item == null) {
             return null;
         }
@@ -43,12 +39,12 @@ public class OrderItemMapper {
     /**
      * Преобразование списка сущностей в список DTO
      */
-    public List<OrderItemDto> toDtoList(List<OrderItem> items, Locale locale) {
+    public List<OrderItemDto> toDtoList(List<OrderItem> items) {
         if (items == null) {
             return null;
         }
         return items.stream()
-                .map(item -> toDto(item, locale))
+                .map(this::toDto)
                 .collect(Collectors.toList());
     }
 }

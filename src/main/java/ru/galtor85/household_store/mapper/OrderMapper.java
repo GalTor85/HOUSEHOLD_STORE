@@ -6,12 +6,9 @@ import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.OrderDto;
 import ru.galtor85.household_store.dto.OrderItemDto;
 import ru.galtor85.household_store.entity.Order;
-import ru.galtor85.household_store.entity.OrderItem;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.util.List;
-import java.util.Locale;
-
 
 @Slf4j
 @Component
@@ -24,13 +21,13 @@ public class OrderMapper {
     /**
      * Преобразование сущности в DTO
      */
-    public OrderDto toDto(Order order, Locale locale) {
+    public OrderDto toDto(Order order) {
         if (order == null) {
             return null;
         }
 
         List<OrderItemDto> itemDtos = order.getItems() != null ?
-                orderItemMapper.toDtoList(order.getItems(), locale) : null;
+                orderItemMapper.toDtoList(order.getItems()) : null;
 
         String localizedStatus = messageService.get("order.status." + order.getStatus().name());
 

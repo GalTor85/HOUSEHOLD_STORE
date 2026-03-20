@@ -9,7 +9,6 @@ import ru.galtor85.household_store.entity.OrderItem;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Component
@@ -18,7 +17,7 @@ public class OrderConverter {
 
     private final MessageService messageService;
 
-    public OrderDto convertToDto(Order order, Locale locale) {
+    public OrderDto convertToDto(Order order) {
         List<OrderItemDto> itemDtos = order.getItems().stream()
                 .map(this::convertItemToDto)
                 .collect(Collectors.toList());

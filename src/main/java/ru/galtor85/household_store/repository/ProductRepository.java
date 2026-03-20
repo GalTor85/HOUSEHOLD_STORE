@@ -54,4 +54,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT DISTINCT p.brand FROM Product p WHERE p.brand IS NOT NULL AND p.active = true")
     List<String> findAllBrands();
+
+    @Query("SELECT p.id FROM Product p WHERE p.category = :category")
+    List<Long> findIdsByCategory(@Param("category") String category);
+
+    @Query("SELECT p.category FROM Product p WHERE p.id = :productId")
+    Optional<String> findCategoryByProductId(@Param("productId") Long productId);
 }

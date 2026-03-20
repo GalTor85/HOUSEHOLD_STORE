@@ -28,6 +28,12 @@ public class StockMovementDto {
     @Schema(description = "Product SKU", example = "IPHONE-13-PRO-128")
     private String productSku;
 
+    @Schema(description = "Warehouse ID", example = "1")
+    private Long warehouseId;
+
+    @Schema(description = "Warehouse name", example = "Main Warehouse")
+    private String warehouseName;
+
     @Schema(description = "From cell ID", example = "5")
     private Long fromCellId;
 
@@ -72,6 +78,9 @@ public class StockMovementDto {
 
     @Schema(description = "Notes", example = "Damaged goods write-off")
     private String notes;
+
+    @Schema(description = "Document number", example = "DOC-2024-001")
+    private String documentNumber;
 
     @Schema(description = "Batch/Lot number", example = "BATCH-2024-001")
     private String batchNumber;

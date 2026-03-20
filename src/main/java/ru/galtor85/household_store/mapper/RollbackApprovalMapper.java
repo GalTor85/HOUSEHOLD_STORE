@@ -6,15 +6,13 @@ import ru.galtor85.household_store.dto.RollbackApprovalDto;
 import ru.galtor85.household_store.entity.RollbackApproval;
 import ru.galtor85.household_store.repository.UserRepository;
 
-import java.util.Locale;
-
 @Component
 @RequiredArgsConstructor
 public class RollbackApprovalMapper {
 
     private final UserRepository userRepository;
 
-    public RollbackApprovalDto toDto(RollbackApproval approval, Locale locale) {
+    public RollbackApprovalDto toDto(RollbackApproval approval) {
         if (approval == null) return null;
 
         String requestedByEmail = userRepository.findById(approval.getRequestedById())

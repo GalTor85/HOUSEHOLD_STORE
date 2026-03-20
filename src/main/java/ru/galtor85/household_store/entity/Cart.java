@@ -47,6 +47,9 @@ public class Cart {
     @Column(name = "items_count")
     private Integer itemsCount;
 
+    @Column(name = "category")
+    private String category; // Категория корзины (для истории)
+
     @Column(name = "created_at")
     @CreationTimestamp
     private LocalDateTime createdAt;

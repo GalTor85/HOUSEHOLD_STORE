@@ -23,8 +23,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProductMapper {
 
-    private final MessageService messageService;
-    private final ProductAttributeMapper attributeMapper;
     private final ProductMediaRepository mediaRepository;
     private final ProductMediaMapper mediaMapper;
 
@@ -91,7 +89,7 @@ public class ProductMapper {
         if (request.getPalletized() != null) product.setIsPalletized(request.getPalletized());
     }
 
-    public ProductDto toDto(Product product, Locale locale) {
+    public ProductDto toDto(Product product) {
         if (product == null) {
             return null;
         }
@@ -125,7 +123,7 @@ public class ProductMapper {
                 .parentProductId(product.getParentProduct() != null ? product.getParentProduct().getId() : null)
                 .attributes(attributeDtos)
                 .variants(product.getVariants().stream()
-                        .map(v -> toDto(v, locale))
+                        .map(v -> toDto(v))
                         .collect(Collectors.toList()))
                 .media(mediaMapper.toDtoList(mediaList))
                 .mainImageUrl(mainImageUrl)

@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.FileReadException;
@@ -13,11 +12,9 @@ import ru.galtor85.household_store.entity.ProductMedia;
 import ru.galtor85.household_store.mapper.ProductMediaMapper;
 import ru.galtor85.household_store.repository.ProductMediaRepository;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Locale;
 
 @Slf4j
 @Service
@@ -32,10 +29,8 @@ public class MediaService {
      * Получить файл по ID медиа
      */
     @Transactional(readOnly = true)
-    public Resource getMediaFile(Long mediaId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        ProductMedia media = getMediaEntity(mediaId, locale);
+    public Resource getMediaFile(Long mediaId) {
+        ProductMedia media = getMediaEntity(mediaId);
 
         try {
             Path filePath = Paths.get(media.getFilePath());
@@ -43,7 +38,7 @@ public class MediaService {
 
             if (!resource.exists() || !resource.isReadable()) {
                 log.error(messageService.get("media.service.log.file.not.readable",
-                        media.getFileName(), mediaId, locale));
+                        media.getFileName(), mediaId));
                 throw new FileReadException(
                         messageService.get("media.service.error.file.not.readable", mediaId),
                         null, null
@@ -53,7 +48,7 @@ public class MediaService {
             return resource;
 
         } catch (Exception e) {
-            log.error(messageService.get("media.service.log.file.error", e.getMessage(), locale));
+            log.error(messageService.get("media.service.log.file.error", e.getMessage()));
             throw new FileReadException(
                     messageService.get("media.service.error.file.read", e.getMessage()),
                     null, null
@@ -65,10 +60,8 @@ public class MediaService {
      * Получить информацию о медиа
      */
     @Transactional(readOnly = true)
-    public ProductMediaDto getMediaInfo(Long mediaId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        ProductMedia media = getMediaEntity(mediaId, locale);
+    public ProductMediaDto getMediaInfo(Long mediaId) {
+        ProductMedia media = getMediaEntity(mediaId);
         return mediaMapper.toDto(media);
     }
 
@@ -76,9 +69,7 @@ public class MediaService {
      * Получить все медиа продукта
      */
     @Transactional(readOnly = true)
-    public List<ProductMediaDto> getProductMedia(Long productId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public List<ProductMediaDto> getProductMedia(Long productId) {
         List<ProductMedia> mediaList = mediaRepository.findByProductIdOrdered(productId);
         return mediaMapper.toDtoList(mediaList);
     }
@@ -87,9 +78,7 @@ public class MediaService {
      * Получить главное изображение продукта
      */
     @Transactional(readOnly = true)
-    public ProductMediaDto getProductMainImage(Long productId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public ProductMediaDto getProductMainImage(Long productId) {
         return mediaRepository.findByProductIdAndIsMainTrue(productId)
                 .map(mediaMapper::toDto)
                 .orElse(null);
@@ -109,16 +98,14 @@ public class MediaService {
      * Получить файл по имени продукта и имени файла
      */
     @Transactional(readOnly = true)
-    public Resource getMediaFileByName(Long productId, String fileName, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public Resource getMediaFileByName(Long productId, String fileName) {
         try {
             Path filePath = Paths.get("uploads", String.valueOf(productId), fileName);
             Resource resource = new UrlResource(filePath.toUri());
 
             if (!resource.exists() || !resource.isReadable()) {
                 log.error(messageService.get("media.service.log.file.not.found.by.name",
-                        fileName, productId, locale));
+                        fileName, productId));
                 throw new FileReadException(
                         messageService.get("media.service.error.file.not.found.by.name", fileName, productId),
                         null, null
@@ -129,7 +116,7 @@ public class MediaService {
 
         } catch (Exception e) {
             log.error(messageService.get("media.service.log.file.error.by.name",
-                    fileName, productId, e.getMessage(), locale));
+                    fileName, productId, e.getMessage()));
             throw new FileReadException(
                     messageService.get("media.service.error.file.read.by.name", fileName, productId, e.getMessage()),
                     null, null
@@ -137,10 +124,10 @@ public class MediaService {
         }
     }
 
-    private ProductMedia getMediaEntity(Long mediaId, Locale locale) {
+    private ProductMedia getMediaEntity(Long mediaId) {
         return mediaRepository.findById(mediaId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("media.service.log.file.not.found", mediaId, locale));
+                    log.error(messageService.get("media.service.log.file.not.found", mediaId));
                     return new FileReadException(
                             messageService.get("media.service.error.file.not.found", mediaId),
                             null, null

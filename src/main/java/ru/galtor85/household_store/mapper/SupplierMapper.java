@@ -10,8 +10,6 @@ import ru.galtor85.household_store.entity.Supplier;
 import ru.galtor85.household_store.entity.SupplierStatus;
 import ru.galtor85.household_store.service.MessageService;
 
-import java.util.Locale;
-
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -104,7 +102,7 @@ public class SupplierMapper {
             try {
                 supplier.setStatus(SupplierStatus.valueOf(request.getStatus()));
             } catch (IllegalArgumentException e) {
-                log.warn("Invalid supplier status: {}", request.getStatus());
+                log.warn(messageService.get("supplier.mapper.invalid.status", request.getStatus()));
             }
         }
         if (request.getDeliveryTime() != null) {
@@ -121,7 +119,7 @@ public class SupplierMapper {
     /**
      * Преобразование сущности в DTO
      */
-    public SupplierDto toDto(Supplier supplier, Locale locale) {
+    public SupplierDto toDto(Supplier supplier) {
         if (supplier == null) {
             return null;
         }

@@ -10,7 +10,7 @@ import ru.galtor85.household_store.entity.Product;
 import ru.galtor85.household_store.entity.StorageCell;
 import ru.galtor85.household_store.repository.StorageCellRepository;
 import ru.galtor85.household_store.service.MessageService;
-import ru.galtor85.household_store.util.CellValidationHelper;
+import ru.galtor85.household_store.validator.CellValidationHelper;
 
 import java.util.Comparator;
 import java.util.List;

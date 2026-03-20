@@ -10,7 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.*;
-import ru.galtor85.household_store.controller.resolve.UserIdentifierResolver;
+import ru.galtor85.household_store.resolver.UserIdentifierResolver;
 import ru.galtor85.household_store.dto.AuthResponse;
 import ru.galtor85.household_store.dto.LoginForm;
 import ru.galtor85.household_store.dto.UserCreateRequest;
@@ -21,8 +21,6 @@ import ru.galtor85.household_store.mapper.UserToEntity;
 import ru.galtor85.household_store.repository.SecurityUserRepository;
 import ru.galtor85.household_store.security.JwtTokenProvider;
 import ru.galtor85.household_store.security.SecurityUser;
-
-import java.util.Locale;
 
 @Slf4j
 @Service
@@ -40,16 +38,14 @@ public class AuthService {
     private final SecurityUserRepository securityUserRepository;
 
     @Transactional
-    public AuthResponse register(UserCreateRequest request, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public AuthResponse register(UserCreateRequest request) {
         log.debug(messageService.get("auth.log.register.attempt", request.getEmail()));
 
         // Создаем User из запроса
-        User user = userToEntity.build(request, "Registration");
+        User user = userToEntity.build(request, messageService.get("self-registration"));
 
         // Регистрируем пользователя (User + SecurityUser)
-        User registeredUser = userService.register(user, request.getPassword(), null, locale);
+        User registeredUser = userService.register(user, request.getPassword());
 
         // Получаем SecurityUser по ID из репозитория
         SecurityUser securityUser = securityUserRepository.findById(registeredUser.getId())
@@ -59,17 +55,15 @@ public class AuthService {
                 });
 
         // Получаем User для билдера ответа
-        User userForResponse = userSearchService.getUserById(registeredUser.getId(), locale);
+        User userForResponse = userSearchService.getUserById(registeredUser.getId());
 
         log.info(messageService.get("auth.log.user.registered", registeredUser.getEmail()));
 
         return buildAuthResponse(securityUser, userForResponse);
     }
 
-    public AuthResponse login(LoginForm request, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
-        String identify = userIdentifierResolver.resolve(request, locale);
+    public AuthResponse login(LoginForm request) {
+        String identify = userIdentifierResolver.resolve(request);
         log.debug(messageService.get("auth.log.login.attempt", identify));
 
         try {
@@ -81,7 +75,7 @@ public class AuthService {
             SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
 
             // Получаем User по userId из securityUser
-            User user = userSearchService.getUserById(securityUser.getUserId(), locale);
+            User user = userSearchService.getUserById(securityUser.getUserId());
 
             // Проверяем активен ли пользователь
             if (!securityUser.isEnabled()) {
@@ -105,9 +99,7 @@ public class AuthService {
         SecurityContextHolder.clearContext();
     }
 
-    public UserResponse validateToken(String token, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public UserResponse validateToken(String token) {
         String tokenInfo = token != null ? token.substring(0, Math.min(20, token.length())) + "..." : "no token";
         log.debug(messageService.get("auth.log.token.validate.attempt", tokenInfo));
 
@@ -140,16 +132,14 @@ public class AuthService {
         }
 
         // Получаем User через userSearchService по userId
-        User user = userSearchService.getUserById(userId, locale);
+        User user = userSearchService.getUserById(userId);
 
         log.info(messageService.get("auth.log.token.valid", userId));
 
         return userMapper.build(user);
     }
 
-    public AuthResponse refreshToken(String refreshToken, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public AuthResponse refreshToken(String refreshToken) {
         log.debug(messageService.get("auth.log.refresh.attempt"));
 
         if (refreshToken == null || refreshToken.isEmpty()) {
@@ -178,7 +168,7 @@ public class AuthService {
         }
 
         // Получаем User через userSearchService
-        User user = userSearchService.getUserById(userId, locale);
+        User user = userSearchService.getUserById(userId);
 
         log.info(messageService.get("auth.log.refresh.success", userId));
 

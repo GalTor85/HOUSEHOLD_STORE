@@ -1,4 +1,4 @@
-package ru.galtor85.household_store.util;
+package ru.galtor85.household_store.validator;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +12,6 @@ import ru.galtor85.household_store.repository.SupplierRepository;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.time.LocalDateTime;
-import java.util.Locale;
 
 @Slf4j
 @Component

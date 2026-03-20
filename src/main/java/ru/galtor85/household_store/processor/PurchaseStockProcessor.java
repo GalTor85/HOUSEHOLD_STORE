@@ -11,8 +11,6 @@ import ru.galtor85.household_store.repository.ProductRepository;
 import ru.galtor85.household_store.repository.StockMovementRepository;
 import ru.galtor85.household_store.service.MessageService;
 
-import java.time.LocalDateTime;
-
 @Slf4j
 @Component
 @RequiredArgsConstructor

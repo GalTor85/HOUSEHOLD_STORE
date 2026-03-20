@@ -1385,6 +1385,41 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
+    // ========== PRODUCT MEDIA PARSE EXCEPTION ==========
+
+
+    // ========== CELL INACTIVE EXCEPTION ==========
+    @ExceptionHandler(CellInactiveException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCellInactive(
+            CellInactiveException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get("cell.error.inactive", e.getCellId());
+        log.warn("CellInactiveException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    // ========== PRODUCT ALREADY IN WAREHOUSE ==========
+    @ExceptionHandler(ProductAlreadyInWarehouseException.class)
+    public ResponseEntity<ApiResponse<Void>> handleProductAlreadyInWarehouse(
+            ProductAlreadyInWarehouseException e, Locale locale) {
+
+        locale = locale != null ? locale : Locale.getDefault();
+
+        String message = messageService.get(
+                "cell.error.product.already.in.warehouse",
+                e.getProductId(),
+                e.getCellCode()
+        );
+        log.warn("ProductAlreadyInWarehouseException: {}", message);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
     // =========================================================================
     // БЛОК 16: ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================

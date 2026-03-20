@@ -30,6 +30,9 @@ public class CartDto {
     @Schema(description = "Localized status", example = "Активная")
     private String localizedStatus;
 
+    @Schema(description = "Cart category", example = "Электроника")
+    private String category;
+
     @Schema(description = "Cart items")
     private List<CartItemDto> items;
 

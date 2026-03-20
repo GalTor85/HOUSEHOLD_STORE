@@ -11,7 +11,6 @@ import ru.galtor85.household_store.service.MediaService;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.util.List;
-import java.util.Locale;
 
 @Slf4j
 @RestController
@@ -27,14 +26,11 @@ public class MediaController {
      */
     @GetMapping("/{mediaId}")
     public ResponseEntity<Resource> getMediaFile(
-            @PathVariable Long mediaId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long mediaId) {
 
-        locale = locale != null ? locale : Locale.getDefault();
+        log.info(messageService.get("media.controller.log.request.file", mediaId));
 
-        log.info(messageService.get("media.controller.log.request.file", mediaId, locale));
-
-        Resource resource = mediaService.getMediaFile(mediaId, locale);
+        Resource resource = mediaService.getMediaFile(mediaId);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" +
@@ -47,14 +43,11 @@ public class MediaController {
      */
     @GetMapping("/{mediaId}/info")
     public ResponseEntity<ProductMediaDto> getMediaInfo(
-            @PathVariable Long mediaId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long mediaId) {
 
-        locale = locale != null ? locale : Locale.getDefault();
+        log.info(messageService.get("media.controller.log.request.info", mediaId));
 
-        log.info(messageService.get("media.controller.log.request.info", mediaId, locale));
-
-        ProductMediaDto mediaInfo = mediaService.getMediaInfo(mediaId, locale);
+        ProductMediaDto mediaInfo = mediaService.getMediaInfo(mediaId);
 
         return ResponseEntity.ok(mediaInfo);
     }
@@ -64,14 +57,11 @@ public class MediaController {
      */
     @GetMapping("/product/{productId}")
     public ResponseEntity<List<ProductMediaDto>> getProductMedia(
-            @PathVariable Long productId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long productId) {
 
-        locale = locale != null ? locale : Locale.getDefault();
+        log.info(messageService.get("media.controller.log.request.product", productId));
 
-        log.info(messageService.get("media.controller.log.request.product", productId, locale));
-
-        List<ProductMediaDto> mediaList = mediaService.getProductMedia(productId, locale);
+        List<ProductMediaDto> mediaList = mediaService.getProductMedia(productId);
 
         return ResponseEntity.ok(mediaList);
     }
@@ -81,14 +71,11 @@ public class MediaController {
      */
     @GetMapping("/product/{productId}/main")
     public ResponseEntity<ProductMediaDto> getProductMainImage(
-            @PathVariable Long productId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long productId) {
 
-        locale = locale != null ? locale : Locale.getDefault();
+        log.info(messageService.get("media.controller.log.request.main", productId));
 
-        log.info(messageService.get("media.controller.log.request.main", productId, locale));
-
-        ProductMediaDto mainImage = mediaService.getProductMainImage(productId, locale);
+        ProductMediaDto mainImage = mediaService.getProductMainImage(productId);
 
         return ResponseEntity.ok(mainImage);
     }
@@ -99,15 +86,12 @@ public class MediaController {
     @GetMapping("/file/{productId}/{fileName}")
     public ResponseEntity<Resource> getMediaFileByName(
             @PathVariable Long productId,
-            @PathVariable String fileName,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            @PathVariable String fileName) {
 
         log.info(messageService.get("media.controller.log.request.file.by.name",
-                fileName, productId, locale));
+                fileName, productId));
 
-        Resource resource = mediaService.getMediaFileByName(productId, fileName, locale);
+        Resource resource = mediaService.getMediaFileByName(productId, fileName);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")

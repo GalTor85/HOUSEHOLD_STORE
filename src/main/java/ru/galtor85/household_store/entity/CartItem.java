@@ -45,6 +45,9 @@ public class CartItem {
     @Column(name = "sku")
     private String sku; // Артикул на момент добавления
 
+    @Column(name = "category")
+    private String category; // Категория на момент добавления (для истории)
+
     @Column(name = "created_at")
     @CreationTimestamp
     private LocalDateTime createdAt;

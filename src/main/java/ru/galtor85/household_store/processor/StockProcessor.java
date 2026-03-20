@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.entity.Order;
 import ru.galtor85.household_store.entity.OrderItem;
-import ru.galtor85.household_store.entity.Product;
 import ru.galtor85.household_store.repository.ProductRepository;
 import ru.galtor85.household_store.service.MessageService;
 

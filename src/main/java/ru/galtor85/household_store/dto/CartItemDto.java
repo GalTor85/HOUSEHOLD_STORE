@@ -27,6 +27,9 @@ public class CartItemDto {
     @Schema(description = "SKU", example = "IPHONE-13-PRO-128")
     private String sku;
 
+    @Schema(description = "Category", example = "Electronics")
+    private String category;
+
     @Schema(description = "Quantity", example = "2")
     private Integer quantity;
 

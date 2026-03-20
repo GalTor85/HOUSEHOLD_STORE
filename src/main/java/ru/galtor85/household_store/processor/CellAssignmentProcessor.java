@@ -12,7 +12,7 @@ import ru.galtor85.household_store.entity.StorageCell;
 import ru.galtor85.household_store.repository.StockMovementRepository;
 import ru.galtor85.household_store.repository.StorageCellRepository;
 import ru.galtor85.household_store.service.MessageService;
-import ru.galtor85.household_store.util.CellValidationHelper;
+import ru.galtor85.household_store.validator.CellValidationHelper;
 
 @Slf4j
 @Component
@@ -28,7 +28,6 @@ public class CellAssignmentProcessor {
     @Transactional
     public StorageCell assignProductToCell(StorageCell cell, Product product,
                                            int quantity, Long assignedBy) {
-
         // Валидации
         validationHelper.validateCellActive(cell);
         validationHelper.validateCellNotOccupied(cell);

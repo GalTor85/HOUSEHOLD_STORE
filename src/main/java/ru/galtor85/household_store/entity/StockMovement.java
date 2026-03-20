@@ -24,6 +24,9 @@ public class StockMovement {
     @Column(name = "product_id", nullable = false)
     private Long productId;
 
+    @Column(name = "warehouse_id")
+    private Long warehouseId;
+
     @Column(name = "from_cell_id")
     private Long fromCellId;
 
@@ -37,8 +40,17 @@ public class StockMovement {
     @Enumerated(EnumType.STRING)
     private MovementType movementType;
 
+    @Column(name = "reference_number")
+    private String referenceNumber;
+
     @Column(name = "reference_type")
     private String referenceType; // ORDER, PURCHASE, WRITEOFF, INVENTORY
+
+    @Column(name = "batch_number")
+    private String batchNumber;
+
+    @Column(name = "document_number")
+    private String documentNumber;
 
     @Column(name = "reference_id")
     private Long referenceId;

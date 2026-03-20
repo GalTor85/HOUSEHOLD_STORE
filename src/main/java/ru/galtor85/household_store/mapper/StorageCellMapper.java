@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.StorageCellDto;
 import ru.galtor85.household_store.entity.StorageCell;
-import ru.galtor85.household_store.entity.Warehouse;
 import ru.galtor85.household_store.repository.ProductRepository;
 
 @Component

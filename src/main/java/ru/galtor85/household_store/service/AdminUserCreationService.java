@@ -11,7 +11,6 @@ import ru.galtor85.household_store.repository.SecurityUserRepository;
 import ru.galtor85.household_store.security.SecurityUser;
 
 import java.time.LocalDate;
-import java.util.Locale;
 
 @Slf4j
 @Service
@@ -23,9 +22,7 @@ public class AdminUserCreationService {
     private final MessageService messageService;
 
     @Transactional
-    public User createUserWithRole(User adminUser, User newUser, String rawPassword, Role role, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public User createUserWithRole(User adminUser, User newUser, String rawPassword, Role role) {
         // Проверяем права администратора
         SecurityUser adminSecurity = securityUserRepository.findById(adminUser.getId())
                 .orElseThrow(() -> {
@@ -57,7 +54,7 @@ public class AdminUserCreationService {
         }
 
         // Создаем пользователя через существующий сервис с указанной ролью
-        User createdUser = userService.register(newUser, rawPassword, role, locale);
+        User createdUser = userService.register(newUser, rawPassword, role);
 
         log.info(messageService.get(
                 "admin-user-creation-service.log.admin.user.created",
@@ -70,26 +67,14 @@ public class AdminUserCreationService {
     }
 
     @Transactional
-    public User createUserWithRole(User adminUser, User newUser, String rawPassword, Role role) {
-        return createUserWithRole(adminUser, newUser, rawPassword, role, Locale.getDefault());
-    }
-
-    @Transactional
-    public User createUserWithGeneratedPassword(User adminUser, User newUser, Role role, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public User createUserWithGeneratedPassword(User adminUser, User newUser, Role role) {
         String generatedPassword = generateRandomPassword();
         log.info(messageService.get(
                 "admin-user-creation-service.log.password.generated",
                 newUser.getEmail()
         ));
 
-        return createUserWithRole(adminUser, newUser, generatedPassword, role, locale);
-    }
-
-    @Transactional
-    public User createUserWithGeneratedPassword(User adminUser, User newUser, Role role) {
-        return createUserWithGeneratedPassword(adminUser, newUser, role, Locale.getDefault());
+        return createUserWithRole(adminUser, newUser, generatedPassword, role);
     }
 
     private String generateRandomPassword() {
@@ -98,9 +83,7 @@ public class AdminUserCreationService {
     }
 
     @Transactional(readOnly = true)
-    public boolean canCreateUserWithRole(User adminUser, Role role, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public boolean canCreateUserWithRole(User adminUser, Role role) {
         SecurityUser adminSecurity = securityUserRepository.findById(adminUser.getId())
                 .orElseThrow(() -> {
                     String error = messageService.get(
@@ -122,10 +105,5 @@ public class AdminUserCreationService {
         }
 
         return canCreate;
-    }
-
-    @Transactional(readOnly = true)
-    public boolean canCreateUserWithRole(User adminUser, Role role) {
-        return canCreateUserWithRole(adminUser, role, Locale.getDefault());
     }
 }

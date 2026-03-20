@@ -79,7 +79,7 @@ public class UserMapper {
         response.setBirthDate(user.getBirthDate());
         response.setAge(user.getAge());
 
-        // ДОБАВЛЕНО: получаем текущий тип пользователя и конвертируем в DTO
+        //Получаем текущий тип пользователя и конвертируем в DTO
         userTypeAssignmentRepository.findActiveByUserId(user.getId())
                 .ifPresent(assignment -> {
                     UserTypeAssignmentDto assignmentDto = convertToDto(assignment);

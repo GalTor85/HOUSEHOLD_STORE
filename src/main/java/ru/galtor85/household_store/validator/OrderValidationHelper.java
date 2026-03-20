@@ -1,16 +1,16 @@
-package ru.galtor85.household_store.util;
+package ru.galtor85.household_store.validator;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.*;
 import ru.galtor85.household_store.entity.Order;
-import ru.galtor85.household_store.entity.OrderItem;
 import ru.galtor85.household_store.entity.OrderStatus;
 import ru.galtor85.household_store.entity.Product;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.math.BigDecimal;
+import java.util.Locale;
 
 @Slf4j
 @Component

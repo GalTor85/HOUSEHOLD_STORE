@@ -9,7 +9,6 @@ import ru.galtor85.household_store.entity.User;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.time.LocalDate;
-import java.util.Locale;
 
 @Slf4j
 @Component
@@ -18,13 +17,11 @@ public class UserToEntity {
 
     private final MessageService messageService;
 
-    public User build(UserCreateRequest request, String creator, Locale locale) {
+    public User build(UserCreateRequest request, String creator) {
         if (request == null) {
             log.warn(messageService.get("user-to-entity.log.mapper.request.null"));
             return null;
         }
-
-        locale = locale != null ? locale : Locale.getDefault();
 
         log.debug(messageService.get("user-to-entity.log.mapper.converting.user", request.getEmail()));
 
@@ -35,17 +32,13 @@ public class UserToEntity {
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .surname(request.getSurname())
-                .birthDate(parseBirthDate(request.getBirthDate(), locale))
+                .birthDate(parseBirthDate(request.getBirthDate()))
                 .address(request.getAddress())
                 .creator(creator)
                 .build();
     }
 
-    public User build(UserCreateRequest request, String creator) {
-        return build(request, creator, Locale.getDefault());
-    }
-
-    private LocalDate parseBirthDate(String birthDate, Locale locale) {
+    private LocalDate parseBirthDate(String birthDate) {
         if (birthDate == null || birthDate.isBlank()) {
             return null;
         }
@@ -61,7 +54,7 @@ public class UserToEntity {
         }
     }
 
-    public void updateUserFromRequest(User user, UserEditRequest request, Locale locale) {
+    public void updateUserFromRequest(User user, UserEditRequest request) {
         if (user == null || request == null) {
             return;
         }
@@ -87,8 +80,7 @@ public class UserToEntity {
             user.setAddress(request.getAddress());
         }
         if (request.getBirthDate() != null) {
-            user.setBirthDate(parseBirthDate(request.getBirthDate(), locale));
+            user.setBirthDate(parseBirthDate(request.getBirthDate()));
         }
-        // role, active, password - не обновляем здесь, они в SecurityUser
     }
 }

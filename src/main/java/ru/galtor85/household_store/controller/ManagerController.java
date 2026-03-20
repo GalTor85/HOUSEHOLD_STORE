@@ -27,7 +27,6 @@ import ru.galtor85.household_store.service.*;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Collectors;
 
 @SecurityRequirement(name = "Bearer Authentication")
@@ -73,11 +72,10 @@ public class ManagerController {
     @PostMapping("/products")
     @Operation(summary = "Create a new product")
     public ResponseEntity<ApiResponse<ProductDto>> createProduct(
-            @Valid @RequestBody ProductCreateRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody ProductCreateRequest request) {
 
         User manager = getCurrentManager();
-        ProductDto product = managerProductService.createProduct(request, manager.getId(), locale);
+        ProductDto product = managerProductService.createProduct(request, manager.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
@@ -89,10 +87,9 @@ public class ManagerController {
     @Operation(summary = "Update an existing product")
     public ResponseEntity<ApiResponse<ProductDto>> updateProduct(
             @PathVariable Long productId,
-            @Valid @RequestBody ProductUpdateRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody ProductUpdateRequest request) {
 
-        ProductDto product = managerProductService.updateProduct(productId, request, locale);
+        ProductDto product = managerProductService.updateProduct(productId, request);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.product.updated"),
@@ -102,10 +99,9 @@ public class ManagerController {
     @GetMapping("/products/{productId}")
     @Operation(summary = "Get product by ID")
     public ResponseEntity<ApiResponse<ProductDto>> getProduct(
-            @PathVariable Long productId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long productId) {
 
-        ProductDto product = managerProductService.getProductById(productId, locale);
+        ProductDto product = managerProductService.getProductById(productId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.product.fetched"),
@@ -122,12 +118,11 @@ public class ManagerController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(defaultValue = "asc") String sortDir) {
 
 
         Page<ProductDto> products = managerProductService.getProducts(
-                name, category, brand, active, page, size, sortBy, sortDir, locale);
+                name, category, brand, active, page, size, sortBy, sortDir);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.products.fetched"),
@@ -139,10 +134,9 @@ public class ManagerController {
     public ResponseEntity<ApiResponse<ProductDto>> adjustStock(
             @PathVariable Long productId,
             @RequestParam int quantity,
-            @RequestParam(required = false) String reason,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(required = false) String reason) {
 
-        ProductDto product = managerProductService.adjustStock(productId, quantity, reason, locale);
+        ProductDto product = managerProductService.adjustStock(productId, quantity, reason);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.stock.adjusted"),
@@ -154,10 +148,9 @@ public class ManagerController {
     public ResponseEntity<ApiResponse<ProductDto>> updatePrice(
             @PathVariable Long productId,
             @RequestParam BigDecimal newPrice,
-            @RequestParam(required = false) String reason,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(required = false) String reason) {
 
-        ProductDto product = managerProductService.updatePrice(productId, newPrice, reason, locale);
+        ProductDto product = managerProductService.updatePrice(productId, newPrice, reason);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.price.updated"),
@@ -168,10 +161,9 @@ public class ManagerController {
     @Operation(summary = "Toggle product active status")
     public ResponseEntity<ApiResponse<ProductDto>> toggleProductActive(
             @PathVariable Long productId,
-            @RequestParam boolean active,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam boolean active) {
 
-        ProductDto product = managerProductService.toggleProductActive(productId, active, locale);
+        ProductDto product = managerProductService.toggleProductActive(productId, active);
 
         String messageKey = active ? "manager.product.activated" : "manager.product.deactivated";
         return ResponseEntity.ok(ApiResponse.success(
@@ -192,10 +184,7 @@ public class ManagerController {
 
             @RequestParam(required = false)
             @Parameter(description = "Media metadata as JSON array")
-            String metadata,
-
-            @RequestHeader(name = "Accept-Language", required = false)
-            Locale locale) {
+            String metadata) {
 
         User manager = getCurrentManager();
 
@@ -203,7 +192,6 @@ public class ManagerController {
         log.info("=== ЗАГРУЗКА ФАЙЛОВ ===");
         log.info("Product ID: {}", productId);
         log.info("Manager ID: {}", manager.getId());
-        log.info("Locale: {}", locale);
 
         if (files != null) {
             log.info("Количество файлов: {}", files.length);
@@ -224,7 +212,7 @@ public class ManagerController {
         List<MultipartFile> fileList = Arrays.asList(files);
 
         List<ProductMediaDto> media = managerProductService.uploadMedia(
-                productId, fileList, metadata, manager.getId(), locale);
+                productId, fileList, metadata, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.product.media.uploaded"),
@@ -234,11 +222,10 @@ public class ManagerController {
     @DeleteMapping("/media/{mediaId}")
     @Operation(summary = "Delete a media file")
     public ResponseEntity<ApiResponse<Void>> deleteMedia(
-            @PathVariable Long mediaId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long mediaId) {
 
         User manager = getCurrentManager();
-        managerProductService.deleteMedia(mediaId, manager.getId(), locale);
+        managerProductService.deleteMedia(mediaId, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.product.media.deleted"),
@@ -248,11 +235,10 @@ public class ManagerController {
     @PutMapping("/media/{mediaId}/main")
     @Operation(summary = "Set media as main image")
     public ResponseEntity<ApiResponse<Void>> setMainMedia(
-            @PathVariable Long mediaId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long mediaId) {
 
         User manager = getCurrentManager();
-        managerProductService.setMainMedia(mediaId, manager.getId(), locale);
+        managerProductService.setMainMedia(mediaId, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.product.media.main.set"),
@@ -264,11 +250,10 @@ public class ManagerController {
     @PostMapping("/purchases")
     @Operation(summary = "Create purchase order from supplier")
     public ResponseEntity<ApiResponse<OrderDto>> createPurchaseOrder(
-            @Valid @RequestBody PurchaseOrderCreateRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody PurchaseOrderCreateRequest request) {
 
         User manager = getCurrentManager();
-        OrderDto purchaseOrder = managerPurchaseService.createPurchaseOrder(request, manager.getId(), locale);
+        OrderDto purchaseOrder = managerPurchaseService.createPurchaseOrder(request, manager.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
@@ -284,11 +269,10 @@ public class ManagerController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(defaultValue = "20") int size) {
 
         Page<OrderDto> orders = managerPurchaseService.getPurchaseOrders(
-                supplierId, status, startDate, endDate, page, size, locale);
+                supplierId, status, startDate, endDate, page, size);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.purchases.fetched"),
@@ -298,10 +282,9 @@ public class ManagerController {
     @GetMapping("/purchases/{orderId}")
     @Operation(summary = "Get purchase order by ID")
     public ResponseEntity<ApiResponse<OrderDto>> getPurchaseOrder(
-            @PathVariable Long orderId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long orderId) {
 
-        OrderDto order = managerPurchaseService.getPurchaseOrderById(orderId, locale);
+        OrderDto order = managerPurchaseService.getPurchaseOrderById(orderId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.purchase.fetched"),
@@ -312,11 +295,10 @@ public class ManagerController {
     @Operation(summary = "Receive purchase order")
     public ResponseEntity<ApiResponse<OrderDto>> receivePurchaseOrder(
             @PathVariable Long orderId,
-            @RequestBody(required = false) ReceiveOrderRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestBody(required = false) ReceiveAndStockRequest request) {
 
         User manager = getCurrentManager();
-        OrderDto order = managerPurchaseService.receivePurchaseOrder(orderId, request, manager.getId(), locale);
+        OrderDto order = managerPurchaseService.receivePurchaseOrder(orderId, request, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.purchase.received"),
@@ -328,11 +310,10 @@ public class ManagerController {
     @PostMapping("/inventory/write-off")
     @Operation(summary = "Write off damaged/lost stock")
     public ResponseEntity<ApiResponse<Void>> writeOffStock(
-            @Valid @RequestBody StockWriteOffRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody StockWriteOffRequest request) {
 
         User manager = getCurrentManager();
-        managerPurchaseService.writeOffStock(request, manager.getId(), locale);
+        managerPurchaseService.writeOffStock(request, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.stock.writeoff.completed"),
@@ -342,10 +323,9 @@ public class ManagerController {
     @GetMapping("/inventory/low-stock")
     @Operation(summary = "Get low stock products")
     public ResponseEntity<ApiResponse<List<ProductDto>>> getLowStockProducts(
-            @RequestParam(defaultValue = "10") int threshold,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(defaultValue = "10") int threshold) {
 
-        List<ProductDto> products = managerProductService.getLowStockProducts(threshold, locale);
+        List<ProductDto> products = managerProductService.getLowStockProducts(threshold);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.inventory.low.stock"),
@@ -362,11 +342,10 @@ public class ManagerController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(defaultValue = "20") int size) {
 
         Page<OrderDto> orders = managerOrderService.getCustomerOrders(
-                status, customerId, startDate, endDate, page, size, locale);
+                status, customerId, startDate, endDate, page, size);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.orders.fetched"),
@@ -376,10 +355,9 @@ public class ManagerController {
     @GetMapping("/orders/{orderId}")
     @Operation(summary = "Get customer order by ID")
     public ResponseEntity<ApiResponse<OrderDto>> getCustomerOrder(
-            @PathVariable Long orderId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long orderId) {
 
-        OrderDto order = managerOrderService.getCustomerOrderById(orderId, locale);
+        OrderDto order = managerOrderService.getCustomerOrderById(orderId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.order.fetched"),
@@ -393,12 +371,11 @@ public class ManagerController {
             @PathVariable Long orderId,
             @RequestParam String status,
             @RequestParam(required = false) String trackingNumber,
-            @RequestParam(required = false) String reason,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(required = false) String reason) {
 
         User manager = getCurrentManager();
         OrderDto order = managerOrderService.updateOrderStatus(
-                orderId, status, trackingNumber, reason, manager.getId(), locale);
+                orderId, status, trackingNumber, reason, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.order.status.updated"),
@@ -411,12 +388,11 @@ public class ManagerController {
             @PathVariable Long orderId,
             @PathVariable Long itemId,
             @RequestParam BigDecimal newPrice,
-            @RequestParam String reason,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam String reason) {
 
         User manager = getCurrentManager();
         OrderDto order = managerOrderService.updateOrderItemPrice(
-                orderId, itemId, newPrice, reason, manager.getId(), locale);
+                orderId, itemId, newPrice, reason, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.order.price.updated"),
@@ -427,11 +403,10 @@ public class ManagerController {
     @Operation(summary = "Cancel customer order")
     public ResponseEntity<ApiResponse<OrderDto>> cancelOrder(
             @PathVariable Long orderId,
-            @RequestParam String reason,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam String reason) {
 
         User manager = getCurrentManager();
-        OrderDto order = managerOrderService.cancelOrder(orderId, reason, manager.getId(), locale);
+        OrderDto order = managerOrderService.cancelOrder(orderId, reason, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.order.cancelled"),
@@ -443,13 +418,12 @@ public class ManagerController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<RollbackApprovalDto>> requestRollback(
             @PathVariable Long orderId,
-            @Valid @RequestBody RollbackRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody RollbackRequest request) {
 
         User manager = getCurrentManager();
         request.setOrderId(orderId); // Убеждаемся, что ID совпадает
         RollbackApprovalDto approval = rollbackService.requestRollback(
-                request, manager.getId(), locale);
+                request, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.rollback.requested"),
@@ -461,11 +435,10 @@ public class ManagerController {
     @PostMapping("/suppliers")
     @Operation(summary = "Create new supplier")
     public ResponseEntity<ApiResponse<SupplierDto>> createSupplier(
-            @Valid @RequestBody SupplierCreateRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody SupplierCreateRequest request) {
 
         User manager = getCurrentManager();
-        SupplierDto supplier = managerPurchaseService.createSupplier(request, manager.getId(), locale);
+        SupplierDto supplier = managerPurchaseService.createSupplier(request, manager.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
@@ -477,10 +450,9 @@ public class ManagerController {
     @Operation(summary = "Update supplier information")
     public ResponseEntity<ApiResponse<SupplierDto>> updateSupplier(
             @PathVariable Long supplierId,
-            @Valid @RequestBody SupplierUpdateRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody SupplierUpdateRequest request) {
 
-        SupplierDto supplier = managerPurchaseService.updateSupplier(supplierId, request, locale);
+        SupplierDto supplier = managerPurchaseService.updateSupplier(supplierId, request);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.supplier.updated"),
@@ -493,10 +465,9 @@ public class ManagerController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(defaultValue = "20") int size) {
 
-        Page<SupplierDto> suppliers = managerPurchaseService.getSuppliers(name, status, page, size, locale);
+        Page<SupplierDto> suppliers = managerPurchaseService.getSuppliers(name, status, page, size);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.suppliers.fetched"),
@@ -508,12 +479,11 @@ public class ManagerController {
     public ResponseEntity<ApiResponse<SupplierProductDto>> addProductToSupplier(
             @PathVariable Long supplierId,
             @PathVariable Long productId,
-            @Valid @RequestBody SupplierProductRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody SupplierProductRequest request) {
 
         User manager = getCurrentManager();
         SupplierProductDto supplierProduct = managerPurchaseService.addProductToSupplier(
-                supplierId, productId, request, manager.getId(), locale);
+                supplierId, productId, request, manager.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
@@ -526,12 +496,11 @@ public class ManagerController {
     @PostMapping("/warehouses")
     @Operation(summary = "Create a new warehouse")
     public ResponseEntity<ApiResponse<WarehouseDto>> createWarehouse(
-            @Valid @RequestBody WarehouseCreateRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody WarehouseCreateRequest request) {
 
         User manager = getCurrentManager();
         WarehouseDto warehouse = warehouseService.createWarehouse(
-                request, manager.getId(), locale);
+                request, manager.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
@@ -544,10 +513,9 @@ public class ManagerController {
     public ResponseEntity<ApiResponse<Page<WarehouseDto>>> getWarehouses(
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(defaultValue = "20") int size) {
 
-        Page<WarehouseDto> warehouses = warehouseService.getWarehouses(search, page, size, locale);
+        Page<WarehouseDto> warehouses = warehouseService.getWarehouses(search, page, size);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.warehouses.fetched"),
@@ -557,11 +525,10 @@ public class ManagerController {
     @GetMapping("/warehouses/{warehouseId}")
     @Operation(summary = "Get warehouse by ID")
     public ResponseEntity<ApiResponse<WarehouseDto>> getWarehouse(
-            @PathVariable Long warehouseId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long warehouseId) {
 
         // Можно добавить метод в сервис для получения одного склада
-        Page<WarehouseDto> warehouses = warehouseService.getWarehouses(null, 0, 1, locale);
+        Page<WarehouseDto> warehouses = warehouseService.getWarehouses(null, 0, 1);
         WarehouseDto warehouse = warehouses.getContent().stream()
                 .filter(w -> w.getId().equals(warehouseId))
                 .findFirst()
@@ -578,12 +545,11 @@ public class ManagerController {
     @Operation(summary = "Add a storage cell to warehouse")
     public ResponseEntity<ApiResponse<StorageCellDto>> addStorageCell(
             @PathVariable Long warehouseId,
-            @Valid @RequestBody StorageCellCreateRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody StorageCellCreateRequest request) {
 
         User manager = getCurrentManager();
         StorageCellDto cell = warehouseService.addCell(
-                warehouseId, request, manager.getId(), locale);
+                warehouseId, request, manager.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
@@ -594,11 +560,10 @@ public class ManagerController {
     @GetMapping("/warehouses/{warehouseId}/cells")
     @Operation(summary = "Get all cells in warehouse")
     public ResponseEntity<ApiResponse<List<StorageCellDto>>> getWarehouseCells(
-            @PathVariable Long warehouseId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long warehouseId) {
 
 
-        List<StorageCellDto> cells = warehouseService.getWarehouseCells(warehouseId, locale);
+        List<StorageCellDto> cells = warehouseService.getWarehouseCells(warehouseId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.cells.fetched"),
@@ -609,13 +574,12 @@ public class ManagerController {
     @Operation(summary = "Get available cells by type")
     public ResponseEntity<ApiResponse<List<StorageCellDto>>> getAvailableCells(
             @PathVariable Long warehouseId,
-            @RequestParam(required = false) String cellType,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(required = false) String cellType) {
 
         ru.galtor85.household_store.entity.CellType type = cellType != null ?
                 ru.galtor85.household_store.entity.CellType.valueOf(cellType.toUpperCase()) : null;
 
-        List<StorageCellDto> cells = warehouseService.getAvailableCells(warehouseId, type, locale);
+        List<StorageCellDto> cells = warehouseService.getAvailableCells(warehouseId, type);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.cells.available.fetched"),
@@ -625,11 +589,10 @@ public class ManagerController {
     @GetMapping("/cells/{cellId}")
     @Operation(summary = "Get cell by ID")
     public ResponseEntity<ApiResponse<StorageCellDto>> getCell(
-            @PathVariable Long cellId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long cellId) {
 
         // Можно добавить метод в сервис
-        StorageCellDto cell = warehouseService.getCellById(cellId, locale);
+        StorageCellDto cell = warehouseService.getCellById(cellId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.cell.fetched"),
@@ -641,12 +604,11 @@ public class ManagerController {
     public ResponseEntity<ApiResponse<StorageCellDto>> assignProductToCell(
             @PathVariable Long cellId,
             @RequestParam Long productId,
-            @RequestParam int quantity,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam int quantity) {
 
         User manager = getCurrentManager();
         StorageCellDto cell = warehouseService.assignProductToCell(
-                cellId, productId, quantity, manager.getId(), locale);
+                cellId, productId, quantity, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.cell.product.assigned"),
@@ -656,11 +618,10 @@ public class ManagerController {
     @PutMapping("/cells/{cellId}/clear")
     @Operation(summary = "Clear cell (remove product)")
     public ResponseEntity<ApiResponse<StorageCellDto>> clearCell(
-            @PathVariable Long cellId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long cellId) {
 
         User manager = getCurrentManager();
-        StorageCellDto cell = warehouseService.clearCell(cellId, manager.getId(), locale);
+        StorageCellDto cell = warehouseService.clearCell(cellId, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.cell.cleared"),
@@ -673,12 +634,11 @@ public class ManagerController {
     @Operation(summary = "Receive purchase order and place items in warehouse cells")
     public ResponseEntity<ApiResponse<OrderDto>> receivePurchaseOrderWithStock(
             @PathVariable Long orderId,
-            @Valid @RequestBody ReceiveAndStockRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody ReceiveAndStockRequest request) {
 
         User manager = getCurrentManager();
         OrderDto order = managerPurchaseService.receivePurchaseOrderWithStock(
-                orderId, request, manager.getId(), locale);
+                orderId, request, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.purchase.received.with.stock"),
@@ -690,11 +650,10 @@ public class ManagerController {
     @GetMapping("/movements/product/{productId}")
     @Operation(summary = "Get stock movements for product")
     public ResponseEntity<ApiResponse<List<StockMovementDto>>> getProductMovements(
-            @PathVariable Long productId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long productId) {
 
         // Добавить метод в сервис
-        List<StockMovementDto> movements = warehouseService.getProductMovements(productId, locale);
+        List<StockMovementDto> movements = warehouseService.getProductMovements(productId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.movements.fetched"),
@@ -704,10 +663,9 @@ public class ManagerController {
     @GetMapping("/movements/cell/{cellId}")
     @Operation(summary = "Get stock movements for cell")
     public ResponseEntity<ApiResponse<List<StockMovementDto>>> getCellMovements(
-            @PathVariable Long cellId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long cellId) {
 
-        List<StockMovementDto> movements = warehouseService.getCellMovements(cellId, locale);
+        List<StockMovementDto> movements = warehouseService.getCellMovements(cellId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.movements.fetched"),
@@ -717,12 +675,11 @@ public class ManagerController {
     @PostMapping("/categories/warehouse")
     @Operation(summary = "Assign category to warehouse")
     public ResponseEntity<ApiResponse<CategoryWarehouseDto>> assignCategoryToWarehouse(
-            @Valid @RequestBody CategoryWarehouseRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody CategoryWarehouseRequest request) {
 
         User manager = getCurrentManager();
         CategoryWarehouseDto assignment = categoryWarehouseService.assignCategoryToWarehouse(
-                request, manager.getId(), locale);
+                request, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.category.assigned"),
@@ -733,12 +690,11 @@ public class ManagerController {
     @Operation(summary = "Update category warehouse assignment")
     public ResponseEntity<ApiResponse<CategoryWarehouseDto>> updateCategoryAssignment(
             @PathVariable String category,
-            @Valid @RequestBody CategoryWarehouseRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody CategoryWarehouseRequest request) {
 
         User manager = getCurrentManager();
         CategoryWarehouseDto assignment = categoryWarehouseService.updateCategoryAssignment(
-                category, request, manager.getId(), locale);
+                category, request, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.category.updated"),
@@ -748,11 +704,10 @@ public class ManagerController {
     @DeleteMapping("/categories/{category}/warehouse")
     @Operation(summary = "Delete category warehouse assignment")
     public ResponseEntity<ApiResponse<Void>> deleteCategoryAssignment(
-            @PathVariable String category,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable String category) {
 
         User manager = getCurrentManager();
-        categoryWarehouseService.deleteCategoryAssignment(category, manager.getId(), locale);
+        categoryWarehouseService.deleteCategoryAssignment(category, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.category.deleted"),
@@ -762,10 +717,9 @@ public class ManagerController {
     @GetMapping("/categories/{category}/warehouse")
     @Operation(summary = "Get category warehouse assignment")
     public ResponseEntity<ApiResponse<CategoryWarehouseDto>> getCategoryAssignment(
-            @PathVariable String category,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable String category) {
 
-        CategoryWarehouseDto assignment = categoryWarehouseService.getCategoryAssignment(category, locale);
+        CategoryWarehouseDto assignment = categoryWarehouseService.getCategoryAssignment(category);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.category.fetched"),
@@ -774,10 +728,9 @@ public class ManagerController {
 
     @GetMapping("/categories/warehouse/all")
     @Operation(summary = "Get all category warehouse assignments")
-    public ResponseEntity<ApiResponse<List<CategoryWarehouseDto>>> getAllAssignments(
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+    public ResponseEntity<ApiResponse<List<CategoryWarehouseDto>>> getAllAssignments() {
 
-        List<CategoryWarehouseDto> assignments = categoryWarehouseService.getAllAssignments(locale);
+        List<CategoryWarehouseDto> assignments = categoryWarehouseService.getAllAssignments();
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.categories.fetched"),
@@ -787,12 +740,11 @@ public class ManagerController {
     @PostMapping("/categories/warehouse/bulk")
     @Operation(summary = "Bulk assign categories to warehouse")
     public ResponseEntity<ApiResponse<List<CategoryWarehouseDto>>> bulkAssignCategories(
-            @Valid @RequestBody BulkCategoryWarehouseRequest request,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @Valid @RequestBody BulkCategoryWarehouseRequest request) {
 
         User manager = getCurrentManager();
         List<CategoryWarehouseDto> assignments = categoryWarehouseService.bulkAssignCategories(
-                request, manager.getId(), locale);
+                request, manager.getId());
 
         String message = assignments.size() == request.getCategories().size() ?
                 "manager.categories.bulk.assigned.all" :
@@ -806,11 +758,10 @@ public class ManagerController {
     @GetMapping("/warehouses/{warehouseId}/categories")
     @Operation(summary = "Get all categories assigned to warehouse")
     public ResponseEntity<ApiResponse<CategoryWarehouseListDto>> getCategoriesByWarehouse(
-            @PathVariable Long warehouseId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long warehouseId) {
 
         CategoryWarehouseListDto categories = categoryWarehouseService
-                .getCategoriesByWarehouse(warehouseId, locale);
+                .getCategoriesByWarehouse(warehouseId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.warehouse.categories.fetched"),
@@ -821,11 +772,10 @@ public class ManagerController {
     @Operation(summary = "Update priority for multiple categories")
     public ResponseEntity<ApiResponse<Void>> updateCategoriesPriority(
             @RequestParam List<String> categories,
-            @RequestParam Integer priority,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam Integer priority) {
 
         User manager = getCurrentManager();
-        categoryWarehouseService.updateCategoriesPriority(categories, priority, manager.getId(), locale);
+        categoryWarehouseService.updateCategoriesPriority(categories, priority, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.categories.priority.updated"),
@@ -835,11 +785,10 @@ public class ManagerController {
     @DeleteMapping("/categories/bulk")
     @Operation(summary = "Delete multiple category assignments")
     public ResponseEntity<ApiResponse<Void>> deleteCategories(
-            @RequestParam List<String> categories,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam List<String> categories) {
 
         User manager = getCurrentManager();
-        categoryWarehouseService.deleteCategories(categories, manager.getId(), locale);
+        categoryWarehouseService.deleteCategories(categories, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.categories.bulk.deleted"),
@@ -853,11 +802,10 @@ public class ManagerController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "productName") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(defaultValue = "asc") String sortDir) {
 
         Page<ProductStockDto> stocks = stockService.getStockByWarehouse(
-                warehouseId, page, size, sortBy, sortDir, locale);
+                warehouseId, page, size, sortBy, sortDir);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.warehouse.stock.fetched"),
@@ -867,10 +815,9 @@ public class ManagerController {
     @GetMapping("/products/{productId}/stock")
     @Operation(summary = "Get product stock across all warehouses")
     public ResponseEntity<ApiResponse<List<ProductStockDto>>> getProductStock(
-            @PathVariable Long productId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long productId) {
 
-        List<ProductStockDto> stocks = stockService.getProductStockAcrossAllWarehouses(productId, locale);
+        List<ProductStockDto> stocks = stockService.getProductStockAcrossAllWarehouses(productId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.product.stock.fetched"),
@@ -881,10 +828,9 @@ public class ManagerController {
     @Operation(summary = "Get product stock at specific warehouse")
     public ResponseEntity<ApiResponse<ProductStockDto>> getProductStockAtWarehouse(
             @PathVariable Long warehouseId,
-            @PathVariable Long productId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long productId) {
 
-        ProductStockDto stock = stockService.getProductStockAtWarehouse(productId, warehouseId, locale);
+        ProductStockDto stock = stockService.getProductStockAtWarehouse(productId, warehouseId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.product.warehouse.stock.fetched"),
@@ -893,10 +839,9 @@ public class ManagerController {
 
     @GetMapping("/warehouses/stock/summary")
     @Operation(summary = "Get stock summary for all warehouses")
-    public ResponseEntity<ApiResponse<List<WarehouseStockSummaryDto>>> getAllWarehousesSummary(
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+    public ResponseEntity<ApiResponse<List<WarehouseStockSummaryDto>>> getAllWarehousesSummary() {
 
-        List<WarehouseStockSummaryDto> summaries = stockService.getAllWarehousesSummary(locale);
+        List<WarehouseStockSummaryDto> summaries = stockService.getAllWarehousesSummary();
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.all.warehouses.summary"),
@@ -906,10 +851,9 @@ public class ManagerController {
     @GetMapping("/warehouses/{warehouseId}/stock/low")
     @Operation(summary = "Get low stock items in warehouse")
     public ResponseEntity<ApiResponse<List<ProductStockDto>>> getLowStockItems(
-            @PathVariable Long warehouseId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long warehouseId) {
 
-        List<ProductStockDto> lowStock = stockService.getLowStockItems(warehouseId, locale);
+        List<ProductStockDto> lowStock = stockService.getLowStockItems(warehouseId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.warehouse.low.stock"),
@@ -922,11 +866,10 @@ public class ManagerController {
             @PathVariable Long warehouseId,
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(defaultValue = "20") int size) {
 
         Page<ProductStockDto> stocks = stockService.searchStockOnWarehouse(
-                warehouseId, query, page, size, locale);
+                warehouseId, query, page, size);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.warehouse.stock.search"),
@@ -936,11 +879,10 @@ public class ManagerController {
     @GetMapping("/products/{productId}/stock/distribution")
     @Operation(summary = "Get product stock distribution across warehouses")
     public ResponseEntity<ApiResponse<ProductStockDistributionDto>> getProductStockDistribution(
-            @PathVariable Long productId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long productId) {
 
         ProductStockDistributionDto distribution =
-                stockService.getProductStockDistribution(productId, locale);
+                stockService.getProductStockDistribution(productId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.product.stock.distribution"),
@@ -950,10 +892,9 @@ public class ManagerController {
     @GetMapping("/products/{productId}/stock/total")
     @Operation(summary = "Get total stock for product across all warehouses")
     public ResponseEntity<ApiResponse<Integer>> getTotalProductStock(
-            @PathVariable Long productId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long productId) {
 
-        Integer total = stockService.getTotalStockForProduct(productId, locale);
+        Integer total = stockService.getTotalStockForProduct(productId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.product.stock.total"),
@@ -963,10 +904,9 @@ public class ManagerController {
     @GetMapping("/products/{productId}/warehouses")
     @Operation(summary = "Find warehouses where product is stored")
     public ResponseEntity<ApiResponse<List<WarehouseDto>>> findWarehousesWithProduct(
-            @PathVariable Long productId,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @PathVariable Long productId) {
 
-        List<Warehouse> warehouses = stockService.findWarehousesWithProduct(productId, locale);
+        List<Warehouse> warehouses = stockService.findWarehousesWithProduct(productId);
 
         List<WarehouseDto> warehouseDtos = warehouses.stream()
                 .map(warehouseMapper::toDto)
@@ -976,4 +916,73 @@ public class ManagerController {
                 messageService.get("manager.product.warehouses.found"),
                 warehouseDtos));
     }
+
+    @GetMapping("/stock/movements/product/{productId}")
+    @Operation(summary = "Get stock movements for a product")
+    public ResponseEntity<ApiResponse<Page<StockMovementDto>>> getProductMovements(
+            @PathVariable Long productId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Page<StockMovementDto> movements = stockService.getProductMovements(
+                productId, page, size);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("stock.movements.fetched"),
+                movements));
+    }
+
+    @GetMapping("/stock/movements/warehouse/{warehouseId}")
+    @Operation(summary = "Get stock movements for a warehouse")
+    public ResponseEntity<ApiResponse<Page<StockMovementDto>>> getWarehouseMovements(
+            @PathVariable Long warehouseId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Page<StockMovementDto> movements = stockService.getWarehouseMovements(
+                warehouseId, page, size);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("stock.movements.fetched"),
+                movements));
+    }
+
+    @GetMapping("/stock/movements/reference")
+    @Operation(summary = "Get movements by reference")
+    public ResponseEntity<ApiResponse<List<StockMovementDto>>> getMovementsByReference(
+            @RequestParam String refType,
+            @RequestParam Long refId) {
+
+        List<StockMovementDto> movements = stockService.getMovementsByReference(
+                refType, refId);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("stock.movements.fetched"),
+                movements));
+    }
+
+    @GetMapping("/stock/movements/batch/{batchNumber}")
+    @Operation(summary = "Get movements by batch number")
+    public ResponseEntity<ApiResponse<List<StockMovementDto>>> getMovementsByBatch(
+            @PathVariable String batchNumber) {
+
+        List<StockMovementDto> movements = stockService.getMovementsByBatch(batchNumber);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("stock.movements.batch.fetched"),
+                movements));
+    }
+
+    @GetMapping("/products/{productId}/batches")
+    @Operation(summary = "Get all batch numbers for a product")
+    public ResponseEntity<ApiResponse<List<String>>> getProductBatches(
+            @PathVariable Long productId) {
+
+        List<String> batches = stockService.getProductBatches(productId);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("stock.product.batches.fetched"),
+                batches));
+    }
+
 }

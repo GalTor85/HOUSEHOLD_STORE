@@ -22,7 +22,6 @@ import ru.galtor85.household_store.service.*;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -107,7 +106,7 @@ public class AdminRestController {
         User newUser = userToEntity.build(request, creator);
 
         User createdUser = adminUserCreationService.createUserWithRole(
-                currentAdmin, newUser, request.getPassword(), request.getRole(), null);
+                currentAdmin, newUser, request.getPassword(), request.getRole());
 
         log.info(messageService.get("admin-rest-controller.log.user.created.success", createdUser.getEmail()));
 
@@ -128,7 +127,7 @@ public class AdminRestController {
         log.info(messageService.get("admin-rest-controller.log.admin.changing.role",
                 currentAdmin.getEmail(), userId, request.getNewRole()));
 
-        User updatedUser = userRoleService.changeUserRole(currentAdmin, userId, request.getNewRole(), null);
+        User updatedUser = userRoleService.changeUserRole(currentAdmin, userId, request.getNewRole());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("admin-rest-controller.user.role.updated"),
@@ -150,7 +149,7 @@ public class AdminRestController {
         log.info(messageService.get("admin-rest-controller.log.admin.changing.status",
                 currentAdmin.getEmail(), userId, statusText));
 
-        User updatedUser = userStatusService.toggleUserActive(currentAdmin, userId, request.isActive(), null);
+        User updatedUser = userStatusService.toggleUserActive(currentAdmin, userId, request.isActive());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("admin-rest-controller.user.status.updated"),
@@ -167,7 +166,7 @@ public class AdminRestController {
         log.info(messageService.get("admin-rest-controller.log.admin.deleting.user",
                 currentAdmin.getEmail(), userId));
 
-        userDeletedService.deleteUserWithCheck(userId, currentAdmin, null);
+        userDeletedService.deleteUserWithCheck(userId, currentAdmin);
 
         log.info(messageService.get("admin-rest-controller.log.user.deleted.success", userId));
 
@@ -227,7 +226,7 @@ public class AdminRestController {
         User currentAdmin = getCurrentAdmin();
         log.info(messageService.get("admin-rest-controller.log.admin.getting.stats", currentAdmin.getEmail()));
 
-        UserStatistics stats = userSearchService.getUserStatistics(null);
+        UserStatistics stats = userSearchService.getUserStatistics();
 
         Map<String, Object> responseStats = new HashMap<>();
         responseStats.put(messageService.get("admin-rest-controller.stats.total"), stats.getTotalUsers());
@@ -247,10 +246,9 @@ public class AdminRestController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<RollbackApprovalDto>>> getPendingRollbacks(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam(defaultValue = "20") int size) {
 
-        Page<RollbackApprovalDto> approvals = rollbackService.getPendingRollbacks(page, size, locale);
+        Page<RollbackApprovalDto> approvals = rollbackService.getPendingRollbacks(page, size);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("admin.rollback.pending.fetched"),
@@ -262,12 +260,11 @@ public class AdminRestController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<RollbackApprovalDto>> approveRollback(
             @PathVariable Long approvalId,
-            @RequestParam String comments,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam String comments) {
 
         User admin = getCurrentAdmin();
         RollbackApprovalDto approval = rollbackService.approveRollback(
-                approvalId, comments, admin.getId(), locale);
+                approvalId, comments, admin.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("admin.rollback.approved"),
@@ -279,12 +276,11 @@ public class AdminRestController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<RollbackApprovalDto>> rejectRollback(
             @PathVariable Long approvalId,
-            @RequestParam String comments,
-            @RequestHeader(name = "Accept-Language", required = false) Locale locale) {
+            @RequestParam String comments) {
 
         User admin = getCurrentAdmin();
         RollbackApprovalDto approval = rollbackService.rejectRollback(
-                approvalId, comments, admin.getId(), locale);
+                approvalId, comments, admin.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("admin.rollback.rejected"),

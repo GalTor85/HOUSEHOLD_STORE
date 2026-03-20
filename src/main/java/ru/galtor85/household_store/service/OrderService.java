@@ -4,157 +4,56 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.advice.exception.*;
-import ru.galtor85.household_store.entity.*;
-import ru.galtor85.household_store.repository.CartRepository;
-import ru.galtor85.household_store.repository.OrderItemRepository;
-import ru.galtor85.household_store.repository.OrderRepository;
-import ru.galtor85.household_store.repository.ProductRepository;
-
-import java.util.Locale;
+import ru.galtor85.household_store.advice.exception.OrderCreationException;
+import ru.galtor85.household_store.entity.Cart;
+import ru.galtor85.household_store.entity.Order;
+import ru.galtor85.household_store.processor.CartProcessor;
+import ru.galtor85.household_store.processor.OrderCreationProcessor;
+import ru.galtor85.household_store.processor.StockUpdateProcessor;
+import ru.galtor85.household_store.validator.OrderValidator;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
 
-    private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
-    private final CartRepository cartRepository;
-    private final ProductRepository productRepository;
+    private final OrderValidator orderValidator;
+    private final CartProcessor cartProcessor;
+    private final OrderCreationProcessor orderCreationProcessor;
+    private final StockUpdateProcessor stockUpdateProcessor;
     private final MessageService messageService;
 
     @Transactional
-    public Order createOrderFromCart(Long userId, String shippingAddress, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public Order createOrderFromCart(Long userId, String shippingAddress) {
         log.debug(messageService.get("order.log.creation.start", userId));
 
-        // Получаем активную корзину пользователя
-        Cart cart = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
-                .orElseThrow(() -> {
-                    log.warn(messageService.get("order.log.cart.not.found", userId));
-                    return new CartNotFoundException(userId);
-                });
-
-        if (cart.getItems().isEmpty()) {
-            log.warn(messageService.get("order.log.cart.empty", userId));
-            throw new CartEmptyException();
-        }
-
-        // Проверяем наличие товаров на складе
-        validateStockAvailability(cart, locale);
-
-        // Генерируем номер заказа
-        String orderNumber = generateOrderNumber();
-        log.debug(messageService.get("order.log.generated.number", orderNumber));
-
         try {
-            // Создаем заказ
-            Order order = Order.builder()
-                    .orderNumber(orderNumber)
-                    .userId(userId)
-                    .orderType(determineOrderType(userId))
-                    .status(OrderStatus.PENDING)
-                    .shippingAddress(shippingAddress)
-                    .subtotal(cart.getTotalAmount())
-                    .totalAmount(cart.getTotalAmount())
-                    .build();
+            // 1. Получаем активную корзину
+            Cart cart = cartProcessor.findActiveCart(userId);
 
-            // Копируем товары из корзины
-            for (CartItem cartItem : cart.getItems()) {
-                OrderItem orderItem = OrderItem.builder()
-                        .productId(cartItem.getProductId())
-                        .quantity(cartItem.getQuantity())
-                        .price(cartItem.getPrice())
-                        .productName(cartItem.getProductName())
-                        .productSku(cartItem.getSku())
-                        .build();
-                order.addItem(orderItem);
+            // 2. Валидация
+            orderValidator.validateCartNotEmpty(cart, userId);
+            orderValidator.validateStockAvailability(cart);
 
-                // Обновляем остатки
-                updateProductStock(cartItem.getProductId(), cartItem.getQuantity(), locale);
-            }
+            // 3. Создаем заказ
+            Order savedOrder = orderCreationProcessor.createOrderFromCart(
+                    cart, userId, shippingAddress);
 
-            Order savedOrder = orderRepository.save(order);
+            // 4. Обновляем остатки товаров
+            stockUpdateProcessor.updateStockForCart(cart);
 
-            // Очищаем корзину или меняем статус
-            cart.setStatus(CartStatus.COMPLETED);
-            cartRepository.save(cart);
+            // 5. Очищаем корзину
+            cartProcessor.completeCart(cart);
 
-            log.info(messageService.get("order.log.created.success", orderNumber, userId));
+            log.info(messageService.get("order.log.created.success",
+                    savedOrder.getOrderNumber(), userId));
+
             return savedOrder;
 
         } catch (Exception e) {
-            log.error(messageService.get("order.log.creation.error", orderNumber, e.getMessage()), e);
-            throw new OrderCreationException(orderNumber,
+            log.error(messageService.get("order.log.creation.error", e.getMessage()), e);
+            throw new OrderCreationException("UNKNOWN",
                     messageService.get("order.error.creation.failed", e.getMessage()));
         }
-    }
-
-    private String generateOrderNumber() {
-        return "ORD-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 1000);
-    }
-
-    private OrderType determineOrderType(Long userId) {
-        // TODO: Реализовать определение типа пользователя
-        // Например, проверка роли или настроек пользователя
-        return OrderType.RETAIL;
-    }
-
-    private void validateStockAvailability(Cart cart, Locale locale) {
-        for (CartItem item : cart.getItems()) {
-            Product product = productRepository.findById(item.getProductId())
-                    .orElseThrow(() -> {
-                        log.error(messageService.get("order.log.product.not.found", item.getProductId()));
-                        return new ProductNotFoundException(item.getProductId());
-                    });
-
-            if (product.getQuantityInStock() < item.getQuantity()) {
-                log.warn(messageService.get(
-                        "order.log.insufficient.stock",
-                        product.getName(),
-                        product.getQuantityInStock(),
-                        item.getQuantity()
-                ));
-                throw new InsufficientStockException(
-                        product.getId()+"-"+product.getName()+"-"+product.getQuantityInStock(),
-                        item.getQuantity()
-                );
-            }
-        }
-    }
-
-    private void updateProductStock(Long productId, Integer quantity, Locale locale) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> {
-                    log.error(messageService.get("order.log.product.not.found", productId));
-                    return new ProductNotFoundException(productId);
-                });
-
-        int newQuantity = product.getQuantityInStock() - quantity;
-
-        if (newQuantity < 0) {
-            log.error(messageService.get(
-                    "order.log.stock.negative",
-                    productId,
-                    product.getQuantityInStock(),
-                    quantity
-            ));
-            throw new InsufficientStockException(
-                    productId+"-"+product.getName()+"-"+product.getQuantityInStock(),
-                    quantity
-            );
-        }
-
-        product.setQuantityInStock(newQuantity);
-        productRepository.save(product);
-
-        log.debug(messageService.get(
-                "order.log.stock.updated",
-                productId,
-                product.getQuantityInStock(),
-                newQuantity
-        ));
     }
 }

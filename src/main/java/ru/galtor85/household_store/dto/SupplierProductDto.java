@@ -21,18 +21,17 @@ public class SupplierProductDto {
     @Schema(description = "Supplier ID", example = "1")
     private Long supplierId;
 
-    // ДОБАВЛЕНО
     @Schema(description = "Supplier name", example = "ООО 'ТехноПост'")
     private String supplierName;
 
     @Schema(description = "Product ID", example = "1")
     private Long productId;
 
-    // ДОБАВЛЕНО
+
     @Schema(description = "Product name", example = "iPhone 13 Pro")
     private String productName;
 
-    // ДОБАВЛЕНО
+
     @Schema(description = "Product SKU", example = "IPHONE-13-PRO-128")
     private String productSku;
 
@@ -51,7 +50,7 @@ public class SupplierProductDto {
     @Schema(description = "Minimum order quantity", example = "10")
     private Integer minOrderQuantity;
 
-    // ДОБАВЛЕНО (опциональные поля из запроса)
+
     @Schema(description = "Notes about product from supplier")
     private String notes;
 

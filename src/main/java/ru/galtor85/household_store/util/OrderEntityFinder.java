@@ -20,7 +20,6 @@ public class OrderEntityFinder {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
-    private final OrderItemRepository orderItemRepository;
     private final MessageService messageService;
 
     public Order findOrderById(Long orderId) {

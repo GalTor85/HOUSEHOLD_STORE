@@ -19,19 +19,18 @@ import ru.galtor85.household_store.mapper.OrderMapper;
 import ru.galtor85.household_store.processor.OrderFilterProcessor;
 import ru.galtor85.household_store.processor.OrderQueryBuilder;
 import ru.galtor85.household_store.processor.PurchaseStockProcessor;
-import ru.galtor85.household_store.processor.StockProcessor;
 import ru.galtor85.household_store.repository.OrderItemRepository;
 import ru.galtor85.household_store.repository.OrderRepository;
 import ru.galtor85.household_store.repository.ProductRepository;
+import ru.galtor85.household_store.resolver.WarehouseResolver;
 import ru.galtor85.household_store.util.EntityFinder;
 import ru.galtor85.household_store.util.OrderDateParser;
 import ru.galtor85.household_store.util.OrderEntityFinder;
-import ru.galtor85.household_store.util.OrderValidationHelper;
+import ru.galtor85.household_store.validator.OrderValidationHelper;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
 @Slf4j
 @Service
@@ -58,8 +57,7 @@ public class ManagerOrderService {
     // Процессоры
     private final OrderFilterProcessor filterProcessor;
     private final OrderQueryBuilder queryBuilder;
-    private final StockProcessor stockProcessor;
-    private final PurchaseStockProcessor purchaseStockProcessor; // ДОБАВЛЕНО
+    private final PurchaseStockProcessor purchaseStockProcessor;
     private final OrderValidationHelper orderValidationHelper;
 
     // ========== GET CUSTOMER ORDERS ==========
@@ -67,9 +65,7 @@ public class ManagerOrderService {
     @Transactional(readOnly = true)
     public Page<OrderDto> getCustomerOrders(String status, Long customerId,
                                             String startDate, String endDate,
-                                            int page, int size, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+                                            int page, int size) {
         OrderStatus orderStatus = validationHelper.parseOrderStatus(status);
         LocalDateTime start = dateParser.parseDate(startDate);
         LocalDateTime end = dateParser.parseDate(endDate);
@@ -84,36 +80,28 @@ public class ManagerOrderService {
 
         log.debug(messageService.get("manager.order.fetched.log", resultPage.getTotalElements()));
 
-        Locale finalLocale = locale;
-        return resultPage.map(order -> orderMapper.toDto(order, finalLocale));
+        return resultPage.map(orderMapper::toDto);
     }
 
     // ========== GET SINGLE ORDER ==========
 
     @Transactional(readOnly = true)
-    public OrderDto getCustomerOrderById(Long orderId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public OrderDto getCustomerOrderById(Long orderId) {
         Order order = orderEntityFinder.findCustomerOrderById(orderId);
-        return orderMapper.toDto(order, locale);
+        return orderMapper.toDto(order);
     }
 
     @Transactional(readOnly = true)
-    public OrderDto getPurchaseOrderById(Long orderId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public OrderDto getPurchaseOrderById(Long orderId) {
         Order order = entityFinder.findPurchaseOrderById(orderId);
-        return orderMapper.toDto(order, locale);
+        return orderMapper.toDto(order);
     }
 
     // ========== UPDATE ORDER STATUS ==========
 
     @Transactional
     public OrderDto updateOrderStatus(Long orderId, String status, String trackingNumber,
-                                      String reason, Long managerId, Long forcedWarehouseId,
-                                      Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+                                      String reason, Long managerId, Long forcedWarehouseId) {
         OrderStatus newStatus = validationHelper.parseAndValidateOrderStatus(status);
         Order order = entityFinder.findOrderById(orderId);
         OrderStatus oldStatus = order.getStatus();
@@ -133,21 +121,19 @@ public class ManagerOrderService {
                 orderId, oldStatus, newStatus, managerId
         ));
 
-        return orderMapper.toDto(updatedOrder, locale);
+        return orderMapper.toDto(updatedOrder);
     }
 
     @Transactional
     public OrderDto updateOrderStatus(Long orderId, String status, String trackingNumber,
-                                      String reason, Long managerId, Locale locale) {
-        return updateOrderStatus(orderId, status, trackingNumber, reason, managerId, null, locale);
+                                      String reason, Long managerId) {
+        return updateOrderStatus(orderId, status, trackingNumber, reason, managerId, null);
     }
 
     @Transactional
     public OrderDto updatePurchaseOrderStatus(Long orderId, OrderStatus newStatus,
                                               String trackingNumber, String reason,
-                                              Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+                                              Long managerId) {
         Order order = entityFinder.findPurchaseOrderById(orderId);
         OrderStatus oldStatus = order.getStatus();
 
@@ -168,21 +154,19 @@ public class ManagerOrderService {
                 orderId, oldStatus, newStatus, managerId
         ));
 
-        return orderMapper.toDto(updatedOrder, locale);
+        return orderMapper.toDto(updatedOrder);
     }
 
     @Transactional
-    public OrderDto cancelOrder(Long orderId, String reason, Long managerId, Locale locale) {
-        return updateOrderStatus(orderId, "CANCELLED", null, reason, managerId, locale);
+    public OrderDto cancelOrder(Long orderId, String reason, Long managerId) {
+        return updateOrderStatus(orderId, "CANCELLED", null, reason, managerId);
     }
 
     // ========== UPDATE ORDER ITEMS ==========
 
     @Transactional
     public OrderDto updateOrderItemPrice(Long orderId, Long itemId, BigDecimal newPrice,
-                                         String reason, Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+                                         String reason, Long managerId) {
         validationHelper.validatePrice(newPrice);
 
         Order order = orderEntityFinder.findOrderById(orderId);
@@ -204,14 +188,12 @@ public class ManagerOrderService {
                 orderId, itemId, oldPrice, newPrice, managerId, reasonText
         ));
 
-        return orderMapper.toDto(updatedOrder, locale);
+        return orderMapper.toDto(updatedOrder);
     }
 
     @Transactional
     public OrderDto updateOrderItemQuantity(Long orderId, Long itemId, Integer newQuantity,
-                                            String reason, Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+                                            String reason, Long managerId) {
         validationHelper.validateQuantity(newQuantity);
 
         Order order = orderEntityFinder.findOrderById(orderId);
@@ -244,14 +226,12 @@ public class ManagerOrderService {
                 orderId, itemId, oldQuantity, newQuantity, managerId, reasonText
         ));
 
-        return orderMapper.toDto(updatedOrder, locale);
+        return orderMapper.toDto(updatedOrder);
     }
 
     @Transactional
     public OrderDto addItemToOrder(Long orderId, Long productId, Integer quantity,
-                                   BigDecimal customPrice, Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+                                   BigDecimal customPrice, Long managerId) {
         validationHelper.validatePositiveQuantity(quantity);
 
         Order order = orderEntityFinder.findOrderById(orderId);
@@ -274,13 +254,11 @@ public class ManagerOrderService {
                 orderId, productId, quantity, managerId
         ));
 
-        return orderMapper.toDto(updatedOrder, locale);
+        return orderMapper.toDto(updatedOrder);
     }
 
     @Transactional
-    public OrderDto removeItemFromOrder(Long orderId, Long itemId, Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public OrderDto removeItemFromOrder(Long orderId, Long itemId, Long managerId) {
         Order order = orderEntityFinder.findOrderById(orderId);
         validationHelper.validateOrderModifiable(order, OrderStatus.PENDING);
 
@@ -297,27 +275,25 @@ public class ManagerOrderService {
                 orderId, itemId, managerId
         ));
 
-        return orderMapper.toDto(updatedOrder, locale);
+        return orderMapper.toDto(updatedOrder);
     }
 
     // ========== ROLLBACK ORDER STATUS ==========
 
     @Transactional
-    public OrderDto rollbackOrderStatus(Long orderId, String reason, Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public OrderDto rollbackOrderStatus(Long orderId, String reason, Long managerId) {
         log.info(messageService.get("manager.order.rollback.start.log", orderId, managerId, reason));
 
         Order order = orderEntityFinder.findOrderById(orderId);
         OrderStatus currentStatus = order.getStatus();
 
-        validateRollbackPossibility(order, locale);
+        validateRollbackPossibility(order);
         OrderStatus targetStatus = determineRollbackTargetStatus(currentStatus);
         OrderStatus oldStatus = order.getStatus();
 
-        performRollbackActions(order, currentStatus, targetStatus, reason, managerId, locale);
+        performRollbackActions(order, currentStatus, targetStatus, reason, managerId);
         order.setStatus(targetStatus);
-        addRollbackNote(order, oldStatus, targetStatus, reason, managerId, locale);
+        addRollbackNote(order, oldStatus, targetStatus, reason, managerId);
 
         Order updatedOrder = orderRepository.save(order);
 
@@ -326,15 +302,13 @@ public class ManagerOrderService {
                 orderId, oldStatus, targetStatus, managerId, reason
         ));
 
-        return orderMapper.toDto(updatedOrder, locale);
+        return orderMapper.toDto(updatedOrder);
     }
 
     // ========== ORDER NOTES ==========
 
     @Transactional
-    public OrderDto addOrderNote(Long orderId, String note, Long managerId, Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public OrderDto addOrderNote(Long orderId, String note, Long managerId) {
         Order order = orderEntityFinder.findOrderById(orderId);
 
         String newNote = orderUpdateBuilder.formatOrderNote(note, managerId);
@@ -349,15 +323,13 @@ public class ManagerOrderService {
 
         log.info(messageService.get("manager.order.note.added.log", orderId, managerId));
 
-        return orderMapper.toDto(updatedOrder, locale);
+        return orderMapper.toDto(updatedOrder);
     }
 
     // ========== ORDER STATISTICS ==========
 
     @Transactional(readOnly = true)
-    public OrderStatisticsDto getOrderStatistics(Locale locale) {
-        locale = locale != null ? locale : Locale.getDefault();
-
+    public OrderStatisticsDto getOrderStatistics() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfDay = now.withHour(0).withMinute(0).withSecond(0);
         LocalDateTime startOfWeek = now.minusWeeks(1);
@@ -444,7 +416,7 @@ public class ManagerOrderService {
 
     // ========== ROLLBACK HELPER METHODS ==========
 
-    private void validateRollbackPossibility(Order order, Locale locale) {
+    private void validateRollbackPossibility(Order order) {
         OrderStatus status = order.getStatus();
 
         if (status == OrderStatus.COMPLETED ||
@@ -486,7 +458,7 @@ public class ManagerOrderService {
 
     private void performRollbackActions(Order order, OrderStatus oldStatus,
                                         OrderStatus newStatus, String reason,
-                                        Long managerId, Locale locale) {
+                                        Long managerId) {
         switch (oldStatus) {
             case PAID:
                 reversePayment(order);
@@ -506,7 +478,7 @@ public class ManagerOrderService {
 
     private void addRollbackNote(Order order, OrderStatus oldStatus,
                                  OrderStatus newStatus, String reason,
-                                 Long managerId, Locale locale) {
+                                 Long managerId) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         String rollbackNote = String.format(
                 "[%s] ROLLBACK: %s → %s by manager %s. Reason: %s",

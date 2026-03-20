@@ -1,4 +1,4 @@
-package ru.galtor85.household_store.controller.resolve;
+package ru.galtor85.household_store.resolver;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

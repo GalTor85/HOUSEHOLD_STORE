@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.StorageCellDto;
 import ru.galtor85.household_store.dto.WarehouseCreateRequest;
 import ru.galtor85.household_store.dto.WarehouseDto;
-import ru.galtor85.household_store.entity.StorageCell;
 import ru.galtor85.household_store.entity.Warehouse;
 
 import java.util.List;

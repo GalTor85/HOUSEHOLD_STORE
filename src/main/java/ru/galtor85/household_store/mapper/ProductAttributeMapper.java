@@ -19,8 +19,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProductAttributeMapper {
 
-    private final MessageService messageService;
-
     public ProductAttribute toEntity(AttributeCreateRequest request, Product product) {
         if (request == null) {
             return null;
@@ -91,7 +89,7 @@ public class ProductAttributeMapper {
                 .collect(Collectors.toList());
     }
 
-    public ProductAttributeDto toDto(ProductAttribute attribute, Locale locale) {
+    public ProductAttributeDto toDto(ProductAttribute attribute) {
         if (attribute == null) {
             return null;
         }
@@ -106,13 +104,13 @@ public class ProductAttributeMapper {
                 .build();
     }
 
-    public List<ProductAttributeDto> toDtoList(List<ProductAttribute> attributes, Locale locale) {
+    public List<ProductAttributeDto> toDtoList(List<ProductAttribute> attributes) {
         if (attributes == null) {
             return null;
         }
 
         return attributes.stream()
-                .map(attr -> toDto(attr, locale))
+                .map(this::toDto)
                 .collect(Collectors.toList());
     }
 }

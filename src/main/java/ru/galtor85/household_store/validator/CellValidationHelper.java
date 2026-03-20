@@ -1,4 +1,4 @@
-package ru.galtor85.household_store.util;
+package ru.galtor85.household_store.validator;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +10,7 @@ import ru.galtor85.household_store.entity.StorageCell;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -19,21 +20,33 @@ public class CellValidationHelper {
 
     private final MessageService messageService;
 
+    /**
+     * Проверка активности ячейки
+     */
     public void validateCellActive(StorageCell cell) {
+
         if (!cell.getIsActive()) {
-            log.warn(messageService.get("cell.log.inactive", cell.getId()));
+            log.warn(messageService.get("cell.validation.inactive.log", cell.getId()));
             throw new CellInactiveException(cell.getId());
         }
     }
 
+    /**
+     * Проверка, что ячейка не занята
+     */
     public void validateCellNotOccupied(StorageCell cell) {
+
+
         if (cell.getIsOccupied()) {
-            log.warn(messageService.get("cell.log.already.occupied",
+            log.warn(messageService.get("cell.validation.occupied.log",
                     cell.getId(), cell.getCurrentProductId()));
             throw new CellAlreadyOccupiedException(cell.getId(), cell.getCurrentProductId());
         }
     }
 
+    /**
+     * Определение требуемого типа ячейки на основе характеристик продукта
+     */
     public CellType determineRequiredCellType(Product product) {
         if (product.getIsHazardous()) {
             return CellType.DANGEROUS;
@@ -56,12 +69,20 @@ public class CellValidationHelper {
         return CellType.STANDARD;
     }
 
+    /**
+     * Проверка совместимости типа ячейки с продуктом
+     */
     public void validateCellTypeCompatibility(StorageCell cell, Product product) {
+
         CellType requiredType = determineRequiredCellType(product);
 
         if (cell.getCellType() != requiredType) {
-            log.warn(messageService.get("cell.log.incompatible.type",
-                    cell.getId(), cell.getCellType(), requiredType));
+            String cellTypeLocalized = messageService.get("cell.type." + cell.getCellType().name());
+            String requiredTypeLocalized = messageService.get("cell.type." + requiredType.name());
+
+            log.warn(messageService.get("cell.validation.incompatible.type.log",
+                    cell.getId(), cellTypeLocalized, requiredTypeLocalized));
+
             throw new IncompatibleCellTypeException(cell.getId(), cell.getCellType(), requiredType.name());
         }
 
@@ -69,65 +90,86 @@ public class CellValidationHelper {
         switch (cell.getCellType()) {
             case FRIDGE:
                 if (!product.getRequiresRefrigeration()) {
-                    log.warn(messageService.get("cell.log.fridge.not.needed", cell.getId()));
+                    log.warn(messageService.get("cell.validation.fridge.not.needed.log", cell.getId()));
                     throw new IncompatibleCellTypeException(cell.getId(), cell.getCellType(),
-                            "Product does not require refrigeration");
+                            messageService.get("cell.validation.error.fridge.not.needed"));
                 }
                 break;
+
             case FREEZER:
                 if (!product.getRequiresFreezing()) {
-                    log.warn(messageService.get("cell.log.freezer.not.needed", cell.getId()));
+                    log.warn(messageService.get("cell.validation.freezer.not.needed.log", cell.getId()));
                     throw new IncompatibleCellTypeException(cell.getId(), cell.getCellType(),
-                            "Product does not require freezing");
+                            messageService.get("cell.validation.error.freezer.not.needed"));
                 }
                 break;
+
             case DANGEROUS:
                 if (!product.getIsHazardous()) {
-                    log.warn(messageService.get("cell.log.dangerous.not.needed", cell.getId()));
+                    log.warn(messageService.get("cell.validation.dangerous.not.needed.log", cell.getId()));
                     throw new IncompatibleCellTypeException(cell.getId(), cell.getCellType(),
-                            "Product is not hazardous");
+                            messageService.get("cell.validation.error.dangerous.not.needed"));
                 }
+                break;
+
+            default:
+                // Для остальных типов дополнительных проверок не требуется
                 break;
         }
     }
 
+    /**
+     * Проверка лимита веса
+     */
     public void validateWeightLimit(StorageCell cell, Product product, int quantity) {
+
         if (cell.getMaxWeightKg() == null || product.getWeightKg() == null) {
             return;
         }
 
         double totalWeight = product.getWeightKg() * quantity;
         if (totalWeight > cell.getMaxWeightKg()) {
-            log.warn(messageService.get("cell.log.weight.limit.exceeded",
+            log.warn(messageService.get("cell.validation.weight.limit.exceeded.log",
                     cell.getId(), cell.getMaxWeightKg(), totalWeight));
+
             throw new CellWeightLimitExceededException(cell.getId(), cell.getMaxWeightKg(), totalWeight);
         }
     }
 
+    /**
+     * Проверка лимита объема
+     */
     public void validateVolumeLimit(StorageCell cell, Product product, int quantity) {
+
         if (cell.getMaxVolumeM3() == null || product.getVolumeM3() == null) {
             return;
         }
 
         double totalVolume = product.getVolumeM3() * quantity;
         if (totalVolume > cell.getMaxVolumeM3()) {
-            log.warn(messageService.get("cell.log.volume.limit.exceeded",
+            log.warn(messageService.get("cell.validation.volume.limit.exceeded.log",
                     cell.getId(), cell.getMaxVolumeM3(), totalVolume));
+
             throw new CellVolumeLimitExceededException(cell.getId(), cell.getMaxVolumeM3(), totalVolume);
         }
     }
 
+    /**
+     * Проверка, что товар уже не находится в другой ячейке этого же склада
+     */
     public void checkProductNotInOtherCells(List<StorageCell> cellsWithProduct,
                                             Long currentCellId, Long productId,
                                             Long warehouseId) {
+
         List<StorageCell> otherCells = cellsWithProduct.stream()
                 .filter(cell -> !cell.getId().equals(currentCellId))
                 .collect(Collectors.toList());
 
         if (!otherCells.isEmpty()) {
             StorageCell existingCell = otherCells.get(0);
-            log.warn(messageService.get("cell.log.product.already.in.warehouse",
-                    productId, existingCell.getCode()));
+            log.warn(messageService.get("cell.validation.product.already.in.warehouse.log",
+                    productId, existingCell.getCode(), warehouseId));
+
             throw new ProductAlreadyInWarehouseException(productId, warehouseId, existingCell.getCode());
         }
     }
