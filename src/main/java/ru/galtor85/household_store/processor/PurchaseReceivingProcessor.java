@@ -9,12 +9,14 @@ import ru.galtor85.household_store.dto.ReceiveAndStockRequest;
 import ru.galtor85.household_store.dto.ReceiveStockItem;
 import ru.galtor85.household_store.entity.*;
 import ru.galtor85.household_store.repository.ProductRepository;
+import ru.galtor85.household_store.repository.ProductStockRepository;
 import ru.galtor85.household_store.repository.StockMovementRepository;
 import ru.galtor85.household_store.service.MessageService;
 import ru.galtor85.household_store.util.BatchNumberGenerator;
 import ru.galtor85.household_store.util.EntityFinder;
 import ru.galtor85.household_store.validator.WarehouseValidator;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,6 +32,7 @@ public class PurchaseReceivingProcessor {
     private final BatchNumberGenerator batchNumberGenerator;
     private final MessageService messageService;
     private final WarehouseValidator warehouseValidator;
+    private final ProductStockRepository productStockRepository;
 
     @Transactional
     public ReceivingResult processReceiving(Order order, PurchaseOrder purchaseOrder,
@@ -68,6 +71,7 @@ public class PurchaseReceivingProcessor {
             int newQuantity = oldQuantity + item.getQuantity();
             product.setQuantityInStock(newQuantity);
             productRepository.save(product);
+            updateProductStock(product, item, request.getWarehouseId());
 
             log.debug(messageService.get("purchase.receiving.processor.stock.updated",
                     product.getSku(), oldQuantity, newQuantity));
@@ -135,6 +139,30 @@ public class PurchaseReceivingProcessor {
             }
         }
         return true;
+    }
+
+    private void updateProductStock(Product product, ReceiveStockItem item, Long warehouseId) {
+        ProductStock stock = productStockRepository
+                .findByProductIdAndWarehouseId(product.getId(), warehouseId)
+                .orElse(null);
+
+        if (stock == null) {
+            stock = ProductStock.builder()
+                    .productId(product.getId())
+                    .warehouseId(warehouseId)
+                    .quantity(item.getQuantity())
+                    .reservedQuantity(0)
+                    .availableQuantity(item.getQuantity())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+        } else {
+            stock.setQuantity(stock.getQuantity() + item.getQuantity());
+            stock.setAvailableQuantity(stock.getQuantity() -
+                    (stock.getReservedQuantity() != null ? stock.getReservedQuantity() : 0));
+            stock.setUpdatedAt(LocalDateTime.now());
+        }
+
+        productStockRepository.save(stock);
     }
 
     private List<OrderItem> getUnreceivedItems(Order order, List<ReceiveStockItem> receivedItems) {

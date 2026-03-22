@@ -13,13 +13,11 @@ import ru.galtor85.household_store.builder.PurchaseOrderBuilder;
 import ru.galtor85.household_store.converter.OrderConverter;
 import ru.galtor85.household_store.dto.*;
 import ru.galtor85.household_store.entity.*;
-import ru.galtor85.household_store.mapper.OrderMapper;
 import ru.galtor85.household_store.mapper.SupplierMapper;
 import ru.galtor85.household_store.processor.*;
 import ru.galtor85.household_store.repository.*;
 import ru.galtor85.household_store.util.*;
 import ru.galtor85.household_store.validator.ValidationHelper;
-import ru.galtor85.household_store.validator.WarehouseValidator;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -36,7 +34,7 @@ public class ManagerPurchaseService {
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final MessageService messageService;
     private final CellBasedReceivingProcessor cellBasedReceivingProcessor;
-    private final WarehouseValidator warehouseValidator;
+
 
     // Мапперы
     private final SupplierMapper supplierMapper;
