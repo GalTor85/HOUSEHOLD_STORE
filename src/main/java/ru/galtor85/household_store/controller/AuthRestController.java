@@ -1,12 +1,15 @@
 package ru.galtor85.household_store.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import ru.galtor85.household_store.dto.*;
 import ru.galtor85.household_store.service.AuthService;
@@ -49,11 +52,11 @@ public class AuthRestController {
                 authResponse));
     }
 
+    @SecurityRequirement(name = "Bearer Authentication")
     @PostMapping("/logout")
     @Operation(summary = "Logout from the system",
             description = "Invalidates the current session/token")
-    public ResponseEntity<ApiResponse<Void>> logout(
-            @RequestHeader(value = "Authorization", required = false) String token) {
+    public ResponseEntity<ApiResponse<Void>> logout() {
 
         authService.logout();
 
@@ -65,13 +68,14 @@ public class AuthRestController {
         );
     }
 
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/validate")
     @Operation(summary = "Token validation",
             description = "Validates JWT token and retrieves user information")
-    public ResponseEntity<ApiResponse<UserResponse>> validateToken(
-            @RequestHeader("Authorization") String token) {
+    public ResponseEntity<ApiResponse<UserResponse>> validateToken() {
+       // Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        UserResponse userResponse = authService.validateToken(token);
+        UserResponse userResponse = authService.validateToken();
 
         return ResponseEntity.ok(
                 ApiResponse.success(

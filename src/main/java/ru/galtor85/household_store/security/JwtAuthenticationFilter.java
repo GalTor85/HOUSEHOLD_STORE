@@ -3,7 +3,6 @@ package ru.galtor85.household_store.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import jakarta.annotation.Nullable;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,79 +43,58 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-            @Nullable HttpServletRequest request,
-            @Nullable HttpServletResponse response,
-            @Nullable FilterChain filterChain
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
     ) throws ServletException, IOException {
-
-        assert request != null;
-        assert response != null;
-        assert filterChain != null;
 
         try {
             String jwt = getJwtFromRequest(request);
 
             if (StringUtils.hasText(jwt)) {
-                try {
-                    if (jwtTokenProvider.validateToken(jwt)) {
-                        String email = jwtTokenProvider.getUsernameFromToken(jwt);
-                        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                if (jwtTokenProvider.validateToken(jwt)) {
+                    String email = jwtTokenProvider.getUsernameFromToken(jwt);
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                        UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(
-                                        userDetails,
-                                        null,
-                                        userDetails.getAuthorities()
-                                );
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
 
-                        authentication.setDetails(
-                                new WebAuthenticationDetailsSource().buildDetails(request)
-                        );
+                    authentication.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    );
 
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                        log.debug(messageService.get(
-                                "jwt-authentication-filter.log.auth.context.set",
-                                email
-                        ));
-                    }
-                } catch (TokenExpiredException e) {
-                    log.warn(messageService.get("jwt-authentication-filter.log.token.expired"));
-                    sendApiErrorResponse(response,
-                            messageService.get("auth.error.token.expired"),
-                            HttpStatus.UNAUTHORIZED);
-                    return;
-                } catch (TokenMalformedException e) {
-                    log.warn(messageService.get("jwt-authentication-filter.log.token.malformed"));
-                    sendApiErrorResponse(response,
-                            messageService.get("auth.error.token.malformed"),
-                            HttpStatus.UNAUTHORIZED);
-                    return;
-                } catch (TokenUnsupportedException e) {
-                    log.warn(messageService.get("jwt-authentication-filter.log.token.unsupported"));
-                    sendApiErrorResponse(response,
-                            messageService.get("auth.error.token.unsupported"),
-                            HttpStatus.UNAUTHORIZED);
-                    return;
-                } catch (TokenSecurityException e) {
-                    log.warn(messageService.get("jwt-authentication-filter.log.token.security"));
-                    sendApiErrorResponse(response,
-                            messageService.get("auth.error.token.security"),
-                            HttpStatus.UNAUTHORIZED);
-                    return;
+                    log.debug("Authentication set for user: {}", email);
                 }
             }
 
-        } catch (Exception ex) {
-            log.error(messageService.get(
-                    "jwt-authentication-filter.log.auth.error",
-                    ex.getMessage()
-            ), ex);
+            // ВСЕГДА продолжаем цепочку фильтров
+            // SecurityConfig решит, какие эндпоинты требуют аутентификации
 
-            sendApiErrorResponse(response,
-                    messageService.get("jwt-authentication-filter.error.auth.failed"),
-                    HttpStatus.UNAUTHORIZED
-            );
+        } catch (TokenExpiredException e) {
+            log.warn("Token expired");
+            sendApiErrorResponse(response, "auth.error.token.expired", HttpStatus.UNAUTHORIZED);
+            return;
+        } catch (TokenMalformedException e) {
+            log.warn("Token malformed");
+            sendApiErrorResponse(response, "auth.error.token.malformed", HttpStatus.UNAUTHORIZED);
+            return;
+        } catch (TokenUnsupportedException e) {
+            log.warn("Token unsupported");
+            sendApiErrorResponse(response, "auth.error.token.unsupported", HttpStatus.UNAUTHORIZED);
+            return;
+        } catch (TokenSecurityException e) {
+            log.warn("Token security error");
+            sendApiErrorResponse(response, "auth.error.token.security", HttpStatus.UNAUTHORIZED);
+            return;
+        } catch (Exception ex) {
+            log.error("JWT authentication error: {}", ex.getMessage(), ex);
+            sendApiErrorResponse(response, "auth.error.token.invalid", HttpStatus.UNAUTHORIZED);
             return;
         }
 
@@ -131,35 +109,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    private void sendApiErrorResponse(HttpServletResponse response, String message, HttpStatus status) throws IOException {
+    private void sendApiErrorResponse(HttpServletResponse response, String messageKey, HttpStatus status) throws IOException {
         response.setStatus(status.value());
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
+        String message = messageService.get(messageKey);
         ApiResponse<Void> errorResponse = ApiResponse.error(message);
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-
-        boolean shouldSkip = path.startsWith("/api/v1/auth/") ||
-                path.startsWith("/swagger-ui/") ||
-                path.startsWith("/v3/api-docs") ||
-                path.startsWith("/actuator/health") ||
-                path.equals("/api/v1/") ||
-                path.equals("/api/v1/ping") ||
-                path.equals("/api/v1/health") ||
-                path.equals("/api/v1/info");
-
-        if (shouldSkip) {
-            log.debug(messageService.get(
-                    "jwt-authentication-filter.log.auth.skip",
-                    path
-            ));
-        }
-
-        return shouldSkip;
-    }
+    // ✅ УДАЛЯЕМ shouldNotFilter() — фильтр обрабатывает ВСЕ запросы!
 }

@@ -21,6 +21,7 @@ import ru.galtor85.household_store.mapper.UserToEntity;
 import ru.galtor85.household_store.repository.SecurityUserRepository;
 import ru.galtor85.household_store.security.JwtTokenProvider;
 import ru.galtor85.household_store.security.SecurityUser;
+import ru.galtor85.household_store.validator.AuthenticationValidator;
 
 @Slf4j
 @Service
@@ -36,6 +37,7 @@ public class AuthService {
     private final MessageService messageService;
     private final UserIdentifierResolver userIdentifierResolver;
     private final SecurityUserRepository securityUserRepository;
+    private final AuthenticationValidator authenticationValidator;
 
     @Transactional
     public AuthResponse register(UserCreateRequest request) {
@@ -99,43 +101,19 @@ public class AuthService {
         SecurityContextHolder.clearContext();
     }
 
-    public UserResponse validateToken(String token) {
-        String tokenInfo = token != null ? token.substring(0, Math.min(20, token.length())) + "..." : "no token";
-        log.debug(messageService.get("auth.log.token.validate.attempt", tokenInfo));
+    public UserResponse validateToken() {
+        // 1. Валидация через валидатор
+        Authentication authentication = authenticationValidator.validateAuthentication();
 
-        if (token == null || !token.startsWith("Bearer ")) {
-            log.warn(messageService.get("auth.log.token.invalid.format"));
-            throw new InvalidTokenFormatException();
-        }
+        // 2. Получаем SecurityUser
+        SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
 
-        String jwtToken = token.substring(7);
+        log.debug(messageService.get("auth.log.token.valid", securityUser.getUsername()));
 
-        if (!jwtTokenProvider.validateToken(jwtToken)) {
-            log.warn(messageService.get("auth.log.token.invalid.expired"));
-            throw new TokenExpiredException();
-        }
+        // 3. Загружаем пользователя
+        User user = userSearchService.getUserById(securityUser.getUserId());
 
-        Long userId = jwtTokenProvider.getUserIdFromToken(jwtToken);
-        log.debug(messageService.get("auth.log.token.userid.extracted", userId));
-
-        // Получаем SecurityUser по ID
-        SecurityUser securityUser = securityUserRepository.findById(userId)
-                .orElseThrow(() -> {
-                    log.error(messageService.get("auth.log.security.user.not.found", userId));
-                    return new SecurityUserNotFoundException(userId);
-                });
-
-        // Проверяем активен ли пользователь через SecurityUser
-        if (!securityUser.isEnabled()) {
-            log.warn(messageService.get("auth.log.token.user.inactive", userId));
-            throw new AccountDeactivatedException(userId);
-        }
-
-        // Получаем User через userSearchService по userId
-        User user = userSearchService.getUserById(userId);
-
-        log.info(messageService.get("auth.log.token.valid", userId));
-
+        // 4. Возвращаем DTO
         return userMapper.build(user);
     }
 
@@ -166,6 +144,7 @@ public class AuthService {
             log.warn(messageService.get("auth.log.refresh.user.inactive", userId));
             throw new AccountDeactivatedException(userId);
         }
+
 
         // Получаем User через userSearchService
         User user = userSearchService.getUserById(userId);
