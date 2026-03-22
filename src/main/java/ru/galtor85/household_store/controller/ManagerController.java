@@ -2,6 +2,7 @@ package ru.galtor85.household_store.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -64,7 +65,8 @@ public class ManagerController {
         SecurityUser securityUser = getCurrentSecurityUser();
         if (auth == null || !auth.isAuthenticated()) {
             throw new RuntimeException(messageService.get("manager.error.not.authenticated"));
-        }        return userSearchService.getUserById(securityUser.getUserId());
+        }
+        return userSearchService.getUserById(securityUser.getUserId());
     }
 
     // ========== PRODUCT MANAGEMENT ==========
@@ -369,7 +371,15 @@ public class ManagerController {
     @Operation(summary = "Update order status")
     public ResponseEntity<ApiResponse<OrderDto>> updateOrderStatus(
             @PathVariable Long orderId,
-            @RequestParam String status,
+            @Parameter(
+                    description = "New status for the order, Allowed values: PENDING, PAID, PROCESSING, DELIVERED, COMPLETED, CANCELLED, SHIPPED, REFUNDED, RETURNED, PARTIALLY_RECEIVED",
+                    example = "PROCESSING"
+            )
+            @RequestParam
+            @Schema(allowableValues = {"PENDING", "PAID", "PROCESSING", "DELIVERED",
+                    "COMPLETED", "CANCELLED", "SHIPPED", "REFUNDED",
+                    "RETURNED", "PARTIALLY_RECEIVED"})
+            String status,
             @RequestParam(required = false) String trackingNumber,
             @RequestParam(required = false) String reason) {
 

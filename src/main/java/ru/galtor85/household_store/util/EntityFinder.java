@@ -96,13 +96,26 @@ public class EntityFinder {
         return order;
     }
 
-    public OrderItem findOrderItem(Order order, Long itemId) {
+    public OrderItem findOrderItem(Order order, Long productId) {
         return order.getItems().stream()
-                .filter(i -> i.getId().equals(itemId))
+                .filter(item -> item.getProductId().equals(productId))  // ← ищем по productId
                 .findFirst()
                 .orElseThrow(() -> {
-                    log.error(messageService.get("manager.order.log.item.not.found", itemId));
-                    return new OrderItemNotFoundException(itemId);
+                    log.error(messageService.get("order.item.not.found.by.product", productId, order.getId()));
+                    return new OrderItemNotFoundException(productId);
+                });
+    }
+
+    /**
+     * Поиск позиции заказа по ID продукта
+     */
+    public OrderItem findOrderItemByProductId(Order order, Long productId) {
+        return order.getItems().stream()
+                .filter(i -> i.getProductId().equals(productId))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.error(messageService.get("order.item.not.found.by.product", productId, order.getId()));
+                    return new OrderItemNotFoundException(productId);
                 });
     }
 }

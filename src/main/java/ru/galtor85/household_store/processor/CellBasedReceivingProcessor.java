@@ -4,11 +4,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.advice.exception.WarehouseNotFoundException;
 import ru.galtor85.household_store.builder.StockMovementBuilder;
 import ru.galtor85.household_store.dto.ReceiveStockItem;
 import ru.galtor85.household_store.entity.*;
 import ru.galtor85.household_store.repository.ProductRepository;
 import ru.galtor85.household_store.repository.StockMovementRepository;
+import ru.galtor85.household_store.repository.WarehouseRepository;
 import ru.galtor85.household_store.service.MessageService;
 import ru.galtor85.household_store.util.BatchNumberGenerator;
 import ru.galtor85.household_store.util.EntityFinder;
@@ -29,6 +31,7 @@ public class CellBasedReceivingProcessor {
     private final CellAutoSelector cellAutoSelector;
     private final CellAssignmentProcessor assignmentProcessor;
     private final MessageService messageService;
+    public final WarehouseRepository warehouseRepository;
 
     @Transactional
     public CellBasedReceivingResult processReceivingWithCells(Order order,
@@ -38,6 +41,20 @@ public class CellBasedReceivingProcessor {
 
         log.info(messageService.get("cell.receiving.processor.start",
                 order.getOrderNumber(), items.size(), warehouseId, managerId));
+
+        //ПРОВЕРКА
+        if (warehouseId != null) {
+            if (!warehouseRepository.existsById(warehouseId)) {
+                log.error(messageService.get("warehouse.error.not.found.id", warehouseId));
+                throw new WarehouseNotFoundException(warehouseId);
+            }
+        } else {
+            // Если warehouseId не указан, проверяем, есть ли хотя бы один склад
+            if (warehouseRepository.count() == 0) {
+                log.error(messageService.get("warehouse.error.no.warehouses"));
+                throw new WarehouseNotFoundException();
+            }
+        }
 
         List<StockMovement> movements = new ArrayList<>();
         List<CellPlacementInfo> placements = new ArrayList<>();

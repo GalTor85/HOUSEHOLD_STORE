@@ -19,6 +19,7 @@ import ru.galtor85.household_store.processor.*;
 import ru.galtor85.household_store.repository.*;
 import ru.galtor85.household_store.util.*;
 import ru.galtor85.household_store.validator.ValidationHelper;
+import ru.galtor85.household_store.validator.WarehouseValidator;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -35,6 +36,7 @@ public class ManagerPurchaseService {
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final MessageService messageService;
     private final CellBasedReceivingProcessor cellBasedReceivingProcessor;
+    private final WarehouseValidator warehouseValidator;
 
     // Мапперы
     private final SupplierMapper supplierMapper;
@@ -86,6 +88,7 @@ public class ManagerPurchaseService {
         // 1. Проверка
         Order order = entityFinder.findPurchaseOrderById(orderId);
         validationHelper.validateOrderForReceiving(order);
+
 
         // 2. Детали закупки
         PurchaseOrder purchaseOrder = entityFinder.findPurchaseOrderDetails(orderId);

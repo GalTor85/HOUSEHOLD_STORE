@@ -13,6 +13,7 @@ import ru.galtor85.household_store.repository.StockMovementRepository;
 import ru.galtor85.household_store.service.MessageService;
 import ru.galtor85.household_store.util.BatchNumberGenerator;
 import ru.galtor85.household_store.util.EntityFinder;
+import ru.galtor85.household_store.validator.WarehouseValidator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +29,7 @@ public class PurchaseReceivingProcessor {
     private final StockMovementBuilder movementBuilder;
     private final BatchNumberGenerator batchNumberGenerator;
     private final MessageService messageService;
+    private final WarehouseValidator warehouseValidator;
 
     @Transactional
     public ReceivingResult processReceiving(Order order, PurchaseOrder purchaseOrder,
@@ -39,6 +41,8 @@ public class PurchaseReceivingProcessor {
         List<StockMovement> movements = new ArrayList<>();
         List<OrderItem> partiallyReceived = new ArrayList<>();
         List<Long> missingProducts = new ArrayList<>();
+
+        warehouseValidator.validateWarehouseExists(request.getWarehouseId());
 
         for (ReceiveStockItem item : request.getItems()) {
             OrderItem orderItem = entityFinder.findOrderItem(order, item.getProductId());

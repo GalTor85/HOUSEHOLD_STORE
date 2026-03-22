@@ -19,11 +19,25 @@ public class WarehouseValidator {
     private final MessageService messageService;
 
     public Warehouse validateWarehouseExists(Long warehouseId) {
+        if (warehouseId == null) {
+            log.error(messageService.get("receive.validation.warehouse.id.null"));
+            throw new IllegalArgumentException(
+                    messageService.get("receive.validation.warehouse.id.null")
+            );
+        }
+
         return warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("warehouse.log.not.found", warehouseId));
+                    log.error(messageService.get("warehouse.error.not.found.id", warehouseId));
                     return new WarehouseNotFoundException(warehouseId);
                 });
+    }
+
+    public void validateAnyWarehouseExists() {
+        if (warehouseRepository.count() == 0) {
+            log.error(messageService.get("warehouse.error.no.warehouses"));
+            throw new WarehouseNotFoundException();
+        }
     }
 
     public void validateWarehouseCodeUnique(String code) {

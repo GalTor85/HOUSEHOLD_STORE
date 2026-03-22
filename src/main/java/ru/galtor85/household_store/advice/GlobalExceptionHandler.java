@@ -1420,6 +1420,23 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(
+            IllegalArgumentException e, Locale locale) {
+
+        String message = e.getMessage();
+        log.error("IllegalArgumentException: {}", message);
+
+        // Проверяем, есть ли у нас локализованное сообщение
+        if (message == null || message.isEmpty()) {
+            message = messageService.get("global-exception-handler.error.invalid.request");
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
     // =========================================================================
     // БЛОК 16: ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================

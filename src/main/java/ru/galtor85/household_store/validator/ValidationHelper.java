@@ -9,6 +9,7 @@ import ru.galtor85.household_store.dto.SupplierUpdateRequest;
 import ru.galtor85.household_store.entity.*;
 import ru.galtor85.household_store.repository.SupplierProductRepository;
 import ru.galtor85.household_store.repository.SupplierRepository;
+import ru.galtor85.household_store.resolver.WarehouseResolver;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ public class ValidationHelper {
     private final SupplierRepository supplierRepository;
     private final SupplierProductRepository supplierProductRepository;
     private final MessageService messageService;
+    private final WarehouseResolver warehouseResolver;
 
     public void validateSupplierUniqueness(SupplierCreateRequest request) {
         if (request.getEmail() != null && supplierRepository.existsByEmail(request.getEmail())) {
@@ -64,6 +66,7 @@ public class ValidationHelper {
 
     public void validateOrderForReceiving(Order order) {
         if (order.getStatus() != OrderStatus.PROCESSING && order.getStatus() != OrderStatus.PENDING) {
+            warehouseResolver.resolveWarehouseId(order);
             log.error(messageService.get("manager.purchase.log.cannot.receive", order.getStatus()));
             throw new CannotReceivePurchaseOrderException(order.getStatus());
         }

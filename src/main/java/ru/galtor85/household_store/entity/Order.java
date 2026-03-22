@@ -3,6 +3,7 @@ package ru.galtor85.household_store.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.ToString;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -15,6 +16,7 @@ import java.util.List;
 
 @Data
 @Builder
+@ToString(exclude = {"items"})
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
