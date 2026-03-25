@@ -18,4 +18,9 @@ public class NumberGenerator {
     public String generateSalesOrderNumber() {
         return "SO-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
     }
+
+    public String generateInvoiceNumber() {
+        return "INV-" + System.currentTimeMillis() + "-" +
+                UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
 }

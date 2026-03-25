@@ -1461,6 +1461,87 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
+    @ExceptionHandler(SalesOrderNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> salesOrderNotFoundException(
+            SalesOrderNotFoundException e) {
+
+        String message = e.getMessage();
+        log.error("SalesOrderNotFoundException: {}", e.getOrderId());
+
+        // Проверяем, есть ли у нас локализованное сообщение
+        if (message == null || message.isEmpty()) {
+            message = messageService.get("sales.order.not.found", e.getOrderId());
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvoiceNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvoiceNotFoundException(
+            InvoiceNotFoundException e, Locale locale) {
+
+        String message = e.getLocalizedMessage(messageService);
+        log.error("InvoiceNotFoundException: {}", message);
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    // GlobalExceptionHandler.java
+
+// =========================================================================
+// ОБРАБОТКА ИСКЛЮЧЕНИЙ КАССЫ
+// =========================================================================
+
+    /**
+     * Обработчик для CashRegisterNotFoundException
+     */
+    @ExceptionHandler(CashRegisterNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCashRegisterNotFound(
+            CashRegisterNotFoundException e, Locale locale) {
+
+        String message = e.getLocalizedMessage(messageService);
+        log.error("CashRegisterNotFoundException: {}", message);
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message));
+    }
+
+    /**
+     * Обработчик для CashRegisterClosedException
+     */
+    @ExceptionHandler(CashRegisterClosedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCashRegisterClosed(
+            CashRegisterClosedException e, Locale locale) {
+
+        String message = e.getLocalizedMessage(messageService);
+        log.warn("CashRegisterClosedException: {}", message);
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    /**
+     * Обработчик для InsufficientCashException
+     */
+    @ExceptionHandler(InsufficientCashException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInsufficientCash(
+            InsufficientCashException e, Locale locale) {
+
+        String message = e.getLocalizedMessage(messageService);
+        log.warn("InsufficientCashException: {}", message);
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+
     // =========================================================================
     // БЛОК 16: ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================
