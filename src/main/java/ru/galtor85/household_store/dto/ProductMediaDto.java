@@ -38,7 +38,7 @@ public class ProductMediaDto {
     @Schema(description = "Caption", example = "iPhone 13 Pro в цвете Graphite")
     private String caption;
 
-    @Schema(description = "Sort order", example = "1")
+    @Schema(description = "Sort salesOrder", example = "1")
     private Integer sortOrder;
 
     @Schema(description = "Is main image", example = "true")

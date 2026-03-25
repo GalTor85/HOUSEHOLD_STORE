@@ -22,7 +22,7 @@ public class ProductAttributeDto {
     @Schema(description = "Attribute value", example = "Red")
     private String value;
 
-    @Schema(description = "Display order", example = "1")
+    @Schema(description = "Display salesOrder", example = "1")
     private Integer order;
 
     // ИСПРАВЛЕНО: boolean -> Boolean

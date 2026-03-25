@@ -68,6 +68,15 @@ public class WarehouseService {
         return warehouseProcessor.createWarehouse(request, createdBy);
     }
 
+    /**
+     * Получает склад по ID
+     */
+    @Transactional(readOnly = true)
+    public WarehouseDto getWarehouseById(Long warehouseId) {
+        Warehouse warehouse = warehouseValidator.validateWarehouseExists(warehouseId);
+        return warehouseMapper.toDto(warehouse);
+    }
+
     @Transactional(readOnly = true)
     public Page<WarehouseDto> getWarehouses(String search, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("code").ascending());

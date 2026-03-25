@@ -10,4 +10,12 @@ public class NumberGenerator {
     public String generatePurchaseOrderNumber() {
         return "PO-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
     }
+
+    public String generateWriteOffNumber() {
+        return "WO-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    public String generateSalesOrderNumber() {
+        return "SO-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
+    }
 }

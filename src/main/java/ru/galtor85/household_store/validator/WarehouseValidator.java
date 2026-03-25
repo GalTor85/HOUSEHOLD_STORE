@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.WarehouseAlreadyExistsException;
 import ru.galtor85.household_store.advice.exception.WarehouseNotFoundException;
-import ru.galtor85.household_store.entity.Order;
+import ru.galtor85.household_store.entity.SalesOrder;
 import ru.galtor85.household_store.entity.Warehouse;
 import ru.galtor85.household_store.repository.WarehouseRepository;
 import ru.galtor85.household_store.service.MessageService;
@@ -61,12 +61,12 @@ public class WarehouseValidator {
         }
     }
 
-    public void validateOrderHasItems(Order order) {
-        if (order.getItems() == null || order.getItems().isEmpty()) {
-            log.warn(messageService.get("warehouse.resolver.no.items", order.getId()));
+    public void validateOrderHasItems(SalesOrder salesOrder) {
+        if (salesOrder.getItems() == null || salesOrder.getItems().isEmpty()) {
+            log.warn(messageService.get("warehouse.resolver.no.items", salesOrder.getId()));
 
             throw new IllegalArgumentException(
-                 messageService.get("warehouse.resolver.no.items.error", order.getId())
+                 messageService.get("warehouse.resolver.no.items.error", salesOrder.getId())
             );
         }
     }

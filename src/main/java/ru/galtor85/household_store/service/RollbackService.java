@@ -13,12 +13,12 @@ import ru.galtor85.household_store.advice.exception.RollbackApprovalNotFoundExce
 import ru.galtor85.household_store.dto.RollbackApprovalDto;
 import ru.galtor85.household_store.dto.RollbackRequest;
 import ru.galtor85.household_store.entity.ApprovalStatus;
-import ru.galtor85.household_store.entity.Order;
+import ru.galtor85.household_store.entity.SalesOrder;
 import ru.galtor85.household_store.entity.OrderStatus;
 import ru.galtor85.household_store.entity.RollbackApproval;
 import ru.galtor85.household_store.mapper.RollbackApprovalMapper;
 import ru.galtor85.household_store.processor.*;
-import ru.galtor85.household_store.repository.OrderRepository;
+import ru.galtor85.household_store.repository.SalesOrderRepository;
 import ru.galtor85.household_store.repository.RollbackApprovalRepository;
 import ru.galtor85.household_store.validator.RollbackValidator;
 
@@ -28,7 +28,7 @@ import ru.galtor85.household_store.validator.RollbackValidator;
 public class RollbackService {
 
     private final RollbackApprovalRepository approvalRepository;
-    private final OrderRepository orderRepository;
+    private final SalesOrderRepository salesOrderRepository;
     private final RollbackApprovalMapper approvalMapper;
     private final MessageService messageService;
 
@@ -48,19 +48,19 @@ public class RollbackService {
         log.info(messageService.get("rollback.request.start", request.getOrderId(), managerId));
 
         // Проверяем существование заказа
-        Order order = findOrderById(request.getOrderId());
+        SalesOrder salesOrder = findOrderById(request.getOrderId());
 
         // Проверяем, нет ли уже активного запроса
         validator.validateNoPendingRollback(request.getOrderId());
 
         // Проверяем, можно ли откатить этот статус
-        validator.validateRollbackPossibility(order);
+        validator.validateRollbackPossibility(salesOrder);
 
         // Определяем целевой статус
-        OrderStatus targetStatus = targetStatusProcessor.determineTargetStatus(order);
+        OrderStatus targetStatus = targetStatusProcessor.determineTargetStatus(salesOrder);
 
         // Создаем запрос
-        RollbackApproval saved = requestProcessor.createRequest(order, request, managerId, targetStatus);
+        RollbackApproval saved = requestProcessor.createRequest(salesOrder, request, managerId, targetStatus);
 
         log.info(messageService.get("rollback.request.complete", saved.getId(), request.getOrderId()));
 
@@ -94,13 +94,13 @@ public class RollbackService {
         validator.validateApprovalPending(approval);
 
         // Выполняем откат
-        Order order = findOrderById(approval.getOrderId());
-        executionProcessor.executeRollback(order, approval.getReason(), adminId);
+        SalesOrder salesOrder = findOrderById(approval.getOrderId());
+        executionProcessor.executeRollback(salesOrder, approval.getReason(), adminId);
 
         // Обновляем статус запроса
         RollbackApproval updated = decisionProcessor.approve(approval, adminComments, adminId);
 
-        log.info(messageService.get("rollback.approve.complete", approvalId, order.getId()));
+        log.info(messageService.get("rollback.approve.complete", approvalId, salesOrder.getId()));
 
         return approvalMapper.toDto(updated);
     }
@@ -127,8 +127,8 @@ public class RollbackService {
 
     // ========== PRIVATE HELPER METHODS ==========
 
-    private Order findOrderById(Long orderId) {
-        return orderRepository.findById(orderId)
+    private SalesOrder findOrderById(Long orderId) {
+        return salesOrderRepository.findById(orderId)
                 .orElseThrow(() -> {
                     log.error(messageService.get("manager.order.log.not.found", orderId));
                     return new OrderNotFoundException(orderId);

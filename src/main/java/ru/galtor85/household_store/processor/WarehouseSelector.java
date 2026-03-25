@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.config.WarehouseConfig;
-import ru.galtor85.household_store.entity.Order;
+import ru.galtor85.household_store.entity.SalesOrder;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.util.Comparator;
@@ -40,10 +40,10 @@ public class WarehouseSelector {
         return selectedWarehouse;
     }
 
-    public Long selectForced(Long forcedWarehouseId, Order order) {
+    public Long selectForced(Long forcedWarehouseId, SalesOrder salesOrder) {
         if (forcedWarehouseId != null) {
             log.info(messageService.get("warehouse.resolver.using.forced",
-                    forcedWarehouseId, order.getId()));
+                    forcedWarehouseId, salesOrder.getId()));
             return forcedWarehouseId;
         }
         return null;

@@ -47,7 +47,7 @@ public class SupplierProductDto {
     @Schema(description = "Delivery time in days", example = "3")
     private Integer deliveryTime;
 
-    @Schema(description = "Minimum order quantity", example = "10")
+    @Schema(description = "Minimum salesOrder quantity", example = "10")
     private Integer minOrderQuantity;
 
 

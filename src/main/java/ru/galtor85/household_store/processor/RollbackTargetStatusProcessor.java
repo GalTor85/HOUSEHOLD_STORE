@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.RollbackInvalidTransitionException;
-import ru.galtor85.household_store.entity.Order;
+import ru.galtor85.household_store.entity.SalesOrder;
 import ru.galtor85.household_store.entity.OrderStatus;
 import ru.galtor85.household_store.service.MessageService;
 
@@ -15,8 +15,8 @@ public class RollbackTargetStatusProcessor {
 
     private final MessageService messageService;
 
-    public OrderStatus determineTargetStatus(Order order) {
-        OrderStatus currentStatus = order.getStatus();
+    public OrderStatus determineTargetStatus(SalesOrder salesOrder) {
+        OrderStatus currentStatus = salesOrder.getStatus();
 
         log.debug(messageService.get("rollback.target.determining", currentStatus));
 

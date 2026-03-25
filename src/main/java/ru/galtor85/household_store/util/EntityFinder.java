@@ -15,7 +15,7 @@ public class EntityFinder {
 
     private final SupplierRepository supplierRepository;
     private final ProductRepository productRepository;
-    private final OrderRepository orderRepository;
+    private final SalesOrderRepository salesOrderRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final SupplierProductRepository supplierProductRepository;
     private final MessageService messageService;
@@ -45,25 +45,27 @@ public class EntityFinder {
                 });
     }
 
-    public Order findOrderById(Long id) {
-        return orderRepository.findById(id)
+    public SalesOrder findOrderById(Long id) {
+        return salesOrderRepository.findById(id)
                 .orElseThrow(() -> {
                     log.error(messageService.get("manager.order.log.not.found", id));
                     return new OrderNotFoundException(id);
                 });
     }
 
-    public Order findPurchaseOrderById(Long id) {
-        Order order = findOrderById(id);
-        if (order.getOrderType() != OrderType.PURCHASE) {
-            log.error(messageService.get("manager.purchase.log.not.purchase.order", id));
-            throw new InvalidOrderTypeException(id, "PURCHASE");
-        }
-        return order;
+    /**
+     * Находит закупку по ID
+     */
+    public PurchaseOrder findPurchaseOrderById(Long id) {
+        return purchaseOrderRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error(messageService.get("manager.purchase.log.not.found", id));
+                    return new PurchaseOrderNotFoundException(id);
+                });
     }
 
     public PurchaseOrder findPurchaseOrderDetails(Long orderId) {
-        return purchaseOrderRepository.findByOrderId(orderId)
+        return purchaseOrderRepository.findById(orderId)
                 .orElseThrow(() -> {
                     log.error(messageService.get("manager.purchase.log.purchase.details.not.found", orderId));
                     return new PurchaseOrderDetailsNotFoundException(orderId);
@@ -87,21 +89,14 @@ public class EntityFinder {
                 });
     }
 
-    public Order findCustomerOrderById(Long orderId) {
-        Order order = findOrderById(orderId);
-        if (order.getOrderType() != OrderType.RETAIL && order.getOrderType() != OrderType.WHOLESALE) {
-            log.error(messageService.get("manager.order.log.not.customer.order", orderId));
-            throw new InvalidOrderTypeException(orderId, "RETAIL or WHOLESALE");
-        }
-        return order;
-    }
 
-    public OrderItem findOrderItem(Order order, Long productId) {
-        return order.getItems().stream()
+
+    public SalesOrderItem findSalesOrderItem(SalesOrder salesOrder, Long productId) {
+        return salesOrder.getItems().stream()
                 .filter(item -> item.getProductId().equals(productId))  // ← ищем по productId
                 .findFirst()
                 .orElseThrow(() -> {
-                    log.error(messageService.get("order.item.not.found.by.product", productId, order.getId()));
+                    log.error(messageService.get("salesOrder.item.not.found.by.product", productId, salesOrder.getId()));
                     return new OrderItemNotFoundException(productId);
                 });
     }
@@ -109,12 +104,12 @@ public class EntityFinder {
     /**
      * Поиск позиции заказа по ID продукта
      */
-    public OrderItem findOrderItemByProductId(Order order, Long productId) {
-        return order.getItems().stream()
+    public SalesOrderItem findSalesOrderItemByProductId(SalesOrder salesOrder, Long productId) {
+        return salesOrder.getItems().stream()
                 .filter(i -> i.getProductId().equals(productId))
                 .findFirst()
                 .orElseThrow(() -> {
-                    log.error(messageService.get("order.item.not.found.by.product", productId, order.getId()));
+                    log.error(messageService.get("salesOrder.item.not.found.by.product", productId, salesOrder.getId()));
                     return new OrderItemNotFoundException(productId);
                 });
     }

@@ -8,18 +8,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.builder.OrderBuilder;
-import ru.galtor85.household_store.builder.PurchaseOrderBuilder;
-import ru.galtor85.household_store.converter.OrderConverter;
+import ru.galtor85.household_store.converter.PurchaseOrderConverter;
 import ru.galtor85.household_store.dto.*;
 import ru.galtor85.household_store.entity.*;
 import ru.galtor85.household_store.mapper.SupplierMapper;
 import ru.galtor85.household_store.processor.*;
 import ru.galtor85.household_store.repository.*;
-import ru.galtor85.household_store.util.*;
+import ru.galtor85.household_store.util.DateParser;
+import ru.galtor85.household_store.validator.PurchaseOrderValidator;
+import ru.galtor85.household_store.validator.SupplierValidator;
 import ru.galtor85.household_store.validator.ValidationHelper;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -29,139 +28,245 @@ import java.time.format.DateTimeFormatter;
 @RequiredArgsConstructor
 public class ManagerPurchaseService {
 
-    private final OrderRepository orderRepository;
-    private final SupplierRepository supplierRepository;
+    // Репозитории
     private final PurchaseOrderRepository purchaseOrderRepository;
-    private final MessageService messageService;
-    private final CellBasedReceivingProcessor cellBasedReceivingProcessor;
+    private final SupplierRepository supplierRepository;
 
+    // Валидаторы
+    private final PurchaseOrderValidator purchaseOrderValidator;
+    private final SupplierValidator supplierValidator;
+    private final ValidationHelper validationHelper;
+
+    // Процессоры
+    private final PurchaseOrderProcessor purchaseOrderProcessor;
+    private final PurchaseReceivingProcessor purchaseReceivingProcessor;
+    private final CellBasedReceivingProcessor cellBasedReceivingProcessor;
+    private final StockWriteOffProcessor stockWriteOffProcessor;
+    private final SupplierProductProcessor supplierProductProcessor;
+    private final PurchaseOrderQueryProcessor purchaseOrderQueryProcessor;
+
+    // Конвертеры
+    private final PurchaseOrderConverter purchaseOrderConverter;
 
     // Мапперы
     private final SupplierMapper supplierMapper;
 
-    // Конвертеры
-    private final OrderConverter orderConverter;
-
-    // Билдеры
-    private final OrderBuilder orderBuilder;
-    private final PurchaseOrderBuilder purchaseOrderBuilder;
-
     // Утилиты
-    private final EntityFinder entityFinder;
-    private final ValidationHelper validationHelper;
+    private final MessageService messageService;
     private final DateParser dateParser;
 
-    // Процессоры
-    private final PurchaseReceivingProcessor receivingProcessor;
-    private final OrderStatusUpdateProcessor statusUpdateProcessor;
-    private final WriteOffProcessor writeOffProcessor;
-    private final SupplierProductProcessor supplierProductProcessor;
-    private final PurchaseOrderQueryProcessor queryProcessor;
 
-    // ========== PURCHASE ORDER CREATION ==========
+    // =========================================================================
+    // СОЗДАНИЕ ЗАКАЗА НА ЗАКУПКУ
+    // =========================================================================
 
     @Transactional
-    public OrderDto createPurchaseOrder(PurchaseOrderCreateRequest request, Long managerId) {
-        entityFinder.findActiveSupplierById(request.getSupplierId());
+    public PurchaseOrderDto createPurchaseOrder(PurchaseOrderCreateRequest request, Long managerId) {
 
-        Order order = orderBuilder.buildPurchaseOrder(request, managerId);
-        BigDecimal totalAmount = orderBuilder.calculateAndAddItems(order, request);
-        order.setTotalAmount(totalAmount);
-        order.setSubtotal(totalAmount);
+        log.info(messageService.get("manager.purchase.create.start",
+                request.getSupplierId(), managerId));
 
-        Order savedOrder = orderRepository.save(order);
-        PurchaseOrder purchaseOrder = purchaseOrderBuilder.buildFromOrder(savedOrder, request);
-        purchaseOrderRepository.save(purchaseOrder);
+        // 1. Валидация
+        purchaseOrderValidator.validateNotEmpty(request);
+        Supplier supplier = purchaseOrderValidator.validateSupplierActive(request.getSupplierId());
+        PurchaseOrderValidator.ProductValidationResult validationResult =
+                purchaseOrderValidator.validateProducts(request.getItems());
+
+        // 2. Создание заказа через процессор (вся бизнес-логика внутри)
+        PurchaseOrder order = purchaseOrderProcessor.createPurchaseOrder(
+                request,
+                supplier,
+                validationResult.getProducts(),
+                validationResult.getPrices(),
+                managerId
+        );
+
+        // 3. Конвертация в DTO
+        PurchaseOrderDto result = purchaseOrderConverter.toDto(order, supplier.getName());
 
         log.info(messageService.get("manager.purchase.created.log",
-                order.getOrderNumber(), request.getSupplierId(), managerId));
+                order.getOrderNumber(),
+                request.getSupplierId(),
+                managerId,
+                order.getItems().size(),
+                order.getTotalAmount()));
 
-        return orderConverter.convertToDto(savedOrder);
+        return result;
     }
 
-    // ========== RECEIVE PURCHASE ORDER ==========
+    // =========================================================================
+    // ПРИЕМКА ЗАКАЗА (БЕЗ ЯЧЕЕК)
+    // =========================================================================
 
     @Transactional
-    public OrderDto receivePurchaseOrder(Long orderId, ReceiveAndStockRequest request, Long managerId) {
-        // 1. Проверка
-        Order order = entityFinder.findPurchaseOrderById(orderId);
-        validationHelper.validateOrderForReceiving(order);
+    public PurchaseOrderDto receivePurchaseOrder(Long orderId,
+                                                 ReceiveAndStockRequest request,
+                                                 Long managerId) {
 
+        log.info(messageService.get("manager.purchase.receive.start", orderId, managerId));
 
-        // 2. Детали закупки
-        PurchaseOrder purchaseOrder = entityFinder.findPurchaseOrderDetails(orderId);
+        // 1. Валидация заказа
+        PurchaseOrder order = purchaseOrderValidator.validatePurchaseOrderExists(orderId);
+        purchaseOrderValidator.validateOrderForReceiving(order);
+        purchaseOrderValidator.validateWarehouse(request.getWarehouseId());
 
-        // 3. Обработка приемки
-        PurchaseReceivingProcessor.ReceivingResult result = receivingProcessor.processReceiving(
-                order, purchaseOrder, request, managerId);
+        // 2. Обработка приемки через процессор
+        PurchaseReceivingProcessor.ReceivingResult result =
+                purchaseReceivingProcessor.processReceiving(order, request, managerId);
 
-        // 4. Обновление статуса
-        statusUpdateProcessor.updateAfterReceiving(order, purchaseOrder, result, request, managerId);
+        // 3. Обновление статуса заказа
+        updateOrderStatusAfterReceiving(order, result, request, managerId);
 
-        // 5. Сохранение
-        orderRepository.save(order);
-        purchaseOrderRepository.save(purchaseOrder);
+        // 4. Сохранение
+        PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
 
         log.info(messageService.get("manager.purchase.received.log",
-                orderId, managerId, result.getMovements().size()));
+                orderId, managerId, result.getMovements().size(),
+                result.isFullyReceived() ? "FULLY" : "PARTIALLY"));
 
-        return orderConverter.convertToDto(order);
+        return purchaseOrderConverter.toDto(savedOrder,
+                supplierRepository.findById(order.getSupplierId())
+                        .map(Supplier::getName)
+                        .orElse(null));
     }
 
+
+    // =========================================================================
+    // ПРИЕМКА ЗАКАЗА С РАЗМЕЩЕНИЕМ ПО ЯЧЕЙКАМ
+    // =========================================================================
+
     @Transactional
-    public OrderDto receivePurchaseOrderWithStock(Long orderId, ReceiveAndStockRequest request, Long managerId) {
-        // 1. Проверка заказа
-        Order order = entityFinder.findPurchaseOrderById(orderId);
-        validationHelper.validateOrderForReceiving(order);
+    public PurchaseOrderDto receivePurchaseOrderWithStock(Long orderId,
+                                                          ReceiveAndStockRequest request,
+                                                          Long managerId) {
 
-        // 2. Детали закупки
-        PurchaseOrder purchaseOrder = entityFinder.findPurchaseOrderDetails(orderId);
+        log.info(messageService.get("manager.purchase.receive.with.stock.start",
+                orderId, managerId, request.getWarehouseId()));
 
-        // 3. Обработка приемки с размещением по ячейкам
+        // 1. Валидация заказа
+        PurchaseOrder order = purchaseOrderValidator.validatePurchaseOrderExists(orderId);
+        purchaseOrderValidator.validateOrderForReceiving(order);
+        purchaseOrderValidator.validateWarehouse(request.getWarehouseId());
+
+        // 2. Обработка приемки с размещением по ячейкам
         CellBasedReceivingProcessor.CellBasedReceivingResult result =
                 cellBasedReceivingProcessor.processReceivingWithCells(
-                        order, request.getItems(), request.getWarehouseId(), managerId);
+                        order,
+                        request.getItems(),
+                        request.getWarehouseId(),
+                        managerId);
 
-        // 4. Обновление статуса заказа
+        // 3. Обновление статуса заказа
+        updateOrderStatusAfterCellBasedReceiving(order, result, request, managerId);
+
+        // 4. Обновление информации о приемке в заказе
+        updatePurchaseOrderReceivingInfo(order, request, managerId, result);
+
+        // 5. Добавление заметки о приемке
+        addCellBasedReceivingNote(order, request, result, managerId);
+
+        // 6. Сохранение
+        PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
+
+        log.info(messageService.get("manager.purchase.received.with.stock.log",
+                orderId, managerId, result.getMovements().size(),
+                result.getPlacements().size(), result.isFullyReceived()));
+
+        return purchaseOrderConverter.toDto(savedOrder,
+                supplierRepository.findById(order.getSupplierId())
+                        .map(Supplier::getName)
+                        .orElse(null));
+    }
+
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ДЛЯ ОБНОВЛЕНИЯ СТАТУСА
+    // =========================================================================
+
+    /**
+     * Обновляет статус заказа после приемки (без ячеек)
+     */
+    private void updateOrderStatusAfterReceiving(PurchaseOrder order,
+                                                 PurchaseReceivingProcessor.ReceivingResult result,
+                                                 ReceiveAndStockRequest request,
+                                                 Long managerId) {
+
         if (result.isFullyReceived()) {
             order.setStatus(OrderStatus.DELIVERED);
-            log.info(messageService.get("purchase.order.fully.received", order.getId()));
+            order.setActualDelivery(LocalDate.now());
+            log.info(messageService.get("purchase.salesOrder.fully.received", order.getId()));
         } else {
             order.setStatus(OrderStatus.PARTIALLY_RECEIVED);
-            log.info(messageService.get("purchase.order.partially.received", order.getId()));
+            log.info(messageService.get("purchase.salesOrder.partially.received", order.getId()));
+
+            if (!result.getUnreceivedItems().isEmpty()) {
+                log.warn(messageService.get("purchase.salesOrder.unreceived.items",
+                        result.getUnreceivedItems().size(), order.getId()));
+            }
+        }
+
+        order.setReceivedBy(managerId);
+        order.setQualityCheck(request.getQualityCheck());
+
+        if (request.getPaymentStatus() != null) {
+            order.setPaymentStatus(request.getPaymentStatus());
+        }
+    }
+
+    /**
+     * Обновляет статус заказа после приемки с ячейками
+     */
+    private void updateOrderStatusAfterCellBasedReceiving(PurchaseOrder order,
+                                                          CellBasedReceivingProcessor.CellBasedReceivingResult result,
+                                                          ReceiveAndStockRequest request,
+                                                          Long managerId) {
+
+        if (result.isFullyReceived()) {
+            order.setStatus(OrderStatus.DELIVERED);
+            order.setActualDelivery(LocalDate.now());
+            log.info(messageService.get("purchase.salesOrder.fully.received", order.getId()));
+        } else {
+            order.setStatus(OrderStatus.PARTIALLY_RECEIVED);
+            log.info(messageService.get("purchase.salesOrder.partially.received", order.getId()));
 
             if (!result.getFailedItems().isEmpty()) {
-                log.warn(messageService.get("purchase.order.failed.items",
+                log.warn(messageService.get("purchase.salesOrder.failed.items",
                         result.getFailedItems().size(), order.getId()));
             }
         }
 
-        // 5. Установка даты приемки
-        order.setDeliveredAt(LocalDateTime.now());
-
-        // 6. Обновление информации в purchaseOrder
-        purchaseOrder.setActualDelivery(LocalDate.now());
-        purchaseOrder.setReceivedBy(managerId);
-        purchaseOrder.setQualityCheck(request.getQualityCheck());
+        order.setReceivedBy(managerId);
+        order.setQualityCheck(request.getQualityCheck());
 
         if (request.getPaymentStatus() != null) {
-            purchaseOrder.setPaymentStatus(request.getPaymentStatus());
+            order.setPaymentStatus(request.getPaymentStatus());
         }
-
-        // 7. Добавление заметки о приемке
-        addCellBasedReceivingNote(order, request, result, managerId);
-
-        // 8. Сохранение
-        orderRepository.save(order);
-        purchaseOrderRepository.save(purchaseOrder);
-
-        log.info(messageService.get("manager.purchase.received.with.stock.log",
-                orderId, managerId, result.getMovements().size(), result.getPlacements().size()));
-
-        return orderConverter.convertToDto(order);
     }
 
-    private void addCellBasedReceivingNote(Order order, ReceiveAndStockRequest request,
+    /**
+     * Обновляет информацию о приемке в заказе
+     */
+    private void updatePurchaseOrderReceivingInfo(PurchaseOrder order,
+                                                  ReceiveAndStockRequest request,
+                                                  Long managerId,
+                                                  CellBasedReceivingProcessor.CellBasedReceivingResult result) {
+        order.setActualDelivery(LocalDate.now());
+        order.setReceivedBy(managerId);
+        order.setQualityCheck(request.getQualityCheck());
+
+        if (request.getPaymentStatus() != null) {
+            order.setPaymentStatus(request.getPaymentStatus());
+        }
+
+        if (request.getWarehouseLocation() != null) {
+            order.setWarehouseLocation(request.getWarehouseLocation());
+        }
+    }
+
+    /**
+     * Добавляет заметку о приемке с ячейками
+     */
+    private void addCellBasedReceivingNote(PurchaseOrder order,
+                                           ReceiveAndStockRequest request,
                                            CellBasedReceivingProcessor.CellBasedReceivingResult result,
                                            Long managerId) {
 
@@ -175,6 +280,8 @@ public class ManagerPurchaseService {
             note.append(messageService.get("purchase.receiving.note.fully.received"));
         } else {
             note.append(messageService.get("purchase.receiving.note.partially.received"));
+            note.append(messageService.get("purchase.receiving.note.unreceived.count",
+                    result.getFailedItems().size()));
         }
 
         note.append(messageService.get("purchase.receiving.note.cells.used",
@@ -204,18 +311,22 @@ public class ManagerPurchaseService {
         }
     }
 
-    // ========== STOCK WRITE-OFF ==========
+    // =========================================================================
+    // СПИСАНИЕ ТОВАРОВ
+    // =========================================================================
 
     @Transactional
     public void writeOffStock(StockWriteOffRequest request, Long managerId) {
-        writeOffProcessor.processWriteOff(request, managerId);
+        stockWriteOffProcessor.processWriteOff(request, managerId);
     }
 
-    // ========== SUPPLIER MANAGEMENT ==========
+    // =========================================================================
+    // УПРАВЛЕНИЕ ПОСТАВЩИКАМИ
+    // =========================================================================
 
     @Transactional
     public SupplierDto createSupplier(SupplierCreateRequest request, Long managerId) {
-        validationHelper.validateSupplierUniqueness(request);
+        supplierValidator.validateUniqueness(request);
 
         Supplier supplier = supplierMapper.toEntity(request, managerId);
         Supplier savedSupplier = supplierRepository.save(supplier);
@@ -228,8 +339,8 @@ public class ManagerPurchaseService {
 
     @Transactional
     public SupplierDto updateSupplier(Long supplierId, SupplierUpdateRequest request) {
-        Supplier supplier = entityFinder.findSupplierById(supplierId);
-        validationHelper.validateSupplierUniquenessOnUpdate(supplier, request);
+        Supplier supplier = supplierValidator.validateExists(supplierId);
+        supplierValidator.validateUniquenessOnUpdate(supplier, request);
 
         supplierMapper.updateEntity(supplier, request);
         Supplier updatedSupplier = supplierRepository.save(supplier);
@@ -249,17 +360,22 @@ public class ManagerPurchaseService {
         return suppliers.map(supplierMapper::toDto);
     }
 
-    // ========== SUPPLIER PRODUCT MANAGEMENT ==========
+    // =========================================================================
+    // УПРАВЛЕНИЕ ТОВАРАМИ ПОСТАВЩИКОВ
+    // =========================================================================
 
     @Transactional
-    public SupplierProductDto addProductToSupplier(Long supplierId, Long productId,
-                                                   SupplierProductRequest request, Long managerId) {
+    public SupplierProductDto addProductToSupplier(Long supplierId,
+                                                   Long productId,
+                                                   SupplierProductRequest request,
+                                                   Long managerId) {
         return supplierProductProcessor.addProductToSupplier(supplierId, productId, request, managerId);
     }
 
     @Transactional
     public SupplierProductDto updateSupplierProduct(Long supplierProductId,
-                                                    SupplierProductRequest request, Long managerId) {
+                                                    SupplierProductRequest request,
+                                                    Long managerId) {
         return supplierProductProcessor.updateSupplierProduct(supplierProductId, request, managerId);
     }
 
@@ -268,26 +384,43 @@ public class ManagerPurchaseService {
         supplierProductProcessor.removeProductFromSupplier(supplierProductId, managerId);
     }
 
-    // ========== PURCHASE ORDER QUERIES ==========
+    // =========================================================================
+    // ЗАПРОСЫ ЗАКУПОК
+    // =========================================================================
 
     @Transactional(readOnly = true)
-    public Page<OrderDto> getPurchaseOrders(Long supplierId, String status,
-                                            String startDate, String endDate,
-                                            int page, int size) {
+    public Page<PurchaseOrderDto> getPurchaseOrders(Long supplierId,
+                                                    String status,
+                                                    String startDate,
+                                                    String endDate,
+                                                    int page,
+                                                    int size) {
+
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         LocalDateTime start = dateParser.parseDate(startDate);
         LocalDateTime end = dateParser.parseDate(endDate);
-
         validationHelper.validateDateRange(start, end, startDate, endDate);
 
         OrderStatus orderStatus = dateParser.parseOrderStatus(status);
-        return queryProcessor.getPurchaseOrders(supplierId, orderStatus, start, end, pageable);
+
+        Page<PurchaseOrder> orders = purchaseOrderQueryProcessor.getPurchaseOrders(
+                supplierId, orderStatus, start, end, pageable);
+
+        return orders.map(order -> {
+            String supplierName = supplierRepository.findById(order.getSupplierId())
+                    .map(Supplier::getName)
+                    .orElse(null);
+            return purchaseOrderConverter.toDto(order, supplierName);
+        });
     }
 
     @Transactional(readOnly = true)
-    public OrderDto getPurchaseOrderById(Long orderId) {
-        Order order = entityFinder.findPurchaseOrderById(orderId);
-        return orderConverter.convertToDto(order);
+    public PurchaseOrderDto getPurchaseOrderById(Long orderId) {
+        PurchaseOrder order = purchaseOrderValidator.validatePurchaseOrderExists(orderId);
+        String supplierName = supplierRepository.findById(order.getSupplierId())
+                .map(Supplier::getName)
+                .orElse(null);
+        return purchaseOrderConverter.toDto(order, supplierName);
     }
 }

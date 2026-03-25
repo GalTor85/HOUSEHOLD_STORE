@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.dto.RollbackRequest;
 import ru.galtor85.household_store.entity.ApprovalStatus;
-import ru.galtor85.household_store.entity.Order;
+import ru.galtor85.household_store.entity.SalesOrder;
 import ru.galtor85.household_store.entity.OrderStatus;
 import ru.galtor85.household_store.entity.RollbackApproval;
 import ru.galtor85.household_store.repository.RollbackApprovalRepository;
@@ -22,15 +22,15 @@ public class RollbackRequestProcessor {
     private final MessageService messageService;
 
     @Transactional
-    public RollbackApproval createRequest(Order order, RollbackRequest request,
+    public RollbackApproval createRequest(SalesOrder salesOrder, RollbackRequest request,
                                           Long managerId, OrderStatus targetStatus) {
 
         log.debug(messageService.get("rollback.request.creating",
-                order.getId(), managerId, targetStatus));
+                salesOrder.getId(), managerId, targetStatus));
 
         RollbackApproval approval = RollbackApproval.builder()
                 .orderId(request.getOrderId())
-                .currentStatus(order.getStatus().name())
+                .currentStatus(salesOrder.getStatus().name())
                 .targetStatus(targetStatus.name())
                 .requestedById(managerId)
                 .reason(request.getReason())
@@ -41,7 +41,7 @@ public class RollbackRequestProcessor {
         RollbackApproval saved = approvalRepository.save(approval);
 
         log.info(messageService.get("rollback.request.created",
-                saved.getId(), order.getId(), managerId));
+                saved.getId(), salesOrder.getId(), managerId));
 
         return saved;
     }

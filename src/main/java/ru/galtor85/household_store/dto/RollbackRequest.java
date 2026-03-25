@@ -15,8 +15,8 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Rollback request DTO", title = "Rollback Request")
 public class RollbackRequest {
 
-    @NotNull(message = "{rollback.validation.order.id.empty}")
-    @Schema(description = "Order ID to rollback", example = "123", required = true)
+    @NotNull(message = "{rollback.validation.salesOrder.id.empty}")
+    @Schema(description = "SalesOrder ID to rollback", example = "123", required = true)
     private Long orderId;
 
     @NotBlank(message = "{rollback.validation.reason.empty}")

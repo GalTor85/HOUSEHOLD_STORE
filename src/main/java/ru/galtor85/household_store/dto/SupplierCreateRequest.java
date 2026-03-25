@@ -82,7 +82,7 @@ public class SupplierCreateRequest {
     @Schema(description = "Average delivery time in days", example = "3")
     private Integer deliveryTime;
 
-    @Schema(description = "Minimum order amount", example = "10000.00")
+    @Schema(description = "Minimum salesOrder amount", example = "10000.00")
     private BigDecimal minOrderAmount;
 
     @Schema(description = "Payment delay in days", example = "30")

@@ -3,67 +3,53 @@ package ru.galtor85.household_store.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ru.galtor85.household_store.calculator.BasePriceCalculator;
+import ru.galtor85.household_store.dto.CartItemDto;
 import ru.galtor85.household_store.dto.PriceCalculationRequest;
 import ru.galtor85.household_store.dto.PriceCalculationResult;
-import ru.galtor85.household_store.entity.UserType;
-import ru.galtor85.household_store.processor.PriceRuleProcessor;
-import ru.galtor85.household_store.processor.PromoCodeProcessor;
-import ru.galtor85.household_store.processor.UserTypeDiscountProcessor;
-import ru.galtor85.household_store.builder.PriceCalculationResultBuilder;
+import ru.galtor85.household_store.processor.PriceCalculationProcessor;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PriceCalculationService {
 
-    private final BasePriceCalculator basePriceCalculator;
-    private final UserTypeDiscountProcessor userTypeDiscountProcessor;
-    private final PriceRuleProcessor priceRuleProcessor;
-    private final PromoCodeProcessor promoCodeProcessor;
-    private final PriceCalculationResultBuilder resultBuilder;
+    private final PriceCalculationProcessor priceCalculationProcessor;
     private final MessageService messageService;
 
+    /**
+     * Рассчитывает итоговую цену
+     */
     public PriceCalculationResult calculatePrice(PriceCalculationRequest request) {
-        log.debug(messageService.get("price.calculation.start"));
+        log.debug(messageService.get("price.calculation.service.start"));
+        return priceCalculationProcessor.calculatePrice(request);
+    }
 
-        // 1. Расчет оригинальной суммы
-        BigDecimal originalTotal = basePriceCalculator.calculateOriginalTotal(request.getItems());
-        BigDecimal currentTotal = originalTotal;
-        var appliedDiscounts = new ArrayList<PriceCalculationResult.AppliedDiscount>();
+    /**
+     * Рассчитывает цену для списка товаров
+     */
+    public PriceCalculationResult calculatePriceForItems(List<CartItemDto> items, Long userId) {
+        log.debug(messageService.get("price.calculation.service.for.items.start", userId));
+        return priceCalculationProcessor.calculatePriceForItems(items, userId);
+    }
 
-        // 2. Применяем скидки по типу пользователя
-        var userTypeResult = userTypeDiscountProcessor.applyUserTypeDiscount(
-                currentTotal, request.getUserId(), appliedDiscounts);
-        currentTotal = userTypeResult.getTotalAfterDiscount();
-        UserType userType = userTypeResult.getUserType();
+    /**
+     * Рассчитывает цену с промокодом
+     */
+    public PriceCalculationResult calculatePriceWithPromoCode(List<CartItemDto> items,
+                                                              Long userId,
+                                                              String promoCode) {
+        log.debug(messageService.get("price.calculation.service.with.promo.start", promoCode));
+        return priceCalculationProcessor.calculatePriceWithPromoCode(items, userId, promoCode);
+    }
 
-        // 3. Применяем правила ценообразования
-        currentTotal = priceRuleProcessor.applyPriceRules(
-                currentTotal, userType, request.getItems(), appliedDiscounts);
-
-        // 4. Применяем промокод (если есть)
-        if (request.getPromoCode() != null && !request.getPromoCode().isEmpty()) {
-            var promoResult = promoCodeProcessor.applyPromoCode(
-                    currentTotal, request.getPromoCode(), request.getUserId(),
-                    userType, request.getItems(), appliedDiscounts);
-
-            if (promoResult.isApplied()) {
-                currentTotal = promoResult.getTotalAfterDiscount();
-            }
-        }
-
-        // 5. Строим результат
-        PriceCalculationResult result = resultBuilder.build(
-                originalTotal, currentTotal, appliedDiscounts);
-
-        log.info(messageService.get("price.calculation.complete",
-                originalTotal, result.getFinalTotal(),
-                appliedDiscounts.size()));
-
-        return result;
+    /**
+     * Рассчитывает только базовую цену
+     */
+    public BigDecimal calculateBasePrice(List<CartItemDto> items) {
+        log.debug(messageService.get("price.calculation.service.base.start"));
+        return priceCalculationProcessor.calculateBasePrice(items);
     }
 }

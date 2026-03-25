@@ -20,7 +20,7 @@ public class ProductMediaUploadDto {
     @Schema(description = "Is main image", example = "true", defaultValue = "false")
     private Boolean isMain;
 
-    @Schema(description = "Sort order", example = "1", defaultValue = "0")
+    @Schema(description = "Sort salesOrder", example = "1", defaultValue = "0")
     private Integer sortOrder;
 
     @Schema(description = "Alt text for image", example = "iPhone 13 Pro Graphite front view")

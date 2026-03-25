@@ -30,7 +30,7 @@ public class SupplierProductConverter {
                 .productSku(product != null ? product.getSku() : null)
                 .supplierPrice(sp.getSupplierPrice())
                 .supplierSku(sp.getSupplierSku())
-                .mainSupplier(sp.getMainSupplier())
+                .mainSupplier(Boolean.TRUE.equals(sp.getMainSupplier()))
                 .deliveryTime(sp.getDeliveryTime())
                 .minOrderQuantity(sp.getMinOrderQuantity())
                 .build();

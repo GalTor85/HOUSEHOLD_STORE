@@ -36,8 +36,8 @@ public class SupplierProductRequest {
     @Schema(description = "Delivery time in days from this supplier", example = "3")
     private Integer deliveryTime;
 
-    @PositiveOrZero(message = "{supplier.product.validation.min.order.quantity.positive.or.zero}")
-    @Schema(description = "Minimum order quantity", example = "10")
+    @PositiveOrZero(message = "{supplier.product.validation.min.salesOrder.quantity.positive.or.zero}")
+    @Schema(description = "Minimum salesOrder quantity", example = "10")
     private Integer minOrderQuantity;
 
     @Schema(description = "Notes about this product from supplier", example = "Original packaging, 1 year warranty")

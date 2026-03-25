@@ -1,6 +1,7 @@
 package ru.galtor85.household_store.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.persistence.Column;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -14,7 +15,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Receive purchase order and stock request",
+@Schema(description = "Receive purchase salesOrder and stock request",
         title = "Receive and Stock Request")
 public class ReceiveAndStockRequest {
 
@@ -30,6 +31,9 @@ public class ReceiveAndStockRequest {
     @NotNull(message = "{receive.validation.warehouse.id.empty}")
     @Schema(description = "Warehouse ID for receiving", example = "1", required = true)
     private Long warehouseId;
+
+    @Column(name = "warehouse_location")
+    private String warehouseLocation;
 
     @Valid
     @NotEmpty(message = "{receive.validation.items.empty}")

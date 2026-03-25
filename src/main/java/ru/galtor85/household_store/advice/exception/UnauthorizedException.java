@@ -1,7 +1,0 @@
-package ru.galtor85.household_store.advice.exception;
-
-public class UnauthorizedException extends RuntimeException {
-    public UnauthorizedException(String message) {
-        super(message);
-    }
-}

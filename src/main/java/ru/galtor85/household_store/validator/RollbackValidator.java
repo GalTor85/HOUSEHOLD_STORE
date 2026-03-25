@@ -7,13 +7,11 @@ import ru.galtor85.household_store.advice.exception.RollbackAlreadyPendingExcept
 import ru.galtor85.household_store.advice.exception.RollbackAlreadyProcessedException;
 import ru.galtor85.household_store.advice.exception.RollbackFinalStatusException;
 import ru.galtor85.household_store.entity.ApprovalStatus;
-import ru.galtor85.household_store.entity.Order;
+import ru.galtor85.household_store.entity.SalesOrder;
 import ru.galtor85.household_store.entity.OrderStatus;
 import ru.galtor85.household_store.entity.RollbackApproval;
 import ru.galtor85.household_store.repository.RollbackApprovalRepository;
 import ru.galtor85.household_store.service.MessageService;
-
-import java.util.Locale;
 
 @Slf4j
 @Component
@@ -30,8 +28,8 @@ public class RollbackValidator {
         }
     }
 
-    public void validateRollbackPossibility(Order order) {
-        OrderStatus status = order.getStatus();
+    public void validateRollbackPossibility(SalesOrder salesOrder) {
+        OrderStatus status = salesOrder.getStatus();
 
         if (status == OrderStatus.COMPLETED ||
                 status == OrderStatus.CANCELLED ||

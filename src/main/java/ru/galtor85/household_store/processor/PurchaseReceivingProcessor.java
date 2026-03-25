@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.advice.exception.ProductNotFoundException;
 import ru.galtor85.household_store.builder.StockMovementBuilder;
 import ru.galtor85.household_store.dto.ReceiveAndStockRequest;
 import ru.galtor85.household_store.dto.ReceiveStockItem;
@@ -13,9 +14,6 @@ import ru.galtor85.household_store.repository.ProductStockRepository;
 import ru.galtor85.household_store.repository.StockMovementRepository;
 import ru.galtor85.household_store.service.MessageService;
 import ru.galtor85.household_store.util.BatchNumberGenerator;
-import ru.galtor85.household_store.util.EntityFinder;
-import ru.galtor85.household_store.validator.WarehouseValidator;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,30 +23,34 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PurchaseReceivingProcessor {
 
-    private final EntityFinder entityFinder;
     private final ProductRepository productRepository;
+    private final ProductStockRepository productStockRepository;
     private final StockMovementRepository stockMovementRepository;
     private final StockMovementBuilder movementBuilder;
     private final BatchNumberGenerator batchNumberGenerator;
     private final MessageService messageService;
-    private final WarehouseValidator warehouseValidator;
-    private final ProductStockRepository productStockRepository;
 
+    /**
+     * Обрабатывает приемку заказа на закупку
+     */
     @Transactional
-    public ReceivingResult processReceiving(Order order, PurchaseOrder purchaseOrder,
-                                            ReceiveAndStockRequest request, Long managerId) {
+    public ReceivingResult processReceiving(PurchaseOrder order,
+                                            ReceiveAndStockRequest request,
+                                            Long managerId) {
 
         log.info(messageService.get("purchase.receiving.processor.start",
                 order.getOrderNumber(), request.getItems().size(), managerId));
 
         List<StockMovement> movements = new ArrayList<>();
-        List<OrderItem> partiallyReceived = new ArrayList<>();
+        List<PurchaseOrderItem> partiallyReceived = new ArrayList<>();
         List<Long> missingProducts = new ArrayList<>();
 
-        warehouseValidator.validateWarehouseExists(request.getWarehouseId());
-
         for (ReceiveStockItem item : request.getItems()) {
-            OrderItem orderItem = entityFinder.findOrderItem(order, item.getProductId());
+            // Ищем позицию в заказе
+            PurchaseOrderItem orderItem = order.getItems().stream()
+                    .filter(oi -> oi.getProductId().equals(item.getProductId()))
+                    .findFirst()
+                    .orElse(null);
 
             if (orderItem == null) {
                 log.warn(messageService.get("purchase.receiving.processor.product.not.found",
@@ -57,35 +59,63 @@ public class PurchaseReceivingProcessor {
                 continue;
             }
 
-            Product product = entityFinder.findProductById(orderItem.getProductId());
+            Product product = productRepository.findById(orderItem.getProductId())
+                    .orElseThrow(() -> new ProductNotFoundException(orderItem.getProductId()));
+
+            // Получаем уже принятое количество
+            int alreadyReceived = orderItem.getReceivedQuantity() != null ?
+                    orderItem.getReceivedQuantity() : 0;
+            int orderedQuantity = orderItem.getQuantity();
+            int remainingToReceive = orderedQuantity - alreadyReceived;
+
+            int receivingQuantity = item.getQuantity();
+
+            // Проверяем, не превышает ли принимаемое количество остаток
+            if (receivingQuantity > remainingToReceive) {
+                log.warn(messageService.get("purchase.receiving.processor.quantity.exceeds.remaining",
+                        product.getSku(), receivingQuantity, remainingToReceive));
+                receivingQuantity = remainingToReceive;
+            }
+
+            if (receivingQuantity <= 0) {
+                log.info(messageService.get("purchase.receiving.processor.already.received",
+                        product.getSku()));
+                continue;
+            }
 
             // Проверка на частичную приемку
-            if (item.getQuantity() < orderItem.getQuantity()) {
+            boolean isPartial = (alreadyReceived + receivingQuantity) < orderedQuantity;
+            if (isPartial) {
                 log.debug(messageService.get("purchase.receiving.processor.partial.receipt",
-                        product.getSku(), item.getQuantity(), orderItem.getQuantity()));
+                        product.getSku(), alreadyReceived + receivingQuantity, orderedQuantity));
                 partiallyReceived.add(orderItem);
             }
 
-            // Обновляем остаток
+            // Обновляем количество принятого в позиции заказа
+            orderItem.setReceivedQuantity(alreadyReceived + receivingQuantity);
+
+            // Обновляем остаток в Product
             int oldQuantity = product.getQuantityInStock();
-            int newQuantity = oldQuantity + item.getQuantity();
+            int newQuantity = oldQuantity + receivingQuantity;
             product.setQuantityInStock(newQuantity);
             productRepository.save(product);
-            updateProductStock(product, item, request.getWarehouseId());
 
             log.debug(messageService.get("purchase.receiving.processor.stock.updated",
                     product.getSku(), oldQuantity, newQuantity));
 
+            // Обновляем product_stocks
+            updateProductStock(product, receivingQuantity, request.getWarehouseId());
+
             // Создаем движение
             StockMovement movement = createStockMovement(
                     product, orderItem, order, request.getWarehouseId(), managerId,
-                    item.getBatchNumber()
+                    item.getBatchNumber(), receivingQuantity
             );
             movements.add(stockMovementRepository.save(movement));
         }
 
-        boolean isFullyReceived = isFullyReceived(order, request.getItems());
-        List<OrderItem> unreceivedItems = getUnreceivedItems(order, request.getItems());
+        boolean isFullyReceived = isFullyReceived(order);
+        List<PurchaseOrderItem> unreceivedItems = getUnreceivedItems(order);
 
         log.info(messageService.get("purchase.receiving.processor.complete",
                 order.getOrderNumber(), movements.size(), isFullyReceived));
@@ -99,9 +129,50 @@ public class PurchaseReceivingProcessor {
                 .build();
     }
 
-    private StockMovement createStockMovement(Product product, OrderItem item,
-                                              Order order, Long warehouseId,
-                                              Long performedBy, String batchNumber) {
+    /**
+     * Обновляет или создает запись в product_stocks
+     */
+    private void updateProductStock(Product product, int quantity, Long warehouseId) {
+        ProductStock stock = productStockRepository
+                .findByProductIdAndWarehouseId(product.getId(), warehouseId)
+                .orElse(null);
+
+        if (stock == null) {
+            stock = ProductStock.builder()
+                    .productId(product.getId())
+                    .warehouseId(warehouseId)
+                    .quantity(quantity)
+                    .reservedQuantity(0)
+                    .availableQuantity(quantity)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            log.debug(messageService.get("purchase.receiving.processor.stock.created",
+                    product.getSku(), warehouseId, quantity));
+        } else {
+            int oldQuantity = stock.getQuantity();
+            stock.setQuantity(oldQuantity + quantity);
+            stock.setAvailableQuantity(stock.getQuantity() -
+                    (stock.getReservedQuantity() != null ? stock.getReservedQuantity() : 0));
+            stock.setUpdatedAt(LocalDateTime.now());
+
+            log.debug(messageService.get("purchase.receiving.processor.stock.updated.detail",
+                    product.getSku(), warehouseId, oldQuantity, stock.getQuantity()));
+        }
+
+        productStockRepository.save(stock);
+    }
+
+    /**
+     * Создает запись о движении товара
+     */
+    private StockMovement createStockMovement(Product product,
+                                              PurchaseOrderItem item,
+                                              PurchaseOrder order,
+                                              Long warehouseId,
+                                              Long performedBy,
+                                              String batchNumber,
+                                              int quantity) {
 
         if (batchNumber == null || batchNumber.isEmpty()) {
             batchNumber = batchNumberGenerator.generateBatchNumber();
@@ -113,96 +184,56 @@ public class PurchaseReceivingProcessor {
                 order.getOrderNumber());
 
         return movementBuilder.buildFullMovement(
-                product.getId(), null, null, warehouseId, item.getQuantity(),
+                product.getId(), null, null, warehouseId, quantity,
                 MovementType.RECEIPT, "PURCHASE", order.getId(), order.getOrderNumber(),
                 performedBy, notes, batchNumber, order.getOrderNumber()
         );
     }
 
-    private boolean isFullyReceived(Order order, List<ReceiveStockItem> receivedItems) {
-        for (OrderItem orderItem : order.getItems()) {
-            ReceiveStockItem received = receivedItems.stream()
-                    .filter(item -> item.getProductId().equals(orderItem.getProductId()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (received == null) {
-                log.debug(messageService.get("purchase.receiving.processor.missing.product",
-                        orderItem.getProductId()));
-                return false;
-            }
-
-            if (received.getQuantity() < orderItem.getQuantity()) {
-                log.debug(messageService.get("purchase.receiving.processor.quantity.mismatch",
-                        orderItem.getProductId(), received.getQuantity(), orderItem.getQuantity()));
+    /**
+     * Проверяет, полностью ли принят заказ
+     */
+    private boolean isFullyReceived(PurchaseOrder order) {
+        for (PurchaseOrderItem item : order.getItems()) {
+            int received = item.getReceivedQuantity() != null ? item.getReceivedQuantity() : 0;
+            if (received < item.getQuantity()) {
                 return false;
             }
         }
         return true;
     }
 
-    private void updateProductStock(Product product, ReceiveStockItem item, Long warehouseId) {
-        ProductStock stock = productStockRepository
-                .findByProductIdAndWarehouseId(product.getId(), warehouseId)
-                .orElse(null);
+    /**
+     * Получает список непринятых позиций
+     */
+    private List<PurchaseOrderItem> getUnreceivedItems(PurchaseOrder order) {
+        List<PurchaseOrderItem> unreceived = new ArrayList<>();
 
-        if (stock == null) {
-            stock = ProductStock.builder()
-                    .productId(product.getId())
-                    .warehouseId(warehouseId)
-                    .quantity(item.getQuantity())
-                    .reservedQuantity(0)
-                    .availableQuantity(item.getQuantity())
-                    .createdAt(LocalDateTime.now())
-                    .build();
-        } else {
-            stock.setQuantity(stock.getQuantity() + item.getQuantity());
-            stock.setAvailableQuantity(stock.getQuantity() -
-                    (stock.getReservedQuantity() != null ? stock.getReservedQuantity() : 0));
-            stock.setUpdatedAt(LocalDateTime.now());
-        }
+        for (PurchaseOrderItem item : order.getItems()) {
+            int received = item.getReceivedQuantity() != null ? item.getReceivedQuantity() : 0;
+            int remaining = item.getQuantity() - received;
 
-        productStockRepository.save(stock);
-    }
-
-    private List<OrderItem> getUnreceivedItems(Order order, List<ReceiveStockItem> receivedItems) {
-        List<OrderItem> unreceived = new ArrayList<>();
-
-        for (OrderItem orderItem : order.getItems()) {
-            ReceiveStockItem received = receivedItems.stream()
-                    .filter(item -> item.getProductId().equals(orderItem.getProductId()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (received == null) {
-                log.debug(messageService.get("purchase.receiving.processor.item.not.received",
-                        orderItem.getProductId()));
-                unreceived.add(orderItem);
-            } else if (received.getQuantity() < orderItem.getQuantity()) {
-                int remaining = orderItem.getQuantity() - received.getQuantity();
-                log.debug(messageService.get("purchase.receiving.processor.partial.remaining",
-                        orderItem.getProductId(), remaining));
-
-                OrderItem remainingItem = new OrderItem();
-                remainingItem.setProductId(orderItem.getProductId());
-                remainingItem.setQuantity(remaining);
-                remainingItem.setPrice(orderItem.getPrice());
-                remainingItem.setProductName(orderItem.getProductName());
-                remainingItem.setProductSku(orderItem.getProductSku());
-                unreceived.add(remainingItem);
+            if (remaining > 0) {
+                log.debug(messageService.get("purchase.receiving.processor.remaining.quantity",
+                        item.getProductId(), remaining));
+                unreceived.add(item);
             }
         }
 
         return unreceived;
     }
 
+    // =========================================================================
+    // ВНУТРЕННИЕ КЛАССЫ
+    // =========================================================================
+
     @lombok.Value
     @lombok.Builder
     public static class ReceivingResult {
         List<StockMovement> movements;
         boolean isFullyReceived;
-        List<OrderItem> unreceivedItems;
-        List<OrderItem> partiallyReceived;
+        List<PurchaseOrderItem> unreceivedItems;
+        List<PurchaseOrderItem> partiallyReceived;
         List<Long> missingProducts;
     }
 }

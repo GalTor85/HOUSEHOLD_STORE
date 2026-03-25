@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import ru.galtor85.household_store.entity.OrderStatus;
 import ru.galtor85.household_store.entity.PurchaseOrder;
 
 import java.time.LocalDate;
@@ -17,90 +18,113 @@ import java.util.Optional;
 @Repository
 public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Long> {
 
-    /**
-     * Найти закупку по ID заказа
-     */
-    Optional<PurchaseOrder> findByOrderId(Long orderId);
+    // =========================================================================
+    // БАЗОВЫЕ ЗАПРОСЫ
+    // =========================================================================
 
-    /**
-     * Найти все закупки по ID поставщика
-     */
-    @Query("SELECT po FROM PurchaseOrder po WHERE po.order.supplierId = :supplierId")
-    List<PurchaseOrder> findBySupplierId(@Param("supplierId") Long supplierId);
+    Optional<PurchaseOrder> findByOrderNumber(String orderNumber);
 
-    /**
-     * Найти все закупки по ID поставщика с пагинацией
-     */
-    @Query("SELECT po FROM PurchaseOrder po WHERE po.order.supplierId = :supplierId")
-    Page<PurchaseOrder> findBySupplierId(@Param("supplierId") Long supplierId, Pageable pageable);
+    Page<PurchaseOrder> findByStatus(OrderStatus status, Pageable pageable);
 
-    /**
-     * Найти закупки по статусу оплаты
-     */
+    List<PurchaseOrder> findBySupplierId(Long supplierId);
+
+    Page<PurchaseOrder> findBySupplierId(Long supplierId, Pageable pageable);
+
+    List<PurchaseOrder> findByReceivedBy(Long receivedBy);
+
+    Optional<PurchaseOrder> findByInvoiceNumber(String invoiceNumber);
+
+    // =========================================================================
+    // ЗАПРОСЫ ПО СТАТУСАМ
+    // =========================================================================
+
     @Query("SELECT po FROM PurchaseOrder po WHERE po.paymentStatus = :paymentStatus")
     List<PurchaseOrder> findByPaymentStatus(@Param("paymentStatus") String paymentStatus);
 
-    /**
-     * Найти закупки с просроченной оплатой
-     */
-    @Query("SELECT po FROM PurchaseOrder po WHERE po.paymentDue < :currentDate AND po.paymentStatus != 'PAID'")
-    List<PurchaseOrder> findOverduePayments(@Param("currentDate") LocalDate currentDate);
+    @Query("SELECT po FROM PurchaseOrder po WHERE po.qualityCheck = :qualityCheck")
+    List<PurchaseOrder> findByQualityCheck(@Param("qualityCheck") Boolean qualityCheck);
 
-    /**
-     * Найти закупки с ожидаемой поставкой в диапазоне дат
-     */
+    // =========================================================================
+    // ЗАПРОСЫ ПО ДАТАМ
+    // =========================================================================
+
     @Query("SELECT po FROM PurchaseOrder po WHERE po.expectedDelivery BETWEEN :startDate AND :endDate")
     List<PurchaseOrder> findByExpectedDeliveryBetween(@Param("startDate") LocalDate startDate,
                                                       @Param("endDate") LocalDate endDate);
 
-    /**
-     * Найти закупки, которые должны поступить сегодня
-     */
     @Query("SELECT po FROM PurchaseOrder po WHERE po.expectedDelivery = :today")
     List<PurchaseOrder> findDueToday(@Param("today") LocalDate today);
 
-    /**
-     * Найти закупки с просроченной поставкой
-     */
     @Query("SELECT po FROM PurchaseOrder po WHERE po.expectedDelivery < :today AND po.actualDelivery IS NULL")
     List<PurchaseOrder> findOverdueDeliveries(@Param("today") LocalDate today);
 
-    /**
-     * Найти закупки, прошедшие проверку качества
-     */
-    @Query("SELECT po FROM PurchaseOrder po WHERE po.qualityCheck = :qualityCheck")
-    List<PurchaseOrder> findByQualityCheck(@Param("qualityCheck") Boolean qualityCheck);
+    @Query("SELECT po FROM PurchaseOrder po WHERE po.paymentDue < :currentDate AND po.paymentStatus != 'PAID'")
+    List<PurchaseOrder> findOverduePayments(@Param("currentDate") LocalDate currentDate);
+
+    // =========================================================================
+    // ПРОВЕРКИ
+    // =========================================================================
 
     /**
-     * Найти закупки по номеру счета-фактуры
+     * Проверяет, есть ли у поставщика незавершенные заказы
+     * Незавершенными считаются заказы в статусах:
+     * PENDING, PAID, PROCESSING, SHIPPED, PARTIALLY_RECEIVED
      */
-    Optional<PurchaseOrder> findByInvoiceNumber(String invoiceNumber);
+    @Query("SELECT COUNT(po) > 0 FROM PurchaseOrder po " +
+            "WHERE po.supplierId = :supplierId " +
+            "AND po.status IN ('PENDING', 'PAID', 'PROCESSING', 'SHIPPED', 'PARTIALLY_RECEIVED')")
+    boolean hasPendingOrders(@Param("supplierId") Long supplierId);
 
     /**
-     * Найти закупки, принятые конкретным сотрудником
+     * Проверяет, есть ли у поставщика незавершенные закупки (по фактической поставке)
      */
-    List<PurchaseOrder> findByReceivedBy(Long receivedBy);
+    @Query("SELECT COUNT(po) > 0 FROM PurchaseOrder po " +
+            "WHERE po.supplierId = :supplierId AND po.actualDelivery IS NULL")
+    boolean hasPendingPurchases(@Param("supplierId") Long supplierId);
 
-    /**
-     * Получить статистику закупок за период
-     */
-    @Query("SELECT COUNT(po), SUM(po.order.totalAmount) FROM PurchaseOrder po " +
-            "WHERE po.order.createdAt BETWEEN :startDate AND :endDate")
-    List<Object[]> getPurchaseStats(@Param("startDate") LocalDateTime startDate,
-                                    @Param("endDate") LocalDateTime endDate);
+    // =========================================================================
+    // СТАТИСТИКА
+    // =========================================================================
 
     /**
      * Получить сумму всех закупок у поставщика
      */
-    @Query("SELECT SUM(po.order.totalAmount) FROM PurchaseOrder po WHERE po.order.supplierId = :supplierId")
+    @Query("SELECT SUM(po.totalAmount) FROM PurchaseOrder po WHERE po.supplierId = :supplierId")
     Double getTotalPurchasesFromSupplier(@Param("supplierId") Long supplierId);
 
     /**
-     * Проверить, есть ли незавершенные закупки у поставщика
+     * Получить статистику закупок за период
      */
-    @Query("SELECT COUNT(po) > 0 FROM PurchaseOrder po " +
-            "WHERE po.order.supplierId = :supplierId AND po.actualDelivery IS NULL")
-    boolean hasPendingPurchases(@Param("supplierId") Long supplierId);
+    @Query("SELECT COUNT(po), SUM(po.totalAmount) FROM PurchaseOrder po " +
+            "WHERE po.createdAt BETWEEN :startDate AND :endDate")
+    List<Object[]> getPurchaseStats(@Param("startDate") LocalDateTime startDate,
+                                    @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Получить общее количество принятых товаров по заказу
+     */
+    @Query("SELECT SUM(oi.receivedQuantity) FROM PurchaseOrderItem oi " +
+            "WHERE oi.purchaseOrder.id = :orderId")
+    Integer getTotalReceivedQuantity(@Param("orderId") Long orderId);
+
+    // =========================================================================
+    // ПОИСК С ФИЛЬТРАЦИЕЙ
+    // =========================================================================
+
+    @Query("SELECT po FROM PurchaseOrder po WHERE " +
+            "(:supplierId IS NULL OR po.supplierId = :supplierId) AND " +
+            "(:status IS NULL OR po.status = :status) AND " +
+            "(CAST(:startDate AS timestamp) IS NULL OR po.createdAt >= :startDate) AND " +
+            "(CAST(:endDate AS timestamp) IS NULL OR po.createdAt <= :endDate)")
+    Page<PurchaseOrder> search(@Param("supplierId") Long supplierId,
+                               @Param("status") OrderStatus status,
+                               @Param("startDate") LocalDateTime startDate,
+                               @Param("endDate") LocalDateTime endDate,
+                               Pageable pageable);
+
+    // =========================================================================
+    // ОБНОВЛЕНИЕ И УДАЛЕНИЕ
+    // =========================================================================
 
     /**
      * Обновить статус оплаты
@@ -111,9 +135,10 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
                             @Param("paymentStatus") String paymentStatus);
 
     /**
-     * Удалить все закупки по ID заказа
+     * Обновить статус заказа
      */
     @Modifying
-    @Query("DELETE FROM PurchaseOrder po WHERE po.order.id = :orderId")
-    void deleteByOrderId(@Param("orderId") Long orderId);
+    @Query("UPDATE PurchaseOrder po SET po.status = :status WHERE po.id = :orderId")
+    int updateOrderStatus(@Param("orderId") Long orderId,
+                          @Param("status") OrderStatus status);
 }

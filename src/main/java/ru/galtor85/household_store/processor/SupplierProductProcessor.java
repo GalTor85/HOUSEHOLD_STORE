@@ -37,7 +37,8 @@ public class SupplierProductProcessor {
 
         SupplierProduct supplierProduct = supplierProductBuilder.buildFromRequest(request, supplierId, productId);
 
-        if (request.getMainSupplier()) {
+        //безопасная проверка Boolean
+        if (Boolean.TRUE.equals(request.getMainSupplier())) {
             supplierProductBuilder.resetMainSupplierFlag(productId);
         }
 

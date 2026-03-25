@@ -13,7 +13,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Receive order request DTO", title = "Receive Order Request")
+@Schema(description = "Receive salesOrder request DTO", title = "Receive SalesOrder Request")
 public class ReceiveOrderRequest {
 
     @Schema(description = "Actual delivery date/time", example = "2024-02-15T14:30:00")

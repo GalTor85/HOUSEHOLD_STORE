@@ -4,9 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.entity.CategoryWarehouse;
-import ru.galtor85.household_store.entity.Order;
-import ru.galtor85.household_store.entity.OrderItem;
+import ru.galtor85.household_store.entity.SalesOrder;
 import ru.galtor85.household_store.entity.Product;
+import ru.galtor85.household_store.entity.SalesOrderItem;
 import ru.galtor85.household_store.processor.WarehousePriorityProcessor;
 import ru.galtor85.household_store.processor.WarehouseSelector;
 import ru.galtor85.household_store.repository.CategoryWarehouseRepository;
@@ -39,38 +39,38 @@ public class WarehouseResolver {
      * 2. Склад из категории продукта
      * 3. Склад по умолчанию из настроек
      */
-    public Long resolveWarehouseId(Order order) {
-        validator.validateOrderHasItems(order);
+    public Long resolveWarehouseId(SalesOrder salesOrder) {
+        validator.validateOrderHasItems(salesOrder);
 
         // Получаем все продукты из заказа
-        List<Product> products = getProductsFromOrder(order);
+        List<Product> products = getProductsFromSalesOrder(salesOrder);
 
         // Собираем приоритеты
         Map<Long, Integer> warehousePriorities = priorityProcessor.collectPriorities(
                 products, this::getWarehouseForCategory);
 
         // Выбираем склад
-        return selector.selectByPriority(warehousePriorities, order.getId());
+        return selector.selectByPriority(warehousePriorities, salesOrder.getId());
     }
 
     /**
      * Определение склада с возможностью прямого указания
      */
-    public Long resolveWarehouseId(Order order, Long forcedWarehouseId) {
-        Long forced = selector.selectForced(forcedWarehouseId, order);
+    public Long resolveWarehouseId(SalesOrder salesOrder, Long forcedWarehouseId) {
+        Long forced = selector.selectForced(forcedWarehouseId, salesOrder);
         if (forced != null) {
             validator.validateWarehouseExists(forced);
             return forced;
         }
 
-        return resolveWarehouseId(order);
+        return resolveWarehouseId(salesOrder);
     }
 
     /**
      * Получение списка возможных складов для заказа
      */
-    public List<WarehouseSelector.WarehouseSuggestion> getWarehouseSuggestions(Order order) {
-        List<Product> products = getProductsFromOrder(order);
+    public List<WarehouseSelector.WarehouseSuggestion> getWarehouseSuggestions(SalesOrder salesOrder) {
+        List<Product> products = getProductsFromSalesOrder(salesOrder);
 
         Map<Long, Integer> suggestions = priorityProcessor.collectSuggestions(
                 products, this::getWarehouseForCategory);
@@ -99,9 +99,9 @@ public class WarehouseResolver {
                 .map(CategoryWarehouse::getWarehouseId);
     }
 
-    private List<Product> getProductsFromOrder(Order order) {
-        List<Long> productIds = order.getItems().stream()
-                .map(OrderItem::getProductId)
+    private List<Product> getProductsFromSalesOrder(SalesOrder salesOrder) {
+        List<Long> productIds = salesOrder.getItems().stream()
+                .map(SalesOrderItem::getProductId)
                 .collect(Collectors.toList());
 
         return productRepository.findAllById(productIds);

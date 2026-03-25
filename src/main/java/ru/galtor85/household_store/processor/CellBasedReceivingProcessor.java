@@ -4,17 +4,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.advice.exception.WarehouseNotFoundException;
+import ru.galtor85.household_store.advice.exception.CellNotFoundException;
+import ru.galtor85.household_store.advice.exception.ProductNotFoundException;
 import ru.galtor85.household_store.builder.StockMovementBuilder;
 import ru.galtor85.household_store.dto.ReceiveStockItem;
 import ru.galtor85.household_store.entity.*;
 import ru.galtor85.household_store.repository.ProductRepository;
+import ru.galtor85.household_store.repository.ProductStockRepository;
 import ru.galtor85.household_store.repository.StockMovementRepository;
-import ru.galtor85.household_store.repository.WarehouseRepository;
+import ru.galtor85.household_store.repository.StorageCellRepository;
 import ru.galtor85.household_store.service.MessageService;
 import ru.galtor85.household_store.util.BatchNumberGenerator;
-import ru.galtor85.household_store.util.EntityFinder;
+import ru.galtor85.household_store.validator.CellValidationHelper;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,18 +26,25 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CellBasedReceivingProcessor {
 
-    private final EntityFinder entityFinder;
     private final ProductRepository productRepository;
+    private final ProductStockRepository productStockRepository;
     private final StockMovementRepository stockMovementRepository;
+    private final StorageCellRepository storageCellRepository;
     private final StockMovementBuilder movementBuilder;
     private final BatchNumberGenerator batchNumberGenerator;
+    private final CellValidationHelper cellValidationHelper;
     private final CellAutoSelector cellAutoSelector;
-    private final CellAssignmentProcessor assignmentProcessor;
     private final MessageService messageService;
-    public final WarehouseRepository warehouseRepository;
 
+    // =========================================================================
+    // ОСНОВНОЙ МЕТОД ПРИЕМКИ С РАЗМЕЩЕНИЕМ ПО ЯЧЕЙКАМ
+    // =========================================================================
+
+    /**
+     * Обрабатывает приемку заказа с размещением товаров по ячейкам
+     */
     @Transactional
-    public CellBasedReceivingResult processReceivingWithCells(Order order,
+    public CellBasedReceivingResult processReceivingWithCells(PurchaseOrder order,
                                                               List<ReceiveStockItem> items,
                                                               Long warehouseId,
                                                               Long managerId) {
@@ -42,27 +52,17 @@ public class CellBasedReceivingProcessor {
         log.info(messageService.get("cell.receiving.processor.start",
                 order.getOrderNumber(), items.size(), warehouseId, managerId));
 
-        //ПРОВЕРКА
-        if (warehouseId != null) {
-            if (!warehouseRepository.existsById(warehouseId)) {
-                log.error(messageService.get("warehouse.error.not.found.id", warehouseId));
-                throw new WarehouseNotFoundException(warehouseId);
-            }
-        } else {
-            // Если warehouseId не указан, проверяем, есть ли хотя бы один склад
-            if (warehouseRepository.count() == 0) {
-                log.error(messageService.get("warehouse.error.no.warehouses"));
-                throw new WarehouseNotFoundException();
-            }
-        }
-
         List<StockMovement> movements = new ArrayList<>();
         List<CellPlacementInfo> placements = new ArrayList<>();
         List<Long> failedItems = new ArrayList<>();
 
         for (ReceiveStockItem item : items) {
             try {
-                OrderItem orderItem = entityFinder.findOrderItem(order, item.getProductId());
+                // 1. Находим позицию в заказе
+                PurchaseOrderItem orderItem = order.getItems().stream()
+                        .filter(oi -> oi.getProductId().equals(item.getProductId()))
+                        .findFirst()
+                        .orElse(null);
 
                 if (orderItem == null) {
                     log.warn(messageService.get("cell.receiving.processor.product.not.found",
@@ -71,42 +71,70 @@ public class CellBasedReceivingProcessor {
                     continue;
                 }
 
-                Product product = entityFinder.findProductById(orderItem.getProductId());
+                // 2. Получаем товар
+                Product product = productRepository.findById(orderItem.getProductId())
+                        .orElseThrow(() -> new ProductNotFoundException(orderItem.getProductId()));
 
-                // 1. Автоматический подбор ячейки
-                StorageCell cell = cellAutoSelector.selectCellForProduct(
-                        warehouseId, product, item.getQuantity());
+                // 3. Получаем уже принятое количество
+                int alreadyReceived = orderItem.getReceivedQuantity() != null ?
+                        orderItem.getReceivedQuantity() : 0;
+                int orderedQuantity = orderItem.getQuantity();
+                int remainingToReceive = orderedQuantity - alreadyReceived;
 
-                log.debug(messageService.get("cell.receiving.processor.cell.selected",
-                        cell.getCode(), cell.getId(), product.getSku()));
+                int receivingQuantity = item.getQuantity();
 
-                // 2. Размещение в ячейку
-                StorageCell updatedCell = assignmentProcessor.assignProductToCell(
-                        cell, product, item.getQuantity(), managerId);
+                // 4. Проверяем, не превышает ли принимаемое количество остаток
+                if (receivingQuantity > remainingToReceive) {
+                    log.warn(messageService.get("cell.receiving.processor.quantity.exceeds.remaining",
+                            product.getSku(), receivingQuantity, remainingToReceive));
+                    receivingQuantity = remainingToReceive;
+                }
 
-                // 3. Обновление остатка продукта
+                if (receivingQuantity <= 0) {
+                    log.info(messageService.get("cell.receiving.processor.already.received",
+                            product.getSku()));
+                    continue;
+                }
+
+                // 5. Определяем ячейку для размещения
+                StorageCell cell = determineCell(item, product, warehouseId, receivingQuantity);
+
+                // 6. Размещаем товар в ячейке
+                StorageCell updatedCell = assignProductToCell(cell, product, receivingQuantity, managerId);
+
+                // 7. Обновляем количество принятого в позиции заказа
+                orderItem.setReceivedQuantity(alreadyReceived + receivingQuantity);
+
+                // 8. Обновляем остаток в Product
                 int oldQuantity = product.getQuantityInStock();
-                int newQuantity = oldQuantity + item.getQuantity();
+                int newQuantity = oldQuantity + receivingQuantity;
                 product.setQuantityInStock(newQuantity);
                 productRepository.save(product);
 
                 log.debug(messageService.get("cell.receiving.processor.stock.updated",
                         product.getSku(), oldQuantity, newQuantity));
 
-                // 4. Создание движения с привязкой к ячейке
+                // 9. Обновляем product_stocks
+                updateProductStock(product, receivingQuantity, warehouseId);
+
+                // 10. Создаем движение товара
                 StockMovement movement = createStockMovementWithCell(
                         product, orderItem, order, updatedCell, warehouseId,
-                        managerId, item.getBatchNumber()
+                        managerId, item.getBatchNumber(), receivingQuantity
                 );
                 movements.add(stockMovementRepository.save(movement));
 
+                // 11. Сохраняем информацию о размещении
                 placements.add(new CellPlacementInfo(
                         product.getId(),
                         product.getSku(),
                         updatedCell.getId(),
                         updatedCell.getCode(),
-                        item.getQuantity()
+                        receivingQuantity
                 ));
+
+                log.debug(messageService.get("cell.receiving.processor.item.placed",
+                        product.getSku(), receivingQuantity, updatedCell.getCode()));
 
             } catch (Exception e) {
                 log.error(messageService.get("cell.receiving.processor.item.failed",
@@ -115,8 +143,8 @@ public class CellBasedReceivingProcessor {
             }
         }
 
+        boolean isFullyReceived = isFullyReceived(order);
         boolean allSuccess = failedItems.isEmpty();
-        boolean isFullyReceived = isFullyReceived(order, items);
 
         log.info(messageService.get("cell.receiving.processor.complete",
                 order.getOrderNumber(), movements.size(), placements.size(),
@@ -131,10 +159,99 @@ public class CellBasedReceivingProcessor {
                 .build();
     }
 
-    private StockMovement createStockMovementWithCell(Product product, OrderItem item,
-                                                      Order order, StorageCell cell,
-                                                      Long warehouseId, Long performedBy,
-                                                      String batchNumber) {
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // =========================================================================
+
+    /**
+     * Определяет ячейку для размещения товара
+     */
+    private StorageCell determineCell(ReceiveStockItem item, Product product,
+                                      Long warehouseId, int quantity) {
+
+        if (item.getCellId() != null) {
+            // Используем указанную ячейку по ID
+            return storageCellRepository.findById(item.getCellId())
+                    .orElseThrow(() -> new CellNotFoundException(item.getCellId()));
+
+        } else if (item.getCellCode() != null) {
+            // Используем указанную ячейку по коду
+            return storageCellRepository.findByCodeAndWarehouseId(item.getCellCode(), warehouseId)
+                    .orElseThrow(() -> new CellNotFoundException(item.getCellCode(), warehouseId));
+
+        } else {
+            // Автоматический подбор ячейки
+            return cellAutoSelector.selectCellForProduct(warehouseId, product, quantity);
+        }
+    }
+
+    /**
+     * Размещает товар в ячейке
+     */
+    private StorageCell assignProductToCell(StorageCell cell, Product product,
+                                            int quantity, Long assignedBy) {
+
+        // Проверки
+        cellValidationHelper.validateCellActive(cell);
+        cellValidationHelper.validateCellNotOccupied(cell);
+        cellValidationHelper.validateCellTypeCompatibility(cell, product);
+        cellValidationHelper.validateWeightLimit(cell, product, quantity);
+        cellValidationHelper.validateVolumeLimit(cell, product, quantity);
+
+        // Назначение товара
+        cell.setCurrentProductId(product.getId());
+        cell.setCurrentQuantity(quantity);
+        cell.setIsOccupied(true);
+        cell.setLastInventoryDate(LocalDateTime.now());
+
+        return storageCellRepository.save(cell);
+    }
+
+    /**
+     * Обновляет или создает запись в product_stocks
+     */
+    private void updateProductStock(Product product, int quantity, Long warehouseId) {
+        ProductStock stock = productStockRepository
+                .findByProductIdAndWarehouseId(product.getId(), warehouseId)
+                .orElse(null);
+
+        if (stock == null) {
+            stock = ProductStock.builder()
+                    .productId(product.getId())
+                    .warehouseId(warehouseId)
+                    .quantity(quantity)
+                    .reservedQuantity(0)
+                    .availableQuantity(quantity)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            log.debug(messageService.get("cell.receiving.processor.stock.created",
+                    product.getSku(), warehouseId, quantity));
+        } else {
+            int oldQuantity = stock.getQuantity();
+            stock.setQuantity(oldQuantity + quantity);
+            stock.setAvailableQuantity(stock.getQuantity() -
+                    (stock.getReservedQuantity() != null ? stock.getReservedQuantity() : 0));
+            stock.setUpdatedAt(LocalDateTime.now());
+
+            log.debug(messageService.get("cell.receiving.processor.stock.updated.detail",
+                    product.getSku(), warehouseId, oldQuantity, stock.getQuantity()));
+        }
+
+        productStockRepository.save(stock);
+    }
+
+    /**
+     * Создает движение товара с привязкой к ячейке
+     */
+    private StockMovement createStockMovementWithCell(Product product,
+                                                      PurchaseOrderItem item,
+                                                      PurchaseOrder order,
+                                                      StorageCell cell,
+                                                      Long warehouseId,
+                                                      Long performedBy,
+                                                      String batchNumber,
+                                                      int quantity) {
 
         if (batchNumber == null || batchNumber.isEmpty()) {
             batchNumber = batchNumberGenerator.generateBatchNumber();
@@ -150,7 +267,7 @@ public class CellBasedReceivingProcessor {
                 null,
                 cell.getId(),
                 warehouseId,
-                item.getQuantity(),
+                quantity,
                 MovementType.RECEIPT,
                 "PURCHASE",
                 order.getId(),
@@ -162,27 +279,22 @@ public class CellBasedReceivingProcessor {
         );
     }
 
-    private boolean isFullyReceived(Order order, List<ReceiveStockItem> receivedItems) {
-        for (OrderItem orderItem : order.getItems()) {
-            ReceiveStockItem received = receivedItems.stream()
-                    .filter(item -> item.getProductId().equals(orderItem.getProductId()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (received == null) {
-                log.debug(messageService.get("cell.receiving.processor.missing.product",
-                        orderItem.getProductId()));
-                return false;
-            }
-
-            if (received.getQuantity() < orderItem.getQuantity()) {
-                log.debug(messageService.get("cell.receiving.processor.partial.quantity",
-                        orderItem.getProductId(), received.getQuantity(), orderItem.getQuantity()));
+    /**
+     * Проверяет, полностью ли принят заказ
+     */
+    private boolean isFullyReceived(PurchaseOrder order) {
+        for (PurchaseOrderItem item : order.getItems()) {
+            int received = item.getReceivedQuantity() != null ? item.getReceivedQuantity() : 0;
+            if (received < item.getQuantity()) {
                 return false;
             }
         }
         return true;
     }
+
+    // =========================================================================
+    // ВНУТРЕННИЕ КЛАССЫ
+    // =========================================================================
 
     @lombok.Value
     @lombok.Builder

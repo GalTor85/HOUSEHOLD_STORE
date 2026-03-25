@@ -64,11 +64,11 @@ public class ValidationHelper {
         }
     }
 
-    public void validateOrderForReceiving(Order order) {
-        if (order.getStatus() != OrderStatus.PROCESSING && order.getStatus() != OrderStatus.PENDING) {
-            warehouseResolver.resolveWarehouseId(order);
-            log.error(messageService.get("manager.purchase.log.cannot.receive", order.getStatus()));
-            throw new CannotReceivePurchaseOrderException(order.getStatus());
+    public void validateOrderForReceiving(SalesOrder salesOrder) {
+        if (salesOrder.getStatus() != OrderStatus.PROCESSING && salesOrder.getStatus() != OrderStatus.PENDING) {
+            warehouseResolver.resolveWarehouseId(salesOrder);
+            log.error(messageService.get("manager.purchase.log.cannot.receive", salesOrder.getStatus()));
+            throw new CannotReceivePurchaseOrderException(salesOrder.getStatus());
         }
     }
 

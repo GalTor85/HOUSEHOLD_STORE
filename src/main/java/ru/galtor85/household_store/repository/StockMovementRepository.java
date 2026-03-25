@@ -79,7 +79,9 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
                                    @Param("startDate") LocalDateTime startDate,
                                    @Param("endDate") LocalDateTime endDate);
 
-    // ========== ПОИСК ПО ССЫЛКАМ ==========
+
+
+        // ========== ПОИСК ПО ССЫЛКАМ ==========
 
     @Query("SELECT sm FROM StockMovement sm WHERE " +
             "sm.referenceType = :refType AND sm.referenceId = :refId")
@@ -90,6 +92,17 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
             "sm.referenceType = :refType AND sm.referenceNumber = :refNumber")
     List<StockMovement> findByReferenceNumber(@Param("refType") String refType,
                                               @Param("refNumber") String refNumber);
+
+    /**
+     * Находит движения по типу референции, ID референции и ID продукта
+     */
+    @Query("SELECT sm FROM StockMovement sm WHERE " +
+            "sm.referenceType = :referenceType AND " +
+            "sm.referenceId = :referenceId AND " +
+            "sm.productId = :productId")
+    List<StockMovement> findByReferenceAndProductId(@Param("referenceType") String referenceType,
+                                                    @Param("referenceId") Long referenceId,
+                                                    @Param("productId") Long productId);
 
     // ========== ПОИСК ПО ПАРТИЯМ ==========
 

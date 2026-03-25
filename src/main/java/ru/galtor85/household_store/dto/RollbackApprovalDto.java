@@ -18,10 +18,10 @@ public class RollbackApprovalDto {
     @Schema(description = "Approval ID", example = "1")
     private Long id;
 
-    @Schema(description = "Order ID", example = "123")
+    @Schema(description = "SalesOrder ID", example = "123")
     private Long orderId;
 
-    @Schema(description = "Current order status", example = "SHIPPED")
+    @Schema(description = "Current salesOrder status", example = "SHIPPED")
     private String currentStatus;
 
     @Schema(description = "Target status after rollback", example = "PROCESSING")

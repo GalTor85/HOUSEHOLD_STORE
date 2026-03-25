@@ -23,7 +23,7 @@ public class AttributeCreateRequest {
     @Schema(description = "Attribute value", example = "Red", required = true)
     private String value;
 
-    @Schema(description = "Display order", example = "1", defaultValue = "0")
+    @Schema(description = "Display salesOrder", example = "1", defaultValue = "0")
     private Integer order = 0;
 
     @Schema(description = "Is required", example = "false", defaultValue = "false")

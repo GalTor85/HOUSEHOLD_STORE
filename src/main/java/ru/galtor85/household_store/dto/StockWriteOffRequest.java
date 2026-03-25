@@ -31,6 +31,9 @@ public class StockWriteOffRequest {
     @Schema(description = "Warehouse location", example = "Warehouse A")
     private String warehouseLocation;
 
-    @Schema(description = "Related order ID (if applicable)", example = "1")
+    @Schema(description = "Warehouse ID for write-off", example = "1")
+    private Long warehouseId;
+
+    @Schema(description = "Related salesOrder ID (if applicable)", example = "1")
     private Long relatedOrderId;
 }

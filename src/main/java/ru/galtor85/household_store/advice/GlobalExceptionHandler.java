@@ -626,7 +626,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleOrderCreation(
             OrderCreationException e, Locale locale) {
 
-        log.error("OrderCreationException for order {}: {}", e.getOrderNumber(), e.getMessage());
+        log.error("OrderCreationException for salesOrder {}: {}", e.getOrderNumber(), e.getMessage());
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error(e.getMessage()));
@@ -1232,7 +1232,7 @@ public class GlobalExceptionHandler {
                 e.getOrderId()
         );
 
-        log.warn("RollbackAlreadyPendingException for order {}: {}",
+        log.warn("RollbackAlreadyPendingException for salesOrder {}: {}",
                 e.getOrderId(), message);
 
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -1268,7 +1268,7 @@ public class GlobalExceptionHandler {
                 e.getErrorDetails()
         );
 
-        log.error("RollbackExecutionException for order {}: {}",
+        log.error("RollbackExecutionException for salesOrder {}: {}",
                 e.getOrderId(), e.getMessage(), e);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -1282,7 +1282,7 @@ public class GlobalExceptionHandler {
         locale = locale != null ? locale : Locale.getDefault();
 
         String localizedStatus = messageService.get(
-                "order.status." + e.getCurrentStatus().name()
+                "salesOrder.status." + e.getCurrentStatus().name()
         );
 
         String message = messageService.get(
@@ -1317,10 +1317,10 @@ public class GlobalExceptionHandler {
         locale = locale != null ? locale : Locale.getDefault();
 
         String localizedCurrent = messageService.get(
-                "order.status." + e.getCurrentStatus().name()
+                "salesOrder.status." + e.getCurrentStatus().name()
         );
         String localizedTarget = messageService.get(
-                "order.status." + e.getTargetStatus().name()
+                "salesOrder.status." + e.getTargetStatus().name()
         );
 
         String message = messageService.get(
@@ -1344,7 +1344,7 @@ public class GlobalExceptionHandler {
         String message = messageService.get(
                 "error.rollback.invalid.state",
                 e.getOrderId(),
-                messageService.get("order.status." + e.getCurrentStatus().name()),
+                messageService.get("salesOrder.status." + e.getCurrentStatus().name()),
                 e.getDetails()
         );
 
@@ -1369,6 +1369,30 @@ public class GlobalExceptionHandler {
         log.warn("RollbackTimeoutException: {}", message);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(RollbackNotAllowedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRollbackNotAllowed(
+            RollbackNotAllowedException e, Locale locale) {
+
+        String message;
+        if (e.getCurrentStatus() != null) {
+            String localizedStatus = messageService.get("order.status." + e.getCurrentStatus().name());
+            if (e.getOrderId() != null) {
+                message = messageService.get("rollback.not.allowed.for.order",
+                        e.getOrderId(), localizedStatus);
+            } else {
+                message = messageService.get("rollback.not.allowed.for.status", localizedStatus);
+            }
+        } else {
+            message = e.getMessage();
+        }
+
+        log.warn("RollbackNotAllowedException: {}", message);
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(message));
     }
 
