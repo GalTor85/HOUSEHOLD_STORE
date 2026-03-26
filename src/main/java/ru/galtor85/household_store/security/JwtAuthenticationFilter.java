@@ -20,6 +20,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import ru.galtor85.household_store.advice.exception.*;
 import ru.galtor85.household_store.dto.ApiResponse;
+import ru.galtor85.household_store.repository.BlacklistedTokenRepository;
+import ru.galtor85.household_store.service.JwtTokenHolder;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.io.IOException;
@@ -32,6 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
     private final MessageService messageService;
+    private final BlacklistedTokenRepository blacklistedTokenRepository;
     private final ObjectMapper objectMapper = createObjectMapper();
 
     private static ObjectMapper createObjectMapper() {
@@ -52,29 +55,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = getJwtFromRequest(request);
 
             if (StringUtils.hasText(jwt)) {
-                if (jwtTokenProvider.validateToken(jwt)) {
-                    String email = jwtTokenProvider.getUsernameFromToken(jwt);
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                // ✅ Сохраняем токен в ThreadLocal для доступа в сервисах
+                JwtTokenHolder.setToken(jwt);
 
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    userDetails.getAuthorities()
-                            );
+                try {
+                    // Проверяем, не в черном ли списке токен
+                    if (blacklistedTokenRepository.existsByToken(jwt)) {
+                        log.warn("Token is blacklisted (logout)");
+                        sendApiErrorResponse(response, "auth.error.token.blacklisted", HttpStatus.UNAUTHORIZED);
+                        return;
+                    }
 
-                    authentication.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request)
-                    );
+                    if (jwtTokenProvider.validateToken(jwt)) {
+                        String email = jwtTokenProvider.getUsernameFromToken(jwt);
+                        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(
+                                        userDetails,
+                                        null,
+                                        userDetails.getAuthorities()
+                                );
 
-                    log.debug("Authentication set for user: {}", email);
+                        authentication.setDetails(
+                                new WebAuthenticationDetailsSource().buildDetails(request)
+                        );
+
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                        log.debug("Authentication set for user: {}", email);
+                    }
+                } finally {
+                    // ✅ Не очищаем токен сразу, он нужен для logout
+                    // Очистка будет после завершения всего запроса
                 }
             }
-
-            // ВСЕГДА продолжаем цепочку фильтров
-            // SecurityConfig решит, какие эндпоинты требуют аутентификации
 
         } catch (TokenExpiredException e) {
             log.warn("Token expired");
@@ -96,9 +111,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.error("JWT authentication error: {}", ex.getMessage(), ex);
             sendApiErrorResponse(response, "auth.error.token.invalid", HttpStatus.UNAUTHORIZED);
             return;
+        } finally {
+            // ✅ Очищаем токен после обработки запроса
+            // НО: для logout токен нужно сохранить до завершения
+            // Используем request attribute для определения, нужно ли очищать
+            if (!isLogoutRequest(request)) {
+                JwtTokenHolder.clear();
+            }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isLogoutRequest(HttpServletRequest request) {
+        return request.getRequestURI().contains("/logout");
     }
 
     private String getJwtFromRequest(HttpServletRequest request) {
@@ -118,6 +144,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         ApiResponse<Void> errorResponse = ApiResponse.error(message);
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
-
-    // ✅ УДАЛЯЕМ shouldNotFilter() — фильтр обрабатывает ВСЕ запросы!
 }

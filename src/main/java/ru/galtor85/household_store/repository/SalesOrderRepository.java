@@ -80,10 +80,10 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
      * Поиск заказов с фильтрацией
      */
     @Query("SELECT so FROM SalesOrder so WHERE " +
-            "(:userId IS NULL OR so.userId = :userId) AND " +
-            "(:status IS NULL OR so.status = :status) AND " +
-            "(:startDate IS NULL OR so.createdAt >= :startDate) AND " +
-            "(:endDate IS NULL OR so.createdAt <= :endDate)")
+            "(COALESCE(:userId, so.userId) = so.userId) AND " +
+            "(COALESCE(:status, so.status) = so.status) AND " +
+            "(COALESCE(:startDate, so.createdAt) <= so.createdAt) AND " +
+            "(COALESCE(:endDate, so.createdAt) >= so.createdAt)")
     Page<SalesOrder> search(@Param("userId") Long userId,
                             @Param("status") OrderStatus status,
                             @Param("startDate") LocalDateTime startDate,
@@ -194,4 +194,26 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
     @Query("UPDATE SalesOrder so SET so.trackingNumber = :trackingNumber WHERE so.id = :orderId")
     int updateTrackingNumber(@Param("orderId") Long orderId,
                              @Param("trackingNumber") String trackingNumber);
+    @Query("SELECT so FROM SalesOrder so WHERE so.userId = :userId AND so.status = :status")
+    Page<SalesOrder> findByUserIdAndStatus(@Param("userId") Long userId,
+                                           @Param("status") OrderStatus status,
+                                           Pageable pageable);
+
+    @Query("SELECT so FROM SalesOrder so WHERE so.createdAt BETWEEN :startDate AND :endDate")
+    Page<SalesOrder> findByCreatedAtBetween(@Param("startDate") LocalDateTime startDate,
+                                            @Param("endDate") LocalDateTime endDate,
+                                            Pageable pageable);
+
+    @Query("SELECT so FROM SalesOrder so WHERE so.status = :status AND so.createdAt BETWEEN :startDate AND :endDate")
+    Page<SalesOrder> findByStatusAndCreatedAtBetween(@Param("status") OrderStatus status,
+                                                     @Param("startDate") LocalDateTime startDate,
+                                                     @Param("endDate") LocalDateTime endDate,
+                                                     Pageable pageable);
+
+    @Query("SELECT so FROM SalesOrder so WHERE so.userId = :userId AND so.createdAt BETWEEN :startDate AND :endDate")
+    Page<SalesOrder> findByUserIdAndCreatedAtBetween(@Param("userId") Long userId,
+                                                     @Param("startDate") LocalDateTime startDate,
+                                                     @Param("endDate") LocalDateTime endDate,
+                                                     Pageable pageable);
 }
+

@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(
-            HttpMessageNotReadableException e, Locale locale) {
+            HttpMessageNotReadableException e) {
         String message = messageService.get("global-exception-handler.invalid.request");
         log.error("HttpMessageNotReadableException: {} : {}", message, e.getLocalizedMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -40,8 +40,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(
-            AccessDeniedException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied() {
         String message = messageService.get("global-exception-handler.error.access.denied");
         log.error("AccessDeniedException: {}", message);
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -50,7 +49,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(
-            MethodArgumentNotValidException e, Locale locale) {
+            MethodArgumentNotValidException e) {
 
         List<FieldError> fieldErrors = e.getBindingResult().getFieldErrors();
 
@@ -66,7 +65,7 @@ public class GlobalExceptionHandler {
         String message = fieldError.getDefaultMessage();
 
         if (message == null || message.startsWith("{")) {
-            message = getValidationMessage(fieldError, locale);
+            message = getValidationMessage(fieldError);
         }
 
         String errorLog = messageService.get("global-exception-handler.log.validation.field.error",
@@ -89,7 +88,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({AuthenticationManagerException.class, CustomAuthenticationException.class})
     public ResponseEntity<ApiResponse<Void>> handleAuthenticationExceptions(
-            RuntimeException e, Locale locale) {
+            RuntimeException e) {
         String message = messageService.get("global-exception-handler.error.authentication");
         String logMessage = messageService.get("global-exception-handler.log.authentication.error", e.getMessage());
         log.error(logMessage);
@@ -107,8 +106,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UserAccessException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserAccessException(
-            UserAccessException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleUserAccessException() {
         String message = messageService.get("global-exception-handler.error.user.access");
         log.error("UserAccessException: {}", message);
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -117,7 +115,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UserAuthenticationError.class)
     public ResponseEntity<ApiResponse<Void>> handleUserAuthenticationError(
-            UserAuthenticationError e, Locale locale) {
+            UserAuthenticationError e) {
         String message = messageService.get("global-exception-handler.auth.login.error", e.getMessage());
         log.error("UserAuthenticationError: {}", message);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -126,7 +124,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleUserAlreadyExists(
-            UserAlreadyExistsException e, Locale locale) {
+            UserAlreadyExistsException e) {
         String message = messageService.get("global-exception-handler.auth.register.email.exists", e.getMessage());
         log.error("UserAlreadyExistsException: {}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -134,8 +132,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UserNotActiveException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserNotActive(
-            UserNotActiveException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleUserNotActive() {
         String message = messageService.get("global-exception-handler.auth.login.user.inactive");
         log.error("UserNotActiveException: {}", message);
         return ResponseEntity.status(HttpStatus.LOCKED)
@@ -143,8 +140,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UsernameNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUsernameNotFound(
-            UsernameNotFoundException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleUsernameNotFound() {
 
         String message = messageService.get("global-exception-handler.error.user.not.found");
         log.error("UsernameNotFoundException: {}", message);
@@ -159,7 +155,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UserTypeAssignmentException.class)
     public ResponseEntity<ApiResponse<Void>> handleUserTypeAssignmentException(
-            UserTypeAssignmentException e, Locale locale) {
+            UserTypeAssignmentException e) {
 
         log.error("UserTypeAssignmentException: {}", e.getMessage());
 
@@ -173,7 +169,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UserTypeAssignmentNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleUserTypeAssignmentNotFound(
-            UserTypeAssignmentNotFoundException e, Locale locale) {
+            UserTypeAssignmentNotFoundException e) {
 
         String message = messageService.get("user-type.error.not.found", e.getUserId());
         log.error("UserTypeAssignmentNotFoundException: {}", message);
@@ -188,7 +184,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ValidationRequestException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationRequestException(
-            ValidationRequestException e, Locale locale) {
+            ValidationRequestException e) {
 
         String message = messageService.get("global-exception-handler.error.validation", e.getMessage());
         String errorLog = messageService.get("global-exception-handler.log.validation.request.exception", message);
@@ -218,7 +214,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ProductAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleProductAlreadyExists(
-            ProductAlreadyExistsException e, Locale locale) {
+            ProductAlreadyExistsException e) {
 
         String message = messageService.get(
                 "manager.product.error.exists",
@@ -235,7 +231,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ProductNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleProductNotFound(
-            ProductNotFoundException e, Locale locale) {
+            ProductNotFoundException e) {
 
         String message = messageService.get(
                 "manager.product.error.not.found",
@@ -250,7 +246,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidStockOperationException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidStockOperation(
-            InvalidStockOperationException e, Locale locale) {
+            InvalidStockOperationException e) {
 
         String message = messageService.get(
                 "manager.stock.error.negative",
@@ -266,7 +262,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidPriceException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidPrice(
-            InvalidPriceException e, Locale locale) {
+            InvalidPriceException e) {
 
         String message = messageService.get(
                 "manager.price.error.invalid",
@@ -281,7 +277,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ProductVariantException.class)
     public ResponseEntity<ApiResponse<Void>> handleProductVariantException(
-            ProductVariantException e, Locale locale) {
+            ProductVariantException e) {
 
         String message = messageService.get(
                 "manager.product.variant.error",
@@ -296,7 +292,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BulkOperationException.class)
     public ResponseEntity<ApiResponse<Void>> handleBulkOperationException(
-            BulkOperationException e, Locale locale) {
+            BulkOperationException e) {
 
         String message = messageService.get(
                 "manager.bulk.operation.error",
@@ -316,7 +312,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ProductMediaException.class)
     public ResponseEntity<ApiResponse<Void>> handleProductMediaException(
-            ProductMediaException e, Locale locale) {
+            ProductMediaException e) {
 
         log.error("ProductMediaException: {}", e.getMessage());
 
@@ -330,7 +326,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ProductMediaUploadException.class)
     public ResponseEntity<ApiResponse<Void>> handleProductMediaUploadException(
-            ProductMediaUploadException e, Locale locale) {
+            ProductMediaUploadException e) {
 
         log.error("ProductMediaUploadException: {}", e.getMessage());
 
@@ -344,7 +340,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ProductMediaNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleProductMediaNotFoundException(
-            ProductMediaNotFoundException e, Locale locale) {
+            ProductMediaNotFoundException e) {
 
         log.error("ProductMediaNotFoundException: {}", e.getMessage());
 
@@ -358,9 +354,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FileDeleteException.class)
     public ResponseEntity<ApiResponse<Void>> handleFileDeleteException(
-            FileDeleteException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            FileDeleteException e) {
 
         String message = messageService.get(
                 "file.error.delete",
@@ -376,9 +370,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FileReadException.class)
     public ResponseEntity<ApiResponse<Void>> handleFileReadException(
-            FileReadException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            FileReadException e) {
 
         String message;
         if (e.getFileName() != null && e.getProductId() != null) {
@@ -399,9 +391,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FileSizeExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handleFileSizeExceededException(
-            FileSizeExceededException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            FileSizeExceededException e) {
 
         String message = messageService.get(
                 "file.error.size.exceeded",
@@ -418,9 +408,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FileStorageException.class)
     public ResponseEntity<ApiResponse<Void>> handleFileStorageException(
-            FileStorageException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            FileStorageException e) {
 
         String message;
         if (e.getFileName() != null && e.getProductId() != null) {
@@ -448,9 +436,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidFileTypeException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidFileTypeException(
-            InvalidFileTypeException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            InvalidFileTypeException e) {
 
         String message = messageService.get(
                 "file.error.invalid.type",
@@ -471,18 +457,28 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OrderNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleOrderNotFound(
-            OrderNotFoundException e, Locale locale) {
+            OrderNotFoundException e) {
 
-        String message = messageService.get("manager.order.error.not.found", e.getOrderId());
-        log.error("OrderNotFoundException: {}", message);
+        if (e.getOrderId() == null) {
+            String message = messageService.get("manager.orders.not.found");
+            log.error("OrderNotFoundException: {}", message);
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error(message));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(message));
+
+        } else {
+
+            String message = messageService.get("manager.order.error.not.found", e.getOrderId());
+            log.error("OrderNotFoundException: {}", message);
+
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(message));
+        }
     }
 
     @ExceptionHandler(InvalidOrderStatusException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidOrderStatus(
-            InvalidOrderStatusException e, Locale locale) {
+            InvalidOrderStatusException e) {
 
         String message = messageService.get("manager.order.error.invalid.status", e.getInvalidStatus());
         log.error("InvalidOrderStatusException: {}", message);
@@ -508,7 +504,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OrderItemNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleOrderItemNotFound(
-            OrderItemNotFoundException e, Locale locale) {
+            OrderItemNotFoundException e) {
 
         String message = messageService.get("manager.order.error.item.not.found", e.getItemId());
         log.error("OrderItemNotFoundException: {}", message);
@@ -519,7 +515,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OrderModificationNotAllowedException.class)
     public ResponseEntity<ApiResponse<Void>> handleOrderModificationNotAllowed(
-            OrderModificationNotAllowedException e, Locale locale) {
+            OrderModificationNotAllowedException e) {
 
         String message = messageService.get(
                 "manager.order.error.cannot.modify",
@@ -533,7 +529,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidOrderTypeException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidOrderType(
-            InvalidOrderTypeException e, Locale locale) {
+            InvalidOrderTypeException e) {
 
         String message = messageService.get(
                 "manager.order.error.not.customer.order",
@@ -547,7 +543,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidDateRangeException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidDateRange(
-            InvalidDateRangeException e, Locale locale) {
+            InvalidDateRangeException e) {
 
         String message = messageService.get(
                 "manager.order.error.date.range",
@@ -562,7 +558,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OrderItemAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleOrderItemAlreadyExists(
-            OrderItemAlreadyExistsException e, Locale locale) {
+            OrderItemAlreadyExistsException e) {
 
         String message = messageService.get("manager.order.error.item.exists", e.getProductId());
         log.error("OrderItemAlreadyExistsException: {}", message);
@@ -573,7 +569,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InsufficientStockException.class)
     public ResponseEntity<ApiResponse<Void>> handleInsufficientStock(
-            InsufficientStockException e, Locale locale) {
+            InsufficientStockException e) {
 
         String message = messageService.get(
                 "manager.order.error.insufficient.stock",
@@ -588,7 +584,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidQuantityException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidQuantity(
-            InvalidQuantityException e, Locale locale) {
+            InvalidQuantityException e) {
 
         String message = messageService.get(
                 "manager.order.error.invalid.quantity",
@@ -602,7 +598,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CartNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleCartNotFound(
-            CartNotFoundException e, Locale locale) {
+            CartNotFoundException e) {
 
         String message = messageService.get("order.error.cart.not.found", e.getUserId());
         log.error("CartNotFoundException: {}", message);
@@ -612,8 +608,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(CartEmptyException.class)
-    public ResponseEntity<ApiResponse<Void>> handleCartEmpty(
-            CartEmptyException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleCartEmpty() {
 
         String message = messageService.get("order.error.cart.empty");
         log.warn("CartEmptyException: {}", message);
@@ -624,7 +619,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OrderCreationException.class)
     public ResponseEntity<ApiResponse<Void>> handleOrderCreation(
-            OrderCreationException e, Locale locale) {
+            OrderCreationException e) {
 
         log.error("OrderCreationException for salesOrder {}: {}", e.getOrderNumber(), e.getMessage());
 
@@ -638,26 +633,26 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SupplierNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleSupplierNotFound(
-            SupplierNotFoundException e, Locale locale) {
+            SupplierNotFoundException e) {
         if (e.getSupplierId() != null) {
 
-        String message = messageService.get("manager.supplier.error.not.found", e.getSupplierId());
-        log.error("SupplierNotFoundException: {}", message);
+            String message = messageService.get("manager.supplier.error.not.found", e.getSupplierId());
+            log.error("SupplierNotFoundException: {}", message);
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error(message));
-    } else {
-        String message = messageService.get("manager.suppliers.error.not.found");
-        log.error("SupplierNotFoundException: {}", message);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(message));
+        } else {
+            String message = messageService.get("manager.suppliers.error.not.found");
+            log.error("SupplierNotFoundException: {}", message);
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error(message));
-    }
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(message));
+        }
     }
 
     @ExceptionHandler(SupplierInactiveException.class)
     public ResponseEntity<ApiResponse<Void>> handleSupplierInactive(
-            SupplierInactiveException e, Locale locale) {
+            SupplierInactiveException e) {
 
         String message = messageService.get("manager.purchase.error.supplier.inactive", e.getCurrentStatus());
         log.error("SupplierInactiveException: {}", message);
@@ -668,7 +663,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SupplierAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleSupplierAlreadyExists(
-            SupplierAlreadyExistsException e, Locale locale) {
+            SupplierAlreadyExistsException e) {
 
         String message = messageService.get("manager.supplier.error." + e.getField() + ".exists", e.getValue());
         log.error("SupplierAlreadyExistsException: {} - {}: {}", e.getMessage(), e.getField(), e.getValue());
@@ -679,7 +674,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SupplierProductAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleSupplierProductAlreadyExists(
-            SupplierProductAlreadyExistsException e, Locale locale) {
+            SupplierProductAlreadyExistsException e) {
 
         String message = messageService.get(
                 "manager.supplier.error.product.already.added",
@@ -694,7 +689,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SupplierProductNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleSupplierProductNotFound(
-            SupplierProductNotFoundException e, Locale locale) {
+            SupplierProductNotFoundException e) {
 
         String message = messageService.get("manager.supplier.product.error.not.found", e.getSupplierProductId());
         log.error("SupplierProductNotFoundException: {}", message);
@@ -709,7 +704,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ProductNotFromSupplierException.class)
     public ResponseEntity<ApiResponse<Void>> handleProductNotFromSupplier(
-            ProductNotFromSupplierException e, Locale locale) {
+            ProductNotFromSupplierException e) {
 
         String message = messageService.get(
                 "manager.purchase.error.product.not.from.supplier",
@@ -724,7 +719,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PurchaseOrderDetailsNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handlePurchaseOrderDetailsNotFound(
-            PurchaseOrderDetailsNotFoundException e, Locale locale) {
+            PurchaseOrderDetailsNotFoundException e) {
 
         String message = messageService.get("manager.purchase.error.purchase.details.not.found", e.getOrderId());
         log.error("PurchaseOrderDetailsNotFoundException: {}", message);
@@ -735,7 +730,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CannotReceivePurchaseOrderException.class)
     public ResponseEntity<ApiResponse<Void>> handleCannotReceivePurchaseOrder(
-            CannotReceivePurchaseOrderException e, Locale locale) {
+            CannotReceivePurchaseOrderException e) {
 
         String message = messageService.get("manager.purchase.error.cannot.receive", e.getCurrentStatus());
         log.error("CannotReceivePurchaseOrderException: {}", message);
@@ -750,7 +745,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(WriteOffInsufficientStockException.class)
     public ResponseEntity<ApiResponse<Void>> handleWriteOffInsufficientStock(
-            WriteOffInsufficientStockException e, Locale locale) {
+            WriteOffInsufficientStockException e) {
 
         String message = messageService.get(
                 "manager.writeoff.error.insufficient.stock",
@@ -769,8 +764,7 @@ public class GlobalExceptionHandler {
     // =========================================================================
 
     @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidCredentials(
-            InvalidCredentialsException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleInvalidCredentials() {
 
         String message = messageService.get("auth.error.invalid.credentials");
         log.warn("InvalidCredentialsException: {}", message);
@@ -781,7 +775,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccountDeactivatedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccountDeactivated(
-            AccountDeactivatedException e, Locale locale) {
+            AccountDeactivatedException e) {
 
         String message = messageService.get("auth.error.account.deactivated");
         log.warn("AccountDeactivatedException for user {}: {}", e.getUserId(), message);
@@ -791,8 +785,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(TokenExpiredException.class)
-    public ResponseEntity<ApiResponse<Void>> handleTokenExpired(
-            TokenExpiredException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleTokenExpired() {
 
         String message = messageService.get("auth.error.token.expired");
         log.warn("TokenExpiredException: {}", message);
@@ -813,8 +806,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(TokenUnsupportedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleTokenUnsupported(
-            TokenUnsupportedException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleTokenUnsupported() {
 
         String message = messageService.get("auth.error.token.unsupported");
         log.warn("TokenUnsupportedException: {}", message);
@@ -824,8 +816,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(TokenSecurityException.class)
-    public ResponseEntity<ApiResponse<Void>> handleTokenSecurity(
-            TokenSecurityException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleTokenSecurity() {
 
         String message = messageService.get("auth.error.token.security");
         log.warn("TokenSecurityException: {}", message);
@@ -835,8 +826,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InvalidTokenFormatException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidTokenFormat(
-            InvalidTokenFormatException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleInvalidTokenFormat() {
 
         String message = messageService.get("auth.error.token.invalid.format");
         log.warn("InvalidTokenFormatException: {}", message);
@@ -846,8 +836,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(RefreshTokenMissingException.class)
-    public ResponseEntity<ApiResponse<Void>> handleRefreshTokenMissing(
-            RefreshTokenMissingException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleRefreshTokenMissing() {
 
         String message = messageService.get("auth.error.refresh.token.missing");
         log.warn("RefreshTokenMissingException: {}", message);
@@ -857,8 +846,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IdentifierNotProvidedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleIdentifierNotProvided(
-            IdentifierNotProvidedException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleIdentifierNotProvided() {
 
         String message = messageService.get("auth.error.identifier.not.provided");
         log.warn("IdentifierNotProvidedException: {}", message);
@@ -869,7 +857,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SecurityUserNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleSecurityUserNotFound(
-            SecurityUserNotFoundException e, Locale locale) {
+            SecurityUserNotFoundException e) {
 
         String message = messageService.get("auth.error.security.user.not.found", e.getUserId());
         log.error("SecurityUserNotFoundException: {}", message);
@@ -884,7 +872,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DatabaseConnectionException.class)
     public ResponseEntity<ApiResponse<Void>> handleDatabaseConnectionException(
-            DatabaseConnectionException e, Locale locale) {
+            DatabaseConnectionException e) {
 
         String message = messageService.get("system.error.database.connection");
         log.error("DatabaseConnectionException: {}", message, e);
@@ -895,7 +883,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SystemInfoException.class)
     public ResponseEntity<ApiResponse<Void>> handleSystemInfoException(
-            SystemInfoException e, Locale locale) {
+            SystemInfoException e) {
 
         String message = messageService.get("system.error.info", e.getInfoType());
         log.error("SystemInfoException for {}: {}", e.getInfoType(), e.getMessage(), e);
@@ -908,9 +896,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(WarehouseNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleWarehouseNotFound(
-            WarehouseNotFoundException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            WarehouseNotFoundException e) {
 
         String message;
         if (e.getWarehouseId() != null) {
@@ -929,9 +915,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(WarehouseAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleWarehouseAlreadyExists(
-            WarehouseAlreadyExistsException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            WarehouseAlreadyExistsException e) {
 
         String message = messageService.get(
                 "warehouse.error.already.exists",
@@ -949,14 +933,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CellNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleCellNotFound(
-            CellNotFoundException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            CellNotFoundException e) {
 
         String message;
         if (e.getCellId() != null) {
             message = messageService.get("cell.error.not.found.id", e.getCellId());
-        } else  if (e.getCellCode() != null && e.getWarehouseId() != null) {
+        } else if (e.getCellCode() != null && e.getWarehouseId() != null) {
             message = messageService.get("cell.error.not.found.code",
                     e.getCellCode(), e.getWarehouseId());
         } else {
@@ -971,9 +953,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CellAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleCellAlreadyExists(
-            CellAlreadyExistsException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            CellAlreadyExistsException e) {
 
         String message = messageService.get(
                 "cell.error.already.exists",
@@ -989,9 +969,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CellAlreadyOccupiedException.class)
     public ResponseEntity<ApiResponse<Void>> handleCellAlreadyOccupied(
-            CellAlreadyOccupiedException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            CellAlreadyOccupiedException e) {
 
         String message;
         if (e.getCellId() != null) {
@@ -1016,9 +994,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CellAlreadyEmptyException.class)
     public ResponseEntity<ApiResponse<Void>> handleCellAlreadyEmpty(
-            CellAlreadyEmptyException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            CellAlreadyEmptyException e) {
 
         String message;
         if (e.getCellId() != null) {
@@ -1035,9 +1011,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InsufficientCellCapacityException.class)
     public ResponseEntity<ApiResponse<Void>> handleInsufficientCellCapacity(
-            InsufficientCellCapacityException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            InsufficientCellCapacityException e) {
 
         String message;
         if (e.getCellId() != null) {
@@ -1064,9 +1038,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IncompatibleCellTypeException.class)
     public ResponseEntity<ApiResponse<Void>> handleIncompatibleCellType(
-            IncompatibleCellTypeException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            IncompatibleCellTypeException e) {
 
         String message;
         if (e.getCellId() != null) {
@@ -1093,9 +1065,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CellWeightLimitExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handleCellWeightLimitExceeded(
-            CellWeightLimitExceededException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            CellWeightLimitExceededException e) {
 
         String message = messageService.get(
                 "cell.error.weight.limit.exceeded",
@@ -1112,9 +1082,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CellVolumeLimitExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handleCellVolumeLimitExceeded(
-            CellVolumeLimitExceededException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            CellVolumeLimitExceededException e) {
 
         String message = messageService.get(
                 "cell.error.volume.limit.exceeded",
@@ -1133,9 +1101,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(StockMovementNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleStockMovementNotFound(
-            StockMovementNotFoundException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            StockMovementNotFoundException e) {
 
         String message = messageService.get(
                 "movement.error.not.found",
@@ -1150,9 +1116,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidStockMovementException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidStockMovement(
-            InvalidStockMovementException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            InvalidStockMovementException e) {
 
         String message = messageService.get(
                 "movement.error.invalid",
@@ -1168,7 +1132,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoAvailableCellException.class)
     public ResponseEntity<ApiResponse<Void>> handleNoAvailableCell(
-            NoAvailableCellException e, Locale locale) {
+            NoAvailableCellException e) {
 
         String message = messageService.get("cell.error.no.available",
                 e.getWarehouseId(), e.getRequiredType());
@@ -1180,7 +1144,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoSuitableCellException.class)
     public ResponseEntity<ApiResponse<Void>> handleNoSuitableCell(
-            NoSuitableCellException e, Locale locale) {
+            NoSuitableCellException e) {
 
         String message = messageService.get("cell.error.no.suitable",
                 e.getWarehouseId(), e.getRequiredType(), e.getProductId());
@@ -1196,7 +1160,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({NoSuchMessageException.class, MissingResourceException.class})
     public ResponseEntity<ApiResponse<Void>> handleMessageSourceException(
-            Exception e, Locale locale) {
+            Exception e) {
         String logMessage = messageService.get("global-exception-handler.log.message.source.error", e.getMessage());
         log.error(logMessage);
         String userMessage = messageService.get("global-exception-handler.error.configuration");
@@ -1206,7 +1170,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MessageNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleMessageNotFoundException(
-            MessageNotFoundException e, Locale locale) {
+            MessageNotFoundException e) {
 
         log.error("MessageNotFoundException: {}", e.getMessage());
 
@@ -1223,9 +1187,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RollbackAlreadyPendingException.class)
     public ResponseEntity<ApiResponse<Void>> handleRollbackAlreadyPending(
-            RollbackAlreadyPendingException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            RollbackAlreadyPendingException e) {
 
         String message = messageService.get(
                 "error.rollback.already.pending",
@@ -1241,9 +1203,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RollbackApprovalNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleRollbackApprovalNotFound(
-            RollbackApprovalNotFoundException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            RollbackApprovalNotFoundException e) {
 
         String message = messageService.get(
                 "error.rollback.approval.not.found",
@@ -1258,9 +1218,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RollbackExecutionException.class)
     public ResponseEntity<ApiResponse<Void>> handleRollbackExecution(
-            RollbackExecutionException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            RollbackExecutionException e) {
 
         String message = messageService.get(
                 "error.rollback.execution.failed",
@@ -1277,9 +1235,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RollbackFinalStatusException.class)
     public ResponseEntity<ApiResponse<Void>> handleRollbackFinalStatus(
-            RollbackFinalStatusException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            RollbackFinalStatusException e) {
 
         String localizedStatus = messageService.get(
                 "salesOrder.status." + e.getCurrentStatus().name()
@@ -1297,10 +1253,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(RollbackAlreadyProcessedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleRollbackAlreadyProcessed(
-            RollbackAlreadyProcessedException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+    public ResponseEntity<ApiResponse<Void>> handleRollbackAlreadyProcessed() {
 
         String message = messageService.get("error.rollback.already.processed");
 
@@ -1312,9 +1265,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RollbackInvalidTransitionException.class)
     public ResponseEntity<ApiResponse<Void>> handleRollbackInvalidTransition(
-            RollbackInvalidTransitionException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            RollbackInvalidTransitionException e) {
 
         String localizedCurrent = messageService.get(
                 "salesOrder.status." + e.getCurrentStatus().name()
@@ -1337,9 +1288,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RollbackInvalidStateException.class)
     public ResponseEntity<ApiResponse<Void>> handleRollbackInvalidState(
-            RollbackInvalidStateException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            RollbackInvalidStateException e) {
 
         String message = messageService.get(
                 "error.rollback.invalid.state",
@@ -1356,9 +1305,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RollbackTimeoutException.class)
     public ResponseEntity<ApiResponse<Void>> handleRollbackTimeout(
-            RollbackTimeoutException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            RollbackTimeoutException e) {
 
         String message = messageService.get(
                 "error.rollback.timeout",
@@ -1374,7 +1321,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RollbackNotAllowedException.class)
     public ResponseEntity<ApiResponse<Void>> handleRollbackNotAllowed(
-            RollbackNotAllowedException e, Locale locale) {
+            RollbackNotAllowedException e) {
 
         String message;
         if (e.getCurrentStatus() != null) {
@@ -1402,7 +1349,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(
-            Exception e, Locale locale) {
+            Exception e) {
         log.error("Unhandled exception", e);
         String message = messageService.get("global-exception-handler.error.internal");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -1415,9 +1362,7 @@ public class GlobalExceptionHandler {
     // ========== CELL INACTIVE EXCEPTION ==========
     @ExceptionHandler(CellInactiveException.class)
     public ResponseEntity<ApiResponse<Void>> handleCellInactive(
-            CellInactiveException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            CellInactiveException e) {
 
         String message = messageService.get("cell.error.inactive", e.getCellId());
         log.warn("CellInactiveException: {}", message);
@@ -1429,9 +1374,7 @@ public class GlobalExceptionHandler {
     // ========== PRODUCT ALREADY IN WAREHOUSE ==========
     @ExceptionHandler(ProductAlreadyInWarehouseException.class)
     public ResponseEntity<ApiResponse<Void>> handleProductAlreadyInWarehouse(
-            ProductAlreadyInWarehouseException e, Locale locale) {
-
-        locale = locale != null ? locale : Locale.getDefault();
+            ProductAlreadyInWarehouseException e) {
 
         String message = messageService.get(
                 "cell.error.product.already.in.warehouse",
@@ -1446,7 +1389,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(
-            IllegalArgumentException e, Locale locale) {
+            IllegalArgumentException e) {
 
         String message = e.getMessage();
         log.error("IllegalArgumentException: {}", message);
@@ -1480,7 +1423,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvoiceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvoiceNotFoundException(
-            InvoiceNotFoundException e, Locale locale) {
+            InvoiceNotFoundException e) {
 
         String message = e.getLocalizedMessage(messageService);
         log.error("InvoiceNotFoundException: {}", message);
@@ -1501,7 +1444,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(CashRegisterNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleCashRegisterNotFound(
-            CashRegisterNotFoundException e, Locale locale) {
+            CashRegisterNotFoundException e) {
 
         String message = e.getLocalizedMessage(messageService);
         log.error("CashRegisterNotFoundException: {}", message);
@@ -1516,7 +1459,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(CashRegisterClosedException.class)
     public ResponseEntity<ApiResponse<Void>> handleCashRegisterClosed(
-            CashRegisterClosedException e, Locale locale) {
+            CashRegisterClosedException e) {
 
         String message = e.getLocalizedMessage(messageService);
         log.warn("CashRegisterClosedException: {}", message);
@@ -1531,7 +1474,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(InsufficientCashException.class)
     public ResponseEntity<ApiResponse<Void>> handleInsufficientCash(
-            InsufficientCashException e, Locale locale) {
+            InsufficientCashException e) {
 
         String message = e.getLocalizedMessage(messageService);
         log.warn("InsufficientCashException: {}", message);
@@ -1546,22 +1489,25 @@ public class GlobalExceptionHandler {
     // БЛОК 16: ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================
 
-    private String getValidationMessage(FieldError fieldError, Locale locale) {
+    private String getValidationMessage(FieldError fieldError) {
         String field = fieldError.getField();
         String code = fieldError.getCode();
 
         if ("NotBlank".equals(code) || "NotNull".equals(code)) {
             return switch (field) {
-                case "currentPassword" -> messageService.get("global-exception-handler.validation.password.current.required");
+                case "currentPassword" ->
+                        messageService.get("global-exception-handler.validation.password.current.required");
                 case "newPassword" -> messageService.get("global-exception-handler.validation.password.new.empty");
-                case "confirmPassword" -> messageService.get("global-exception-handler.validation.password.confirm.empty");
+                case "confirmPassword" ->
+                        messageService.get("global-exception-handler.validation.password.confirm.empty");
                 default -> messageService.get("global-exception-handler.validation.field.required", field);
             };
         }
 
         if ("Size".equals(code)) {
             return switch (field) {
-                case "currentPassword" -> messageService.get("global-exception-handler.validation.password.current.size", 6);
+                case "currentPassword" ->
+                        messageService.get("global-exception-handler.validation.password.current.size", 6);
                 case "newPassword" -> messageService.get("global-exception-handler.validation.password.new.size", 6);
                 default -> messageService.get("global-exception-handler.validation.field.size", field);
             };

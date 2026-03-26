@@ -36,6 +36,7 @@ public class CurrencyCreateRequest {
     private String symbol;
 
     @Schema(description = "Is base currency", example = "false", defaultValue = "false")
+    @Builder.Default
     private Boolean isBase = false;
 
     @NotNull(message = "{currency.validation.exchange.rate.empty}")

@@ -40,11 +40,14 @@ public class PriceCalculationRequest {
     private String currency;
 
     @Schema(description = "Apply user type discounts", example = "true", defaultValue = "true")
+    @Builder.Default
     private boolean applyUserTypeDiscounts = true;
 
     @Schema(description = "Apply promo code", example = "true", defaultValue = "true")
+    @Builder.Default
     private boolean applyPromoCode = true;
 
     @Schema(description = "Apply price rules", example = "true", defaultValue = "true")
+    @Builder.Default
     private boolean applyPriceRules = true;
 }

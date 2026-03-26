@@ -45,6 +45,10 @@ public class PurchaseOrder {
     @Builder.Default
     private List<PurchaseOrderItem> items = new ArrayList<>();
 
+    @OneToMany(mappedBy = "purchaseOrder", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Invoice> invoices = new ArrayList<>();
+
     // Поля для закупки
     @Column(name = "expected_delivery")
     private LocalDate expectedDelivery;
@@ -84,6 +88,13 @@ public class PurchaseOrder {
     @Column(length = 1000)
     private String notes;
 
+    // ✅ ДОБАВЛЕННЫЕ ПОЛЯ ДЛЯ ОТМЕНЫ
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -92,7 +103,10 @@ public class PurchaseOrder {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Вспомогательные методы
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // =========================================================================
+
     public void addItem(PurchaseOrderItem item) {
         items.add(item);
         item.setPurchaseOrder(this);
@@ -110,6 +124,26 @@ public class PurchaseOrder {
                 .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         this.totalAmount = this.subtotal;
+    }
+
+    public void addInvoice(Invoice invoice) {
+        invoices.add(invoice);
+        invoice.setPurchaseOrder(this);
+    }
+
+    public BigDecimal getTotalPaidAmount() {
+        return invoices.stream()
+                .filter(i -> i.getStatus() == InvoiceStatus.PAID)
+                .map(Invoice::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal getRemainingAmount() {
+        return getTotalAmount().subtract(getTotalPaidAmount());
+    }
+
+    public boolean isFullyPaid() {
+        return getRemainingAmount().compareTo(BigDecimal.ZERO) <= 0;
     }
 
     public boolean isFullyReceived() {

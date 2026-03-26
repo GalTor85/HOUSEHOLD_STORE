@@ -27,12 +27,49 @@ public class SalesOrderValidator {
     private final MessageService messageService;
 
     // =========================================================================
+    // ВАЛИДАЦИЯ КОРЗИНЫ
+    // =========================================================================
+
+    public void validateCartNotEmpty(Cart cart) {
+        if (cart == null) {
+            log.error(messageService.get("sales.validator.cart.null"));
+            throw new IllegalArgumentException(
+                    messageService.get("sales.validator.cart.null")
+            );
+        }
+
+        if (cart.getItems() == null || cart.getItems().isEmpty()) {
+            log.error(messageService.get("sales.validator.cart.empty"));
+            throw new CartEmptyException();
+        }
+    }
+
+    public void validateCartItems(Cart cart) {
+        for (CartItem item : cart.getItems()) {
+            if (item.getQuantity() <= 0) {
+                log.error(messageService.get("sales.validator.cart.item.invalid.quantity",
+                        item.getProductId()));
+                throw new IllegalArgumentException(
+                        messageService.get("sales.validator.cart.item.invalid.quantity",
+                                item.getProductId())
+                );
+            }
+
+            if (item.getPrice() == null || item.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+                log.error(messageService.get("sales.validator.cart.item.invalid.price",
+                        item.getProductId()));
+                throw new IllegalArgumentException(
+                        messageService.get("sales.validator.cart.item.invalid.price",
+                                item.getProductId())
+                );
+            }
+        }
+    }
+
+    // =========================================================================
     // ВАЛИДАЦИЯ ПОЛЬЗОВАТЕЛЯ
     // =========================================================================
 
-    /**
-     * Проверяет существование пользователя
-     */
     public User validateUserExists(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> {
@@ -41,24 +78,10 @@ public class SalesOrderValidator {
                 });
     }
 
-    /**
-     * Проверяет, что пользователь активен
-     */
-    public void validateUserActive(Long userId) {
-        User user = validateUserExists(userId);
-        // TODO: добавить проверку активности пользователя, если есть поле active в User
-        // if (!user.isActive()) {
-        //     throw new UserNotActiveException("User is not active");
-        // }
-    }
-
     // =========================================================================
     // ВАЛИДАЦИЯ ТОВАРОВ
     // =========================================================================
 
-    /**
-     * Проверяет все товары в заказе и возвращает список продуктов и цен
-     */
     public ProductValidationResult validateProducts(List<SalesOrderItemCreateDto> items) {
         List<Product> products = new ArrayList<>();
         List<BigDecimal> prices = new ArrayList<>();
@@ -77,9 +100,6 @@ public class SalesOrderValidator {
         return new ProductValidationResult(products, prices);
     }
 
-    /**
-     * Проверяет существование товара
-     */
     public Product validateProductExists(Long productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> {
@@ -88,9 +108,6 @@ public class SalesOrderValidator {
                 });
     }
 
-    /**
-     * Проверяет наличие товара на складе
-     */
     public void validateProductAvailability(Product product, int requestedQuantity) {
         if (product.getQuantityInStock() < requestedQuantity) {
             log.warn(messageService.get("sales.validation.insufficient.stock",
@@ -99,9 +116,6 @@ public class SalesOrderValidator {
         }
     }
 
-    /**
-     * Определяет цену товара (кастомная или из продукта)
-     */
     private BigDecimal determinePrice(Product product, SalesOrderItemCreateDto item) {
         if (item.getCustomPrice() != null) {
             return item.getCustomPrice();
@@ -109,9 +123,6 @@ public class SalesOrderValidator {
         return product.getPrice();
     }
 
-    /**
-     * Проверяет цену
-     */
     private void validatePrice(BigDecimal price, Product product) {
         if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
             log.error(messageService.get("sales.validation.invalid.price", product.getSku()));
@@ -123,9 +134,6 @@ public class SalesOrderValidator {
     // ВАЛИДАЦИЯ ЗАКАЗА
     // =========================================================================
 
-    /**
-     * Проверяет, что заказ не пустой
-     */
     public void validateNotEmpty(SalesOrderCreateRequest request) {
         if (request.getItems() == null || request.getItems().isEmpty()) {
             log.error(messageService.get("sales.validation.items.empty"));
@@ -135,9 +143,17 @@ public class SalesOrderValidator {
         }
     }
 
-    /**
-     * Проверяет существование заказа на продажу
-     */
+    public void validateCreateRequest(SalesOrderCreateRequest request) {
+        validateNotEmpty(request);
+
+        if (request.getUserId() == null) {
+            log.error(messageService.get("sales.validation.user.id.empty"));
+            throw new IllegalArgumentException(
+                    messageService.get("sales.validation.user.id.empty")
+            );
+        }
+    }
+
     public SalesOrder validateSalesOrderExists(Long orderId) {
         return salesOrderRepository.findById(orderId)
                 .orElseThrow(() -> {
@@ -146,30 +162,52 @@ public class SalesOrderValidator {
                 });
     }
 
-    /**
-     * Проверяет, что заказ принадлежит пользователю
-     */
-    public void validateOrderBelongsToUser(Long orderId, Long userId) {
-        SalesOrder order = validateSalesOrderExists(orderId);
-        if (!order.getUserId().equals(userId)) {
-            log.error(messageService.get("sales.order.not.belong.to.user", orderId, userId));
-            throw new UserAccessException(
-                    messageService.get("sales.order.not.belong.to.user", orderId, userId)
+    public void validateOrderModifiable(SalesOrder order) {
+        if (order.getStatus() != OrderStatus.PENDING) {
+            log.warn(messageService.get("sales.order.cannot.modify", order.getStatus()));
+            throw new OrderModificationNotAllowedException(order.getStatus());
+        }
+    }
+
+    public void validateOrderCancellable(SalesOrder order) {
+        if (order.getStatus() == OrderStatus.DELIVERED ||
+                order.getStatus() == OrderStatus.COMPLETED) {
+            log.warn(messageService.get("sales.order.cannot.cancel", order.getStatus()));
+            throw new IllegalStateException(
+                    messageService.get("sales.order.cannot.cancel", order.getStatus())
             );
         }
     }
 
+    // =========================================================================
+    // ВАЛИДАЦИЯ ПОЗИЦИЙ ЗАКАЗА
+    // =========================================================================
+
     /**
-     * Проверяет, можно ли модифицировать заказ
+     * Проверяет существование позиции в заказе по ID
      */
-    public void validateOrderModifiable(SalesOrder order, OrderStatus... allowedStatuses) {
-        for (OrderStatus allowed : allowedStatuses) {
-            if (order.getStatus() == allowed) {
-                return;
-            }
-        }
-        log.warn(messageService.get("sales.order.cannot.modify", order.getStatus()));
-        throw new OrderModificationNotAllowedException(order.getStatus());
+    public SalesOrderItem validateOrderItemExists(SalesOrder order, Long itemId) {
+        return order.getItems().stream()
+                .filter(item -> item.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.error(messageService.get("sales.order.item.not.found", itemId, order.getId()));
+                    return new OrderItemNotFoundException(itemId);
+                });
+    }
+
+    /**
+     * Проверяет существование позиции в заказе по ID продукта
+     */
+    public SalesOrderItem validateOrderItemByProductId(SalesOrder order, Long productId) {
+        return order.getItems().stream()
+                .filter(item -> item.getProductId().equals(productId))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.error(messageService.get("sales.order.item.not.found.by.product",
+                            productId, order.getId()));
+                    return new OrderItemNotFoundException(productId);
+                });
     }
 
     /**
@@ -184,81 +222,10 @@ public class SalesOrderValidator {
         }
     }
 
-    /**
-     * Проверяет существование позиции в заказе
-     */
-    public SalesOrderItem validateOrderItemExists(SalesOrder order, Long itemId) {
-        return order.getItems().stream()
-                .filter(item -> item.getId().equals(itemId))
-                .findFirst()
-                .orElseThrow(() -> {
-                    log.error(messageService.get("sales.order.item.not.found", itemId));
-                    return new OrderItemNotFoundException(itemId);
-                });
-    }
-
-    // =========================================================================
-    // ВАЛИДАЦИЯ СТАТУСОВ
-    // =========================================================================
-
-    /**
-     * Проверяет, что статус допустим для перехода
-     */
-    public void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
-        if (!currentStatus.isValidTransitionForSale(newStatus)) {
-            log.warn(messageService.get("sales.order.invalid.status.transition",
-                    currentStatus, newStatus));
-            throw new InvalidStatusTransitionException(currentStatus, newStatus);
-        }
-    }
-
-    /**
-     * Проверяет, что статус не является финальным
-     */
-    public void validateNotFinalStatus(OrderStatus status) {
-        if (status.isFinalForSale()) {
-            log.warn(messageService.get("sales.order.final.status", status));
-            throw new IllegalStateException(
-                    messageService.get("sales.order.final.status", status)
-            );
-        }
-    }
-
-    // =========================================================================
-    // ВАЛИДАЦИЯ ДАННЫХ ЗАКАЗА
-    // =========================================================================
-
-    /**
-     * Проверяет адрес доставки
-     */
-    public void validateShippingAddress(String shippingAddress) {
-        if (shippingAddress == null || shippingAddress.trim().isEmpty()) {
-            log.warn(messageService.get("sales.validation.shipping.address.empty"));
-            throw new IllegalArgumentException(
-                    messageService.get("sales.validation.shipping.address.empty")
-            );
-        }
-    }
-
-    /**
-     * Проверяет способ оплаты
-     */
-    public void validatePaymentMethod(String paymentMethod) {
-        if (paymentMethod == null || paymentMethod.trim().isEmpty()) {
-            log.warn(messageService.get("sales.validation.payment.method.empty"));
-            throw new IllegalArgumentException(
-                    messageService.get("sales.validation.payment.method.empty")
-            );
-        }
-    }
-
     // =========================================================================
     // ВНУТРЕННИЕ КЛАССЫ
     // =========================================================================
 
-    /**
-     * Результат валидации товаров
-     */
     @lombok.Value
     public static class ProductValidationResult {
         List<Product> products;

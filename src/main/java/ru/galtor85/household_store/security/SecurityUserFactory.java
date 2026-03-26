@@ -4,6 +4,8 @@ import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.entity.Role;
 import ru.galtor85.household_store.entity.User;
 
+import java.time.LocalDateTime;
+
 @Component
 public class SecurityUserFactory {
 
@@ -12,95 +14,59 @@ public class SecurityUserFactory {
      */
     public SecurityUser createNew(User user, String encodedPassword, Role role) {
         return SecurityUser.builder()
-                .userId(user.getId())  // Только ID, без ссылки на User
+                .userId(user.getId())
                 .password(encodedPassword)
                 .role(role != null ? role : Role.USER)
                 .active(true)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
     }
 
     /**
-     * Создание SecurityUser из существующего (для копирования)
+     * ✅ Обновление роли - модифицируем существующий объект
      */
-    public SecurityUser fromExisting(User user, SecurityUser existing) {
-        return SecurityUser.builder()
-                .userId(user.getId())
-                .password(existing.getPassword())
-                .role(existing.getRole())
-                .active(existing.isActive())
-                .createdAt(existing.getCreatedAt())
-                .updatedAt(existing.getUpdatedAt())
-                .build();
+    public SecurityUser withUpdatedRole(SecurityUser existingSecurityUser, Role newRole) {
+        existingSecurityUser.setRole(newRole);
+        existingSecurityUser.setUpdatedAt(LocalDateTime.now());
+        return existingSecurityUser;
     }
 
     /**
-     * Обновление пароля
+     * ✅ Обновление статуса - модифицируем существующий объект
      */
-    public SecurityUser withUpdatedPassword(User user, SecurityUser existingSecurityUser, String newEncodedPassword) {
-        return SecurityUser.builder()
-                .userId(user.getId())
-                .password(newEncodedPassword)
-                .role(existingSecurityUser.getRole())
-                .active(existingSecurityUser.isActive())
-                .createdAt(existingSecurityUser.getCreatedAt())
-                .updatedAt(existingSecurityUser.getUpdatedAt())
-                .build();
+    public SecurityUser withUpdatedStatus(SecurityUser existingSecurityUser, boolean active) {
+        existingSecurityUser.setActive(active);
+        existingSecurityUser.setUpdatedAt(LocalDateTime.now());
+        return existingSecurityUser;
     }
 
     /**
-     * Обновление роли
+     * ✅ Обновление пароля - модифицируем существующий объект
      */
-    public SecurityUser withUpdatedRole(User user, SecurityUser existingSecurityUser, Role newRole) {
-        return SecurityUser.builder()
-                .userId(user.getId())
-                .password(existingSecurityUser.getPassword())
-                .role(newRole)
-                .active(existingSecurityUser.isActive())
-                .createdAt(existingSecurityUser.getCreatedAt())
-                .updatedAt(existingSecurityUser.getUpdatedAt())
-                .build();
+    public SecurityUser withUpdatedPassword(SecurityUser existingSecurityUser, String newEncodedPassword) {
+        existingSecurityUser.setPassword(newEncodedPassword);
+        existingSecurityUser.setUpdatedAt(LocalDateTime.now());
+        return existingSecurityUser;
     }
 
     /**
-     * Обновление статуса
-     */
-    public SecurityUser withUpdatedStatus(User user, SecurityUser existingSecurityUser, boolean active) {
-        return SecurityUser.builder()
-                .userId(user.getId())
-                .password(existingSecurityUser.getPassword())
-                .role(existingSecurityUser.getRole())
-                .active(active)
-                .createdAt(existingSecurityUser.getCreatedAt())
-                .updatedAt(existingSecurityUser.getUpdatedAt())
-                .build();
-    }
-
-    /**
-     * Обновление нескольких полей сразу
+     * ✅ Обновление нескольких полей сразу
      */
     public SecurityUser updateFromExisting(SecurityUser existing,
                                            String newPassword,
                                            Role newRole,
                                            Boolean newActive) {
-        return SecurityUser.builder()
-                .userId(existing.getUserId())  // Используем getUserId()
-                .password(newPassword != null ? newPassword : existing.getPassword())
-                .role(newRole != null ? newRole : existing.getRole())
-                .active(newActive != null ? newActive : existing.isActive())
-                .createdAt(existing.getCreatedAt())
-                .updatedAt(existing.getUpdatedAt())
-                .build();
-    }
-
-    /**
-     * Создание SecurityUser только с ID пользователя (для случаев, когда User не нужен)
-     */
-    public SecurityUser createWithUserId(Long userId, String encodedPassword, Role role) {
-        return SecurityUser.builder()
-                .userId(userId)
-                .password(encodedPassword)
-                .role(role != null ? role : Role.USER)
-                .active(true)
-                .build();
+        if (newPassword != null) {
+            existing.setPassword(newPassword);
+        }
+        if (newRole != null) {
+            existing.setRole(newRole);
+        }
+        if (newActive != null) {
+            existing.setActive(newActive);
+        }
+        existing.setUpdatedAt(LocalDateTime.now());
+        return existing;
     }
 }

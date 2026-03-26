@@ -14,6 +14,7 @@ import ru.galtor85.household_store.repository.WarehouseRepository;
 import ru.galtor85.household_store.service.MessageService;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +29,42 @@ public class PurchaseOrderValidator {
     private final WarehouseRepository warehouseRepository;
     private final MessageService messageService;
 
+    // =========================================================================
+    // ВАЛИДАЦИЯ ЗАПРОСА НА СОЗДАНИЕ
+    // =========================================================================
 
+    /**
+     * Проверяет запрос на создание заказа на закупку
+     */
+    public void validateCreateRequest(PurchaseOrderCreateRequest request) {
+        if (request == null) {
+            log.error(messageService.get("purchase.validator.request.null"));
+            throw new IllegalArgumentException(
+                    messageService.get("purchase.validator.request.null")
+            );
+        }
+
+        validateNotEmpty(request);
+
+        if (request.getSupplierId() == null) {
+            log.error(messageService.get("purchase.validator.supplier.id.empty"));
+            throw new IllegalArgumentException(
+                    messageService.get("purchase.validator.supplier.id.empty")
+            );
+        }
+    }
+
+    /**
+     * Проверяет, что заказ не пустой
+     */
+    public void validateNotEmpty(PurchaseOrderCreateRequest request) {
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            log.error(messageService.get("purchase.validation.items.empty"));
+            throw new IllegalArgumentException(
+                    messageService.get("purchase.validation.items.empty")
+            );
+        }
+    }
 
     // =========================================================================
     // ВАЛИДАЦИЯ ПОСТАВЩИКА
@@ -58,6 +94,17 @@ public class PurchaseOrderValidator {
         }
 
         return supplier;
+    }
+
+    /**
+     * Проверяет, что поставщик активен
+     */
+    public void validateSupplierActive(Supplier supplier) {
+        if (supplier.getStatus() != SupplierStatus.ACTIVE) {
+            log.error(messageService.get("manager.purchase.error.supplier.inactive",
+                    supplier.getStatus()));
+            throw new SupplierInactiveException(supplier.getStatus());
+        }
     }
 
     // =========================================================================
@@ -120,24 +167,12 @@ public class PurchaseOrderValidator {
     // =========================================================================
 
     /**
-     * Проверяет, что заказ не пустой
-     */
-    public void validateNotEmpty(PurchaseOrderCreateRequest request) {
-        if (request.getItems() == null || request.getItems().isEmpty()) {
-            log.error(messageService.get("purchase.validation.items.empty"));
-            throw new IllegalArgumentException(
-                    messageService.get("purchase.validation.items.empty")
-            );
-        }
-    }
-
-    /**
      * Проверяет существование заказа на закупку
      */
     public PurchaseOrder validatePurchaseOrderExists(Long orderId) {
         return purchaseOrderRepository.findById(orderId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("manager.purchase.log.not.found", orderId));
+                    log.error(messageService.get("purchase.order.not.found", orderId));
                     return new PurchaseOrderNotFoundException(orderId);
                 });
     }
@@ -154,6 +189,23 @@ public class PurchaseOrderValidator {
             throw new CannotReceivePurchaseOrderException(order.getStatus());
         }
     }
+
+    /**
+     * Проверяет, можно ли отменить заказ
+     */
+    public void validateOrderCancellable(PurchaseOrder order) {
+        if (order.getStatus() == OrderStatus.DELIVERED ||
+                order.getStatus() == OrderStatus.COMPLETED) {
+            log.error(messageService.get("purchase.order.cannot.cancel", order.getStatus()));
+            throw new IllegalStateException(
+                    messageService.get("purchase.order.cannot.cancel", order.getStatus())
+            );
+        }
+    }
+
+    // =========================================================================
+    // ВАЛИДАЦИЯ СКЛАДА
+    // =========================================================================
 
     /**
      * Проверяет существование склада
@@ -176,9 +228,6 @@ public class PurchaseOrderValidator {
     // ВНУТРЕННИЕ КЛАССЫ
     // =========================================================================
 
-    /**
-     * Результат валидации товаров
-     */
     @lombok.Value
     public static class ProductValidationResult {
         List<Product> products;

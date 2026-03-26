@@ -8,6 +8,13 @@ public class OrderNotFoundException extends RuntimeException {
     this.orderId = orderId;
   }
 
+  public OrderNotFoundException() {
+    super();
+    this.orderId = null;
+  }
+
+
+
   public Long getOrderId() {
     return orderId;
   }

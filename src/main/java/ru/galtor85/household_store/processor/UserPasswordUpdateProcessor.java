@@ -27,7 +27,6 @@ public class UserPasswordUpdateProcessor {
                                UserUpdatePasswordRequest request) {
 
         SecurityUser updatedSecurityUser = securityUserFactory.withUpdatedPassword(
-                user,
                 existingSecurityUser,
                 passwordEncoder.encode(request.getNewPassword())
         );

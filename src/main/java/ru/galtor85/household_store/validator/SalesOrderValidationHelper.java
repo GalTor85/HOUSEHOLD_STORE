@@ -64,6 +64,36 @@ public class SalesOrderValidationHelper {
         }
     }
 
+    /**
+     * Парсит и валидирует диапазон дат из строк
+     */
+    public DateRangeResult parseAndValidateDateRange(String startDate, String endDate) {
+        LocalDateTime start = parseDate(startDate);
+        LocalDateTime end = parseDate(endDate);
+
+        validateDateRange(start, end);
+
+        return new DateRangeResult(start, end);
+    }
+
+    @lombok.Value
+    public static class DateRangeResult {
+        LocalDateTime start;
+        LocalDateTime end;
+
+        public boolean hasStart() {
+            return start != null;
+        }
+
+        public boolean hasEnd() {
+            return end != null;
+        }
+
+        public boolean hasBoth() {
+            return start != null && end != null;
+        }
+    }
+
     // =========================================================================
     // ПАРСИНГ И ВАЛИДАЦИЯ СТАТУСОВ
     // =========================================================================
@@ -88,11 +118,62 @@ public class SalesOrderValidationHelper {
      * Парсит и валидирует статус
      */
     public OrderStatus parseAndValidateOrderStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return null;
+        }
+
         try {
             return OrderStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
             log.warn(messageService.get("sales.validation.status.invalid", status));
             throw new InvalidOrderStatusException(status);
+        }
+    }
+
+    // =========================================================================
+    // КОМБИНИРОВАННЫЙ ПАРСИНГ ПАРАМЕТРОВ ДЛЯ ПОИСКА
+    // =========================================================================
+
+    /**
+     * Парсит все параметры поиска заказов
+     */
+    public SearchParameters parseSearchParameters(Long userId, String status,
+                                                  String startDate, String endDate) {
+        OrderStatus orderStatus = parseOrderStatus(status);
+        DateRangeResult dateRange = parseAndValidateDateRange(startDate, endDate);
+
+        return new SearchParameters(userId, orderStatus, dateRange.getStart(), dateRange.getEnd());
+    }
+
+    @lombok.Value
+    public static class SearchParameters {
+        Long userId;
+        OrderStatus status;
+        LocalDateTime startDate;
+        LocalDateTime endDate;
+
+        public boolean hasUserId() {
+            return userId != null;
+        }
+
+        public boolean hasStatus() {
+            return status != null;
+        }
+
+        public boolean hasStartDate() {
+            return startDate != null;
+        }
+
+        public boolean hasEndDate() {
+            return endDate != null;
+        }
+
+        public boolean hasFullDateRange() {
+            return startDate != null && endDate != null;
+        }
+
+        public boolean hasAnyDate() {
+            return startDate != null || endDate != null;
         }
     }
 

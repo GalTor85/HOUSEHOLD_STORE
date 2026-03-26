@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.PurchaseOrderCreateRequest;
 import ru.galtor85.household_store.dto.PurchaseOrderItemCreateDto;
-import ru.galtor85.household_store.dto.PurchaseOrderItemDto;
 import ru.galtor85.household_store.entity.*;
 import ru.galtor85.household_store.util.NumberGenerator;
 
@@ -20,8 +19,12 @@ public class PurchaseOrderBuilder {
 
     private final NumberGenerator numberGenerator;
 
+    // =========================================================================
+    // СОЗДАНИЕ ЗАКАЗА
+    // =========================================================================
+
     /**
-     * Создает сущность заказа из запроса
+     * Создает сущность заказа на закупку из запроса
      */
     public PurchaseOrder buildOrder(PurchaseOrderCreateRequest request, Long managerId) {
         return PurchaseOrder.builder()
@@ -38,49 +41,12 @@ public class PurchaseOrderBuilder {
                 .build();
     }
 
-    /**
-     * Создает позицию заказа
-     */
-    public PurchaseOrderItem buildOrderItem(PurchaseOrder order,
-                                            PurchaseOrderItemDto itemDto,
-                                            Product product,
-                                            BigDecimal price) {
-        return PurchaseOrderItem.builder()
-                .purchaseOrder(order)
-                .productId(product.getId())
-                .quantity(itemDto.getQuantity())
-                .price(price)
-                .supplierPrice(product.getSupplierPrice())
-                .supplierSku(product.getSupplierSku())
-                .productName(product.getName())
-                .productSku(product.getSku())
-                .receivedQuantity(0)
-                .build();
-    }
+    // =========================================================================
+    // СОЗДАНИЕ ПОЗИЦИЙ
+    // =========================================================================
 
     /**
-     * Создает список позиций заказа из Create DTO
-     */
-    public List<PurchaseOrderItem> buildOrderItemsFromCreate(PurchaseOrder order,
-                                                             List<PurchaseOrderItemCreateDto> itemDtos,
-                                                             List<Product> products,
-                                                             List<BigDecimal> prices) {
-        List<PurchaseOrderItem> items = new ArrayList<>();
-
-        for (int i = 0; i < itemDtos.size(); i++) {
-            PurchaseOrderItemCreateDto itemDto = itemDtos.get(i);
-            Product product = products.get(i);
-            BigDecimal price = prices.get(i);
-
-            PurchaseOrderItem item = buildOrderItem(order, itemDto, product, price);
-            items.add(item);
-        }
-
-        return items;
-    }
-
-    /**
-     * Создает одну позицию заказа из Create DTO
+     * Создает одну позицию заказа
      */
     public PurchaseOrderItem buildOrderItem(PurchaseOrder order,
                                             PurchaseOrderItemCreateDto itemDto,
@@ -98,6 +64,32 @@ public class PurchaseOrderBuilder {
                 .receivedQuantity(0)
                 .build();
     }
+
+    /**
+     * Создает список позиций заказа
+     */
+    public List<PurchaseOrderItem> buildOrderItems(PurchaseOrder order,
+                                                   List<PurchaseOrderItemCreateDto> itemDtos,
+                                                   List<Product> products,
+                                                   List<BigDecimal> prices) {
+        List<PurchaseOrderItem> items = new ArrayList<>();
+
+        for (int i = 0; i < itemDtos.size(); i++) {
+            PurchaseOrderItem item = buildOrderItem(
+                    order,
+                    itemDtos.get(i),
+                    products.get(i),
+                    prices.get(i)
+            );
+            items.add(item);
+        }
+
+        return items;
+    }
+
+    // =========================================================================
+    // РАСЧЕТ СУММ
+    // =========================================================================
 
     /**
      * Рассчитывает общую сумму заказа

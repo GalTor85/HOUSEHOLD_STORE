@@ -24,11 +24,14 @@ public class AttributeCreateRequest {
     private String value;
 
     @Schema(description = "Display salesOrder", example = "1", defaultValue = "0")
+    @Builder.Default
     private Integer order = 0;
 
     @Schema(description = "Is required", example = "false", defaultValue = "false")
+    @Builder.Default
     private Boolean required = false;
 
     @Schema(description = "Is variant attribute", example = "false", defaultValue = "false")
+    @Builder.Default
     private Boolean variant = false;
 }

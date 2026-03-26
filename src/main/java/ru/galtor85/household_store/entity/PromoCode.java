@@ -62,6 +62,7 @@ public class PromoCode {
             joinColumns = @JoinColumn(name = "promo_code_id"))
     @Column(name = "user_type")
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Set<UserType> applicableUserTypes = new HashSet<>();
 
     @Column(name = "is_active")

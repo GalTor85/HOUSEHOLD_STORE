@@ -27,7 +27,6 @@ public class RoleChangeProcessor {
         Role oldRole = targetSecurity.getRole();
 
         SecurityUser updatedSecurityUser = securityUserFactory.withUpdatedRole(
-                targetUser,
                 targetSecurity,
                 newRole
         );

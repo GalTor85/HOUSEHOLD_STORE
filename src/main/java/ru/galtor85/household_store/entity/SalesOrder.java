@@ -102,6 +102,30 @@ public class SalesOrder {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Invoice> invoices = new ArrayList<>();
+
+    public void addInvoice(Invoice invoice) {
+        invoices.add(invoice);
+        invoice.setSalesOrder(this);
+    }
+
+    public BigDecimal getTotalPaidAmount() {
+        return invoices.stream()
+                .filter(i -> i.getStatus() == InvoiceStatus.PAID)
+                .map(Invoice::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal getRemainingAmount() {
+        return getTotalAmount().subtract(getTotalPaidAmount());
+    }
+
+    public boolean isFullyPaid() {
+        return getRemainingAmount().compareTo(BigDecimal.ZERO) <= 0;
+    }
+
     // Вспомогательные методы
     public void addItem(SalesOrderItem item) {
         items.add(item);

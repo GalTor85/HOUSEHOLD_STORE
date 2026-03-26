@@ -22,6 +22,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import ru.galtor85.household_store.advice.exception.AuthenticationManagerException;
 import ru.galtor85.household_store.dto.ApiResponse;
 import ru.galtor85.household_store.security.JwtAuthenticationFilter;
+import ru.galtor85.household_store.security.JwtTokenCleanupFilter;
 import ru.galtor85.household_store.service.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -38,6 +39,11 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final MessageService messageService;
     private final ObjectMapper objectMapper;
+
+    @Bean
+    public JwtTokenCleanupFilter jwtTokenCleanupFilter() {
+        return new JwtTokenCleanupFilter();
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -109,6 +115,7 @@ public class SecurityConfig {
                 // Добавляем JWT фильтр перед стандартным фильтром аутентификации
                 .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(jwtTokenCleanupFilter(), JwtAuthenticationFilter.class)
 
                 // Настройка исключений
                 .exceptionHandling(exceptions -> exceptions

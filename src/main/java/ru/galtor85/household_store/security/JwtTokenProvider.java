@@ -11,6 +11,8 @@ import ru.galtor85.household_store.service.MessageService;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -187,6 +189,21 @@ public class JwtTokenProvider {
         } catch (Exception e) {
             log.error(messageService.get("jwt.log.role.error", e.getMessage()));
             return null;
+        }
+    }
+
+    public LocalDateTime getExpirationDateFromToken(String token) {
+        try {
+            Date expiration = Jwts.parser()
+                    .decryptWith(getEncryptionKey())
+                    .build()
+                    .parseEncryptedClaims(token)
+                    .getPayload()
+                    .getExpiration();
+            return expiration.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+        } catch (Exception e) {
+            log.error("Failed to get expiration date: {}", e.getMessage());
+            return LocalDateTime.now();
         }
     }
 

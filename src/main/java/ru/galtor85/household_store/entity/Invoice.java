@@ -78,6 +78,15 @@ public class Invoice {
     @Builder.Default
     private List<CashTransaction> cashTransactions = new ArrayList<>();
 
+    // Invoice.java
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "purchase_order_id", insertable = false, updatable = false)
+    private PurchaseOrder purchaseOrder;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sales_order_id", insertable = false, updatable = false)
+    private SalesOrder salesOrder;
+
     // =========================================================================
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================

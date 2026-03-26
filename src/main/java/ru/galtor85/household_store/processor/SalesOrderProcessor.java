@@ -13,8 +13,11 @@ import ru.galtor85.household_store.entity.*;
 import ru.galtor85.household_store.repository.SalesOrderRepository;
 import ru.galtor85.household_store.service.MessageService;
 import ru.galtor85.household_store.service.PriceCalculationService;
+import ru.galtor85.household_store.validator.SalesOrderValidator;
+import ru.galtor85.household_store.validator.SalesOrderValidationHelper;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,10 +26,26 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SalesOrderProcessor {
 
+    // Репозитории
     private final SalesOrderRepository salesOrderRepository;
+
+    // Билдеры
     private final SalesOrderBuilder builder;
+
+    // Сервисы
     private final PriceCalculationService priceCalculationService;
     private final MessageService messageService;
+
+    // Процессоры
+    private final InvoiceAutoCreationProcessor invoiceAutoCreationProcessor;
+
+    // Валидаторы
+    private final SalesOrderValidator validator;
+    private final SalesOrderValidationHelper validationHelper;
+
+    // =========================================================================
+    // СОЗДАНИЕ ЗАКАЗА ИЗ КОРЗИНЫ
+    // =========================================================================
 
     /**
      * Создает заказ на продажу из корзины
@@ -36,12 +55,14 @@ public class SalesOrderProcessor {
 
         log.info(messageService.get("sales.order.processor.create.from.cart.start", userId));
 
-        // 1. Конвертируем товары корзины в DTO для расчета
-        List<CartItemDto> items = cart.getItems().stream()
-                .map(this::convertToCartItemDto)
-                .collect(Collectors.toList());
+        // 1. Валидация корзины
+        validator.validateCartNotEmpty(cart);
+        validator.validateCartItems(cart);
 
-        // 2. Рассчитываем цены со скидками
+        // 2. Конвертируем товары корзины в DTO для расчета
+        List<CartItemDto> items = convertCartItemsToDto(cart.getItems());
+
+        // 3. Рассчитываем цены со скидками
         PriceCalculationRequest priceRequest = PriceCalculationRequest.builder()
                 .userId(userId)
                 .items(items)
@@ -51,27 +72,209 @@ public class SalesOrderProcessor {
                 .applyPriceRules(true)
                 .build();
 
-        //
         PriceCalculationResult priceResult = priceCalculationService.calculatePrice(priceRequest);
 
-        // 3. Создаем запрос для билдера
+        // 4. Создаем запрос для билдера
         SalesOrderCreateRequest createRequest = SalesOrderCreateRequest.builder()
                 .userId(userId)
                 .orderType(determineOrderType(userId))
                 .shippingAddress(shippingAddress)
                 .build();
 
-        // 4. Создаем заказ через билдер
+        // 5. Создаем заказ через билдер
         SalesOrder order = builder.buildOrder(createRequest, userId);
 
-        // 5. Устанавливаем рассчитанные суммы
+        // 6. Устанавливаем рассчитанные суммы
         order.setStatus(OrderStatus.PENDING);
         order.setSubtotal(priceResult.getOriginalTotal());
         order.setDiscountAmount(priceResult.getTotalDiscount());
         order.setTotalAmount(priceResult.getFinalTotal());
 
-        // 6. Добавляем позиции заказа
-        for (CartItem cartItem : cart.getItems()) {
+        // 7. Добавляем позиции заказа
+        addOrderItems(order, cart.getItems());
+
+        // 8. Сохраняем заказ
+        SalesOrder savedOrder = salesOrderRepository.save(order);
+
+        // 9. ✅ АВТОМАТИЧЕСКОЕ СОЗДАНИЕ СЧЕТА (через процессор)
+        Invoice invoice = invoiceAutoCreationProcessor.createInvoiceForOrder(order, userId);
+        if (invoice != null) {
+            savedOrder.addInvoice(invoice);
+            salesOrderRepository.save(savedOrder);
+            log.info(messageService.get("sales.order.processor.invoice.created",
+                    invoice.getInvoiceNumber(), savedOrder.getOrderNumber()));
+        }
+
+        log.info(messageService.get("sales.order.processor.create.from.cart.complete",
+                savedOrder.getOrderNumber(), userId, priceResult.getFinalTotal()));
+
+        return savedOrder;
+    }
+
+    // =========================================================================
+    // ПРЯМОЕ СОЗДАНИЕ ЗАКАЗА (МЕНЕДЖЕРОМ)
+    // =========================================================================
+
+    /**
+     * Создает заказ на продажу из запроса
+     */
+    @Transactional
+    public SalesOrder createSalesOrder(SalesOrderCreateRequest request,
+                                       List<Product> products,
+                                       List<BigDecimal> prices,
+                                       Long userId) {
+
+        log.info(messageService.get("sales.order.processor.create.start", userId));
+
+        // 1. Валидация запроса
+        validator.validateCreateRequest(request);
+        validator.validateProducts(request.getItems());
+
+        // 2. Создаем заказ через билдер
+        SalesOrder order = builder.buildOrder(request, userId);
+
+        // 3. Создаем позиции через билдер
+        List<SalesOrderItem> items = builder.buildOrderItems(
+                order,
+                request.getItems(),
+                products,
+                prices
+        );
+
+        // 4. Рассчитываем сумму
+        BigDecimal totalAmount = builder.calculateTotalAmount(items);
+
+        // 5. Устанавливаем позиции и суммы
+        order.setItems(items);
+        order.setSubtotal(totalAmount);
+        order.setTotalAmount(totalAmount);
+        order.setStatus(OrderStatus.PENDING);
+
+        // 6. Сохраняем заказ
+        SalesOrder savedOrder = salesOrderRepository.save(order);
+
+        // 7. ✅ АВТОМАТИЧЕСКОЕ СОЗДАНИЕ СЧЕТА (через процессор)
+        Invoice invoice = invoiceAutoCreationProcessor.createInvoiceForOrder(order, userId);
+        if (invoice != null) {
+            savedOrder.addInvoice(invoice);
+            salesOrderRepository.save(savedOrder);
+            log.info(messageService.get("sales.order.processor.invoice.created",
+                    invoice.getInvoiceNumber(), savedOrder.getOrderNumber()));
+        }
+
+        log.info(messageService.get("sales.order.processor.create.complete",
+                savedOrder.getOrderNumber(), userId, items.size(), totalAmount));
+
+        return savedOrder;
+    }
+
+    // =========================================================================
+    // ОБНОВЛЕНИЕ ЗАКАЗА
+    // =========================================================================
+
+    /**
+     * Обновляет заказ (позиции, суммы)
+     */
+    @Transactional
+    public SalesOrder updateOrder(SalesOrder order, List<SalesOrderItem> newItems, Long updatedBy) {
+        log.info(messageService.get("sales.order.processor.update.start", order.getOrderNumber()));
+
+        // 1. Валидация возможности изменения
+        validator.validateOrderModifiable(order);
+
+        // 2. Обновляем позиции
+        order.getItems().clear();
+        for (SalesOrderItem item : newItems) {
+            order.addItem(item);
+        }
+
+        // 3. Пересчитываем суммы
+        order.recalculateTotals();
+
+        // 4. Сохраняем
+        SalesOrder updated = salesOrderRepository.save(order);
+
+        // 5. ✅ Обновляем сумму счета, если он существует
+        if (!order.getInvoices().isEmpty()) {
+            Invoice invoice = order.getInvoices().get(0);
+            if (invoice.getStatus() == InvoiceStatus.PENDING) {
+                invoiceAutoCreationProcessor.updateInvoiceAmount(
+                        invoice,
+                        order.getTotalAmount(),
+                        messageService.get("sales.order.processor.update.reason", updatedBy),
+                        updatedBy
+                );
+            }
+        }
+
+        log.info(messageService.get("sales.order.processor.update.complete",
+                order.getOrderNumber(), order.getTotalAmount()));
+
+        return updated;
+    }
+
+    // =========================================================================
+    // ОТМЕНА ЗАКАЗА
+    // =========================================================================
+
+    /**
+     * Отменяет заказ
+     */
+    @Transactional
+    public SalesOrder cancelOrder(SalesOrder order, String reason, Long cancelledBy) {
+        log.info(messageService.get("sales.order.processor.cancel.start",
+                order.getOrderNumber(), reason));
+
+        // 1. Проверка возможности отмены
+        validator.validateOrderCancellable(order);
+
+        // 2. Обновляем статус
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setCancelledAt(LocalDateTime.now());
+        order.setCancellationReason(reason);
+
+        // 3. Отменяем все неоплаченные счета
+        for (Invoice invoice : order.getInvoices()) {
+            if (invoice.getStatus() == InvoiceStatus.PENDING) {
+                invoice.setStatus(InvoiceStatus.CANCELLED);
+            }
+        }
+
+        // 4. Сохраняем
+        SalesOrder cancelled = salesOrderRepository.save(order);
+
+        log.info(messageService.get("sales.order.processor.cancel.complete",
+                order.getOrderNumber(), cancelledBy));
+
+        return cancelled;
+    }
+
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // =========================================================================
+
+    /**
+     * Конвертирует CartItem в CartItemDto
+     */
+    private List<CartItemDto> convertCartItemsToDto(List<CartItem> cartItems) {
+        return cartItems.stream()
+                .map(item -> CartItemDto.builder()
+                        .productId(item.getProductId())
+                        .productName(item.getProductName())
+                        .sku(item.getSku())
+                        .quantity(item.getQuantity())
+                        .price(item.getPrice())
+                        .category(item.getCategory())
+                        .totalPrice(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Добавляет позиции в заказ
+     */
+    private void addOrderItems(SalesOrder order, List<CartItem> cartItems) {
+        for (CartItem cartItem : cartItems) {
             SalesOrderItem orderItem = SalesOrderItem.builder()
                     .salesOrder(order)
                     .productId(cartItem.getProductId())
@@ -82,69 +285,6 @@ public class SalesOrderProcessor {
                     .build();
             order.addItem(orderItem);
         }
-
-        // 7. Сохраняем заказ
-        SalesOrder savedOrder = salesOrderRepository.save(order);
-
-        log.info(messageService.get("sales.order.processor.create.from.cart.complete",
-                savedOrder.getOrderNumber(), userId, priceResult.getFinalTotal()));
-
-        return savedOrder;
-    }
-
-    /**
-     * Создает заказ на продажу из запроса (для прямого создания менеджером)
-     */
-    @Transactional
-    public SalesOrder createSalesOrder(SalesOrderCreateRequest request,
-                                       List<Product> products,
-                                       List<BigDecimal> prices,
-                                       Long userId) {
-
-        log.info(messageService.get("sales.order.processor.create.start", userId));
-
-        // 1. Создаем заказ через билдер
-        SalesOrder order = builder.buildOrder(request, userId);
-
-        // 2. Создаем позиции через билдер
-        List<SalesOrderItem> items = builder.buildOrderItems(
-                order,
-                request.getItems(),
-                products,
-                prices
-        );
-
-        // 3. Рассчитываем сумму
-        BigDecimal totalAmount = builder.calculateTotalAmount(items);
-
-        // 4. Устанавливаем позиции и суммы
-        order.setItems(items);
-        order.setSubtotal(totalAmount);
-        order.setTotalAmount(totalAmount);
-        order.setStatus(OrderStatus.PENDING);
-
-        // 5. Сохраняем заказ
-        SalesOrder savedOrder = salesOrderRepository.save(order);
-
-        log.info(messageService.get("sales.order.processor.create.complete",
-                savedOrder.getOrderNumber(), userId, items.size(), totalAmount));
-
-        return savedOrder;
-    }
-
-    /**
-     * Конвертирует CartItem в CartItemDto
-     */
-    private CartItemDto convertToCartItemDto(CartItem cartItem) {
-        return CartItemDto.builder()
-                .productId(cartItem.getProductId())
-                .productName(cartItem.getProductName())
-                .sku(cartItem.getSku())
-                .quantity(cartItem.getQuantity())
-                .price(cartItem.getPrice())
-                .category(cartItem.getCategory())
-                .totalPrice(cartItem.getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity())))
-                .build();
     }
 
     /**
@@ -152,7 +292,7 @@ public class SalesOrderProcessor {
      */
     private SalesOrderType determineOrderType(Long userId) {
         // TODO: Реализовать логику определения типа пользователя
-        // Например, проверить UserTypeAssignment
+        // Например, проверить UserTypeAssignment через UserTypeAssignmentService
         return SalesOrderType.RETAIL;
     }
 }

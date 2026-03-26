@@ -123,17 +123,24 @@ public class ManagerSalesOrderService {
                                                  int page,
                                                  int size) {
 
+        // Парсим параметры
         OrderStatus orderStatus = validationHelper.parseOrderStatus(status);
         LocalDateTime start = validationHelper.parseDate(startDate);
         LocalDateTime end = validationHelper.parseDate(endDate);
+
+        // Валидируем диапазон дат
         validationHelper.validateDateRange(start, end);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        Page<SalesOrder> orders = salesOrderRepository.search(
-                userId, orderStatus, start, end, pageable);
+        // Поиск заказов через репозиторий
+        Page<SalesOrder> orders = salesOrderRepository.search(userId, orderStatus, start, end, pageable);
 
-        log.debug(messageService.get("sales.order.fetched.log", orders.getTotalElements()));
+        if (orders.isEmpty()) {
+            log.debug(messageService.get("manager.orders.not.found"));
+            throw new OrderNotFoundException();
+        }
+        log.debug(messageService.get("manager.orders.fetched.log", orders.getTotalElements()));
 
         return orders.map(salesOrderConverter::toDto);
     }

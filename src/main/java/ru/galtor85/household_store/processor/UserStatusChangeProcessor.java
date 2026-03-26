@@ -26,7 +26,6 @@ public class UserStatusChangeProcessor {
         boolean oldStatus = targetSecurity.isEnabled();
 
         SecurityUser updatedSecurityUser = securityUserFactory.withUpdatedStatus(
-                targetUser,
                 targetSecurity,
                 active
         );

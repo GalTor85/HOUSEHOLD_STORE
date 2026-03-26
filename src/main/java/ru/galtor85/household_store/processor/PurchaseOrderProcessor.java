@@ -4,30 +4,56 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.advice.exception.CellNotFoundException;
 import ru.galtor85.household_store.builder.PurchaseOrderBuilder;
-import ru.galtor85.household_store.dto.CategoryWarehouseDto;
 import ru.galtor85.household_store.dto.PurchaseOrderCreateRequest;
+import ru.galtor85.household_store.dto.ReceiveAndStockRequest;
+import ru.galtor85.household_store.dto.ReceiveStockItem;
 import ru.galtor85.household_store.entity.*;
-import ru.galtor85.household_store.repository.PurchaseOrderRepository;
-import ru.galtor85.household_store.service.CategoryWarehouseService;
+import ru.galtor85.household_store.processor.InvoiceAutoCreationProcessor;
+import ru.galtor85.household_store.repository.*;
 import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.util.BatchNumberGenerator;
+import ru.galtor85.household_store.util.EntityFinder;
+import ru.galtor85.household_store.validator.PurchaseOrderValidator;
+import ru.galtor85.household_store.validator.StockValidator;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class PurchaseOrderProcessor {
 
+    // Репозитории
     private final PurchaseOrderRepository purchaseOrderRepository;
+    private final ProductRepository productRepository;
+    private final ProductStockRepository productStockRepository;
+    private final StockMovementRepository stockMovementRepository;
+    private final StorageCellRepository storageCellRepository;
+
+    // Билдеры
     private final PurchaseOrderBuilder builder;
-    private final CategoryWarehouseService categoryWarehouseService;  // ← ДОБАВЛЕНО
+
+    // Процессоры
+    private final InvoiceAutoCreationProcessor invoiceAutoCreationProcessor;
+
+    // Валидаторы
+    private final PurchaseOrderValidator validator;
+    private final StockValidator stockValidator;
+
+    // Утилиты
+    private final EntityFinder entityFinder;
+    private final BatchNumberGenerator batchNumberGenerator;
     private final MessageService messageService;
+
+    // =========================================================================
+    // СОЗДАНИЕ ЗАКАЗА НА ЗАКУПКУ
+    // =========================================================================
 
     /**
      * Создает заказ на закупку
@@ -39,108 +65,398 @@ public class PurchaseOrderProcessor {
                                              List<BigDecimal> prices,
                                              Long managerId) {
 
-        log.info(messageService.get("purchase.order.processor.start",
+        log.info(messageService.get("purchase.order.processor.create.start",
                 request.getSupplierId(), managerId));
 
-        // 1. Определяем склад по категориям товаров
-        Long warehouseId = determineWarehouseId(products);
+        // 1. Валидация
+        validator.validateCreateRequest(request);
+        validator.validateSupplierActive(supplier);
 
         // 2. Создаем заказ через билдер
         PurchaseOrder order = builder.buildOrder(request, managerId);
 
-        // 3. Устанавливаем склад (если определен)
-        if (warehouseId != null) {
-            order.setWarehouseLocation(String.valueOf(warehouseId));
-            log.debug(messageService.get("purchase.order.processor.warehouse.set", warehouseId));
-        }
-
-        // 4. Создаем позиции через билдер
-        List<PurchaseOrderItem> items = builder.buildOrderItemsFromCreate(
+        // 3. Создаем позиции через билдер
+        List<PurchaseOrderItem> items = builder.buildOrderItems(
                 order,
                 request.getItems(),
                 products,
                 prices
         );
 
-        // 5. Рассчитываем сумму
+        // 4. Рассчитываем сумму
         BigDecimal totalAmount = builder.calculateTotalAmount(items);
 
-        // 6. Устанавливаем позиции и суммы
+        // 5. Устанавливаем позиции и суммы
         order.setItems(items);
         order.setSubtotal(totalAmount);
         order.setTotalAmount(totalAmount);
+        order.setStatus(OrderStatus.PENDING);
 
-        // 7. Сохраняем
+        // 6. Сохраняем заказ
         PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
 
-        log.info(messageService.get("purchase.order.processor.complete",
-                savedOrder.getOrderNumber(),
-                savedOrder.getId(),
-                items.size(),
-                totalAmount));
+        // 7. ✅ АВТОМАТИЧЕСКОЕ СОЗДАНИЕ СЧЕТА
+        Invoice invoice = invoiceAutoCreationProcessor.createInvoiceForOrder(order, managerId);
+        if (invoice != null) {
+            savedOrder.addInvoice(invoice);
+            purchaseOrderRepository.save(savedOrder);
+            log.info(messageService.get("purchase.order.processor.invoice.created",
+                    invoice.getInvoiceNumber(), savedOrder.getOrderNumber()));
+        }
+
+        log.info(messageService.get("purchase.order.processor.create.complete",
+                savedOrder.getOrderNumber(), managerId, items.size(), totalAmount));
 
         return savedOrder;
     }
 
+    // =========================================================================
+    // ПРИЕМКА ЗАКАЗА (БЕЗ ЯЧЕЕК)
+    // =========================================================================
+
     /**
-     * Определяет склад по категориям товаров
+     * Приемка заказа без привязки к ячейкам
      */
-    private Long determineWarehouseId(List<Product> products) {
-        if (products == null || products.isEmpty()) {
-            log.debug(messageService.get("purchase.order.processor.no.products"));
-            return null;
+    @Transactional
+    public PurchaseOrder receiveOrder(PurchaseOrder order,
+                                      ReceiveAndStockRequest request,
+                                      Long managerId) {
+
+        log.info(messageService.get("purchase.order.processor.receive.start",
+                order.getOrderNumber(), managerId));
+
+        // 1. Валидация
+        validator.validateOrderForReceiving(order);
+        validator.validateWarehouse(request.getWarehouseId());
+
+        List<StockMovement> movements = new ArrayList<>();
+
+        // 2. Обрабатываем каждую позицию
+        for (ReceiveStockItem item : request.getItems()) {
+            PurchaseOrderItem orderItem = findOrderItem(order, item.getProductId());
+
+            if (orderItem == null) {
+                log.warn(messageService.get("purchase.order.processor.item.not.found",
+                        item.getProductId(), order.getId()));
+                continue;
+            }
+
+            Product product = entityFinder.findProductById(orderItem.getProductId());
+
+            // Расчет принимаемого количества
+            int alreadyReceived = orderItem.getReceivedQuantity() != null ? orderItem.getReceivedQuantity() : 0;
+            int remainingToReceive = orderItem.getQuantity() - alreadyReceived;
+            int receivingQuantity = Math.min(item.getQuantity(), remainingToReceive);
+
+            if (receivingQuantity <= 0) {
+                log.info(messageService.get("purchase.order.processor.item.already.received",
+                        product.getSku()));
+                continue;
+            }
+
+            // Обновляем количество принятого
+            orderItem.setReceivedQuantity(alreadyReceived + receivingQuantity);
+
+            // Обновляем остатки на складе
+            updateProductStock(product, receivingQuantity, request.getWarehouseId());
+
+            // Обновляем остаток в продукте
+            product.setQuantityInStock(product.getQuantityInStock() + receivingQuantity);
+            productRepository.save(product);
+
+            // Создаем движение товара
+            StockMovement movement = createStockMovement(
+                    product, orderItem, order, request.getWarehouseId(), managerId,
+                    item.getBatchNumber(), receivingQuantity
+            );
+            movements.add(stockMovementRepository.save(movement));
+
+            log.debug(messageService.get("purchase.order.processor.item.received",
+                    product.getSku(), receivingQuantity, orderItem.getReceivedQuantity()));
         }
 
-        // Собираем уникальные категории товаров
-        List<String> categories = products.stream()
-                .map(Product::getCategory)
-                .filter(category -> category != null && !category.isEmpty())
-                .distinct()
-                .collect(Collectors.toList());
+        // 3. Обновляем статус заказа
+        updateOrderStatusAfterReceiving(order);
 
-        if (categories.isEmpty()) {
-            log.debug(messageService.get("purchase.order.processor.no.categories"));
-            return null;
+        // 4. Сохраняем
+        PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
+
+        log.info(messageService.get("purchase.order.processor.receive.complete",
+                order.getOrderNumber(), movements.size(),
+                order.getStatus() == OrderStatus.DELIVERED ? "FULLY" : "PARTIALLY"));
+
+        return savedOrder;
+    }
+
+    // =========================================================================
+    // ПРИЕМКА ЗАКАЗА С РАЗМЕЩЕНИЕМ ПО ЯЧЕЙКАМ
+    // =========================================================================
+
+    /**
+     * Приемка заказа с размещением по ячейкам
+     */
+    @Transactional
+    public PurchaseOrder receiveOrderWithCells(PurchaseOrder order,
+                                               ReceiveAndStockRequest request,
+                                               Long managerId) {
+
+        log.info(messageService.get("purchase.order.processor.receive.with.cells.start",
+                order.getOrderNumber(), request.getWarehouseId(), managerId));
+
+        // 1. Валидация
+        validator.validateOrderForReceiving(order);
+        validator.validateWarehouse(request.getWarehouseId());
+
+        List<StockMovement> movements = new ArrayList<>();
+        List<CellPlacementInfo> placements = new ArrayList<>();
+
+        // 2. Обрабатываем каждую позицию
+        for (ReceiveStockItem item : request.getItems()) {
+            PurchaseOrderItem orderItem = findOrderItem(order, item.getProductId());
+
+            if (orderItem == null) {
+                log.warn(messageService.get("purchase.order.processor.item.not.found",
+                        item.getProductId(), order.getId()));
+                continue;
+            }
+
+            Product product = entityFinder.findProductById(orderItem.getProductId());
+
+            // Расчет принимаемого количества
+            int alreadyReceived = orderItem.getReceivedQuantity() != null ? orderItem.getReceivedQuantity() : 0;
+            int remainingToReceive = orderItem.getQuantity() - alreadyReceived;
+            int receivingQuantity = Math.min(item.getQuantity(), remainingToReceive);
+
+            if (receivingQuantity <= 0) {
+                continue;
+            }
+
+            // Определяем ячейку для размещения
+            StorageCell cell = determineCell(item, product, request.getWarehouseId());
+
+            // Размещаем товар в ячейке
+            assignProductToCell(cell, product, receivingQuantity, managerId);
+
+            // Обновляем количество принятого
+            orderItem.setReceivedQuantity(alreadyReceived + receivingQuantity);
+
+            // Обновляем остатки
+            product.setQuantityInStock(product.getQuantityInStock() + receivingQuantity);
+            productRepository.save(product);
+            updateProductStock(product, receivingQuantity, request.getWarehouseId());
+
+            // Создаем движение
+            StockMovement movement = createStockMovementWithCell(
+                    product, orderItem, order, cell, request.getWarehouseId(),
+                    managerId, item.getBatchNumber(), receivingQuantity
+            );
+            movements.add(stockMovementRepository.save(movement));
+
+            placements.add(new CellPlacementInfo(
+                    product.getId(),
+                    product.getSku(),
+                    cell.getId(),
+                    cell.getCode(),
+                    receivingQuantity
+            ));
         }
 
-        // Для каждой категории получаем склад и приоритет
-        Map<Long, Integer> warehousePriorities = new HashMap<>();
+        // 3. Обновляем статус заказа
+        updateOrderStatusAfterReceiving(order);
 
-        for (String category : categories) {
-            Long warehouseId = categoryWarehouseService.resolveWarehouseForCategory(category);
-            if (warehouseId != null) {
-                // Получаем приоритет склада для этой категории
-                int priority = getWarehousePriority(category, warehouseId);
-                warehousePriorities.merge(warehouseId, priority, Integer::sum);
-                log.debug(messageService.get("purchase.order.processor.category.warehouse",
-                        category, warehouseId, priority));
+        // 4. Сохраняем
+        PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
+
+        log.info(messageService.get("purchase.order.processor.receive.with.cells.complete",
+                order.getOrderNumber(), movements.size(), placements.size(),
+                order.getStatus() == OrderStatus.DELIVERED ? "FULLY" : "PARTIALLY"));
+
+        return savedOrder;
+    }
+
+    // =========================================================================
+    // ОТМЕНА ЗАКАЗА
+    // =========================================================================
+
+    /**
+     * Отменяет заказ на закупку
+     */
+    @Transactional
+    public PurchaseOrder cancelOrder(PurchaseOrder order, String reason, Long cancelledBy) {
+        log.info(messageService.get("purchase.order.processor.cancel.start",
+                order.getOrderNumber(), reason));
+
+        // 1. Проверка возможности отмены
+        validator.validateOrderCancellable(order);
+
+        // 2. Обновляем статус
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setCancelledAt(LocalDateTime.now());
+        order.setCancellationReason(reason);
+
+        // 3. Отменяем все неоплаченные счета
+        for (Invoice invoice : order.getInvoices()) {
+            if (invoice.getStatus() == InvoiceStatus.PENDING) {
+                invoice.setStatus(InvoiceStatus.CANCELLED);
             }
         }
 
-        if (warehousePriorities.isEmpty()) {
-            log.debug(messageService.get("purchase.order.processor.no.warehouse.for.categories"));
-            return null;
-        }
+        // 4. Сохраняем
+        PurchaseOrder cancelled = purchaseOrderRepository.save(order);
 
-        // Выбираем склад с наивысшим приоритетом
-        return warehousePriorities.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
+        log.info(messageService.get("purchase.order.processor.cancel.complete",
+                order.getOrderNumber(), cancelledBy));
+
+        return cancelled;
+    }
+
+    // =========================================================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // =========================================================================
+
+    /**
+     * Находит позицию заказа по ID продукта
+     */
+    private PurchaseOrderItem findOrderItem(PurchaseOrder order, Long productId) {
+        return order.getItems().stream()
+                .filter(item -> item.getProductId().equals(productId))
+                .findFirst()
                 .orElse(null);
     }
 
     /**
-     * Получает приоритет склада для категории
+     * Обновляет остатки в product_stocks
      */
-    private int getWarehousePriority(String category, Long warehouseId) {
-        try {
-            CategoryWarehouseDto assignment = categoryWarehouseService.getCategoryAssignment(category);
-            if (assignment != null && assignment.getWarehouseId().equals(warehouseId)) {
-                return assignment.getPriority() != null ? assignment.getPriority() : 0;
-            }
-        } catch (Exception e) {
-            log.debug(messageService.get("purchase.order.processor.priority.error", category, e.getMessage()));
+    private void updateProductStock(Product product, int quantity, Long warehouseId) {
+        ProductStock stock = productStockRepository
+                .findByProductIdAndWarehouseId(product.getId(), warehouseId)
+                .orElse(null);
+
+        if (stock == null) {
+            stock = ProductStock.builder()
+                    .productId(product.getId())
+                    .warehouseId(warehouseId)
+                    .quantity(quantity)
+                    .reservedQuantity(0)
+                    .availableQuantity(quantity)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+        } else {
+            stock.setQuantity(stock.getQuantity() + quantity);
+            stock.setAvailableQuantity(stock.getQuantity() -
+                    (stock.getReservedQuantity() != null ? stock.getReservedQuantity() : 0));
+            stock.setUpdatedAt(LocalDateTime.now());
         }
-        return 0;
+
+        productStockRepository.save(stock);
+    }
+
+    /**
+     * Обновляет статус заказа после приемки
+     */
+    private void updateOrderStatusAfterReceiving(PurchaseOrder order) {
+        boolean allReceived = order.getItems().stream()
+                .allMatch(item -> {
+                    int received = item.getReceivedQuantity() != null ? item.getReceivedQuantity() : 0;
+                    return received >= item.getQuantity();
+                });
+
+        if (allReceived) {
+            order.setStatus(OrderStatus.DELIVERED);
+            order.setActualDelivery(LocalDate.now());
+        } else {
+            order.setStatus(OrderStatus.PARTIALLY_RECEIVED);
+        }
+    }
+
+    /**
+     * Определяет ячейку для размещения товара
+     */
+    private StorageCell determineCell(ReceiveStockItem item, Product product, Long warehouseId) {
+        if (item.getCellId() != null) {
+            return storageCellRepository.findById(item.getCellId())
+                    .orElseThrow(() -> new CellNotFoundException(item.getCellId()));
+        } else if (item.getCellCode() != null) {
+            return storageCellRepository.findByCodeAndWarehouseId(item.getCellCode(), warehouseId)
+                    .orElseThrow(() -> new CellNotFoundException(item.getCellCode(), warehouseId));
+        } else {
+            // TODO: Автоматический подбор ячейки через CellAutoSelector
+            throw new IllegalArgumentException(
+                    messageService.get("purchase.order.processor.cell.not.specified")
+            );
+        }
+    }
+
+    /**
+     * Размещает товар в ячейке
+     */
+    private void assignProductToCell(StorageCell cell, Product product, int quantity, Long assignedBy) {
+        cell.setCurrentProductId(product.getId());
+        cell.setCurrentQuantity(quantity);
+        cell.setIsOccupied(true);
+        cell.setLastInventoryDate(LocalDateTime.now());
+        storageCellRepository.save(cell);
+    }
+
+    /**
+     * Создает движение товара
+     */
+    private StockMovement createStockMovement(Product product,
+                                              PurchaseOrderItem item,
+                                              PurchaseOrder order,
+                                              Long warehouseId,
+                                              Long performedBy,
+                                              String batchNumber,
+                                              int quantity) {
+
+        if (batchNumber == null || batchNumber.isEmpty()) {
+            batchNumber = batchNumberGenerator.generateBatchNumber();
+        }
+
+        return StockMovement.builder()
+                .productId(product.getId())
+                .warehouseId(warehouseId)
+                .quantity(quantity)
+                .movementType(MovementType.RECEIPT)
+                .referenceType("PURCHASE")
+                .referenceId(order.getId())
+                .referenceNumber(order.getOrderNumber())
+                .performedBy(performedBy)
+                .notes(messageService.get("purchase.order.processor.movement.notes",
+                        order.getOrderNumber()))
+                .batchNumber(batchNumber)
+                .documentNumber(order.getOrderNumber())
+                .build();
+    }
+
+    /**
+     * Создает движение товара с ячейкой
+     */
+    private StockMovement createStockMovementWithCell(Product product,
+                                                      PurchaseOrderItem item,
+                                                      PurchaseOrder order,
+                                                      StorageCell cell,
+                                                      Long warehouseId,
+                                                      Long performedBy,
+                                                      String batchNumber,
+                                                      int quantity) {
+
+        StockMovement movement = createStockMovement(product, item, order, warehouseId,
+                performedBy, batchNumber, quantity);
+        movement.setToCellId(cell.getId());
+        return movement;
+    }
+
+    // =========================================================================
+    // ВНУТРЕННИЕ КЛАССЫ
+    // =========================================================================
+
+    @lombok.Value
+    public static class CellPlacementInfo {
+        Long productId;
+        String productSku;
+        Long cellId;
+        String cellCode;
+        int quantity;
     }
 }

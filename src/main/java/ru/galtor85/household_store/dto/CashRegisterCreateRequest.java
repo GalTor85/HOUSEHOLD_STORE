@@ -35,6 +35,7 @@ public class CashRegisterCreateRequest {
 
     @DecimalMin(value = "0.00", message = "{cash.register.validation.opening.balance.min}")
     @Schema(description = "Opening balance", example = "10000.00", defaultValue = "0.00")
+    @Builder.Default
     private BigDecimal openingBalance = BigDecimal.ZERO;
 
     // =========================================================================

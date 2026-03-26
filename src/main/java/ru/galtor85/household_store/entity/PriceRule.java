@@ -58,6 +58,7 @@ public class PriceRule {
             joinColumns = @JoinColumn(name = "price_rule_id"))
     @Column(name = "user_type")
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Set<UserType> applicableUserTypes = new HashSet<>(); // Для каких типов пользователей
 
     @Column(name = "is_active")
