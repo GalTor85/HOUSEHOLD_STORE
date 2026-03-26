@@ -12,7 +12,6 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -81,8 +80,8 @@ public class JwtTokenProvider {
                     .compact();
 
         } catch (Exception e) {
-            log.error(messageService.get("jwt.log.token.create.error", e.getMessage()),e);
-            throw new RuntimeException(messageService.get("jwt.log.token.create.error",e.getMessage()),e);
+            log.error(messageService.get("jwt.log.token.create.error", e.getMessage()), e);
+            throw new RuntimeException(messageService.get("jwt.log.token.create.error", e.getMessage()), e);
         }
     }
 

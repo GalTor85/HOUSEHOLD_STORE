@@ -1,0 +1,2442 @@
+# ====================================================================
+# СИСТЕМА И ИНФОРМАЦИЯ О ПРИЛОЖЕНИИ
+# ====================================================================
+system=Система
+success=Успешно
+error=Ошибка
+
+app.name=Домашний Учет
+app.version=1.0.0
+app.status.running=РАБОТАЕТ
+
+# ====================================================================
+# HTTP СТАТУСЫ
+# ====================================================================
+http.bad.request=Неверный запрос
+http.unauthorized=Не авторизован
+http.forbidden=Доступ запрещен
+http.not.found=Не найдено
+http.conflict=Конфликт
+http.server.error=Внутренняя ошибка сервера
+
+# ====================================================================
+# РОЛИ
+# ====================================================================
+role.admin=Администратор
+role.manager=Менеджер
+role.user=Пользователь
+
+# ====================================================================
+# ОБЩИЕ СООБЩЕНИЯ О ПОЛЬЗОВАТЕЛЯХ
+# ====================================================================
+user.found=Пользователь успешно найден
+user.not.found=Пользователь с ID {0} не найден
+user.created=Пользователь успешно создан
+user.updated=Пользователь успешно обновлен
+user.deleted=Пользователь успешно удален
+user.fetched=Пользователи успешно получены
+user.stats=Статистика успешно получена
+user.search.results=Результаты поиска пользователей
+user.self.delete=Нельзя удалить свою учетную запись
+user.not.authenticated=Пользователь не аутентифицирован
+
+# ====================================================================
+# СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ
+# ====================================================================
+user.create.success=Пользователь успешно создан
+user.create.error=Ошибка создания пользователя: {0}
+user.create.validation=Ошибка валидации при создании пользователя: {0}
+user.create.duplicate=Пользователь с email {0} или телефоном {1} уже существует
+
+# ====================================================================
+# АУТЕНТИФИКАЦИЯ
+# ====================================================================
+auth.register.success=Регистрация успешна
+auth.register.error=Ошибка регистрации: {0}
+auth.login.success=Вход выполнен успешно
+auth.login.error=Ошибка входа: {0}
+auth.logout.success=Выход выполнен успешно
+auth.logout.error=Ошибка при выходе: {0}
+auth.token.valid=Токен действителен
+auth.token.invalid.format=Неверный формат токена
+auth.token.invalid.expired=Недействительный или просроченный токен
+auth.token.validation.error=Ошибка валидации токена
+auth.refresh.success=Токен успешно обновлен
+auth.refresh.error=Ошибка обновления токена
+auth.refresh.token.invalid=Недействительный refresh токен
+
+authentication.successful=Аутентификация успешна для пользователя: {0}
+authentication.failed=Ошибка аутентификации для пользователя: {0}
+token.created=Токен успешно создан для пользователя: {0}
+token.refreshed=Токен обновлен для пользователя: {0}
+token.invalid=Недействительный токен
+token.expired=Срок действия токена истек
+
+# ====================================================================
+# ОПИСАНИЕ ЭНДПОИНТОВ
+# ====================================================================
+endpoint.home=GET  /api/v1/ - Главная страница API
+endpoint.health=GET  /api/v1/health - Проверка состояния системы
+endpoint.info=GET  /api/v1/info - Информация о системе
+endpoint.ping=GET  /api/v1/ping - Проверка доступности
+endpoint.login=POST /api/v1/auth/login - Аутентификация
+endpoint.register=POST /api/v1/auth/register - Регистрация
+endpoint.admin.users=GET  /api/v1/admin/users - Управление пользователями (требуются права ADMIN)
+endpoint.products=GET  /api/v1/products - Список товаров
+endpoint.orders=GET  /api/v1/orders - Управление заказами
+
+# ====================================================================
+# ГЛАВНАЯ СТРАНИЦА
+# ====================================================================
+home.welcome=Добро пожаловать в API Домашнего Учета
+
+# ====================================================================
+# ЗДОРОВЬЕ СИСТЕМЫ
+# ====================================================================
+health.status.up=РАБОТАЕТ
+health.message.normal=Система работает нормально
+
+# ====================================================================
+# ИНФОРМАЦИЯ
+# ====================================================================
+info.message=Информация о системе
+
+# ====================================================================
+# ПИНГ
+# ====================================================================
+ping.response=pong
+
+# ====================================================================
+# СООБЩЕНИЯ ВАЛИДАЦИИ DTO
+# ====================================================================
+
+# LoginForm
+login-form.validation.password.empty=Пароль обязателен
+login-form.validation.password.invalid=Пароль должен содержать минимум одну строчную, одну заглавную букву, одну цифру, один спецсимвол и быть не менее 6 символов
+login-form.validation.login.identifier.required=Email или номер телефона обязательны
+login-form.validation.email.invalid=Неверный формат email
+login-form.validation.mobile.invalid=Неверный формат номера телефона
+
+# RefreshTokenRequest
+refresh-token-request.validation.refresh.token.empty=Refresh токен обязателен
+
+# UpdateRoleRequest
+update-role-request.validation.role.empty=Новая роль обязательна
+
+# UpdateStatusRequest
+update-status-request.validation.status.empty=Новый статус обязателен
+
+# UserCreateRequest
+user-create-request.validation.email.invalid=Неверный формат email
+user-create-request.validation.mobile.invalid=Неверный формат номера телефона
+user-create-request.validation.password.empty=Пароль обязателен
+user-create-request.validation.password.size=Пароль должен содержать минимум 6 символов
+user-create-request.validation.password.invalid=Пароль должен содержать минимум одну строчную, одну заглавную букву, одну цифру и один спецсимвол
+user-create-request.validation.birthdate.invalid=Дата рождения должна быть в формате ГГГГ-ММ-ДД
+user-create-request.validation.firstname.empty=Имя обязательно
+user-create-request.validation.firstname.size=Имя должно содержать от 2 до 50 символов
+user-create-request.validation.lastname.empty=Фамилия обязательна
+user-create-request.validation.lastname.size=Фамилия должна содержать от 2 до 50 символов
+user-create-request.validation.surname.size=Отчество не должно превышать 50 символов
+user-create-request.validation.address.size=Адрес не должен превышать 200 символов
+
+# UserEditRequest
+user-edit-request.validation.email.invalid=Неверный формат email
+user-edit-request.validation.mobile.invalid=Неверный формат номера телефона
+user-edit-request.validation.birthdate.invalid=Дата рождения должна быть в формате ГГГГ-ММ-ДД
+user-edit-request.validation.firstname.size=Имя должно содержать от 2 до 50 символов
+user-edit-request.validation.lastname.size=Фамилия должна содержать от 2 до 50 символов
+user-edit-request.validation.surname.size=Отчество не должно превышать 50 символов
+user-edit-request.validation.address.size=Адрес не должен превышать 200 символов
+
+# UserUpdatePasswordRequest
+user-update-password-request.validation.password.current.required=Текущий пароль обязателен
+user-update-password-request.validation.password.current.size=Текущий пароль должен содержать минимум 6 символов
+user-update-password-request.validation.password.new.empty=Новый пароль обязателен
+user-update-password-request.validation.password.new.size=Новый пароль должен содержать минимум 6 символов
+user-update-password-request.validation.password.new.invalid=Новый пароль должен содержать минимум одну строчную, одну заглавную букву, одну цифру и один спецсимвол
+user-update-password-request.validation.password.confirm.empty=Подтверждение пароля обязательно
+
+# ====================================================================
+# СТАТУСЫ DTO
+# ====================================================================
+
+# HealthStatus DTO
+health-status.status.up=РАБОТАЕТ
+health-status.status.down=НЕ РАБОТАЕТ
+health-status.status.degraded=РАБОТАЕТ С ОШИБКАМИ
+health-status.database.connected=ПОДКЛЮЧЕНО
+health-status.database.disconnected=ОТКЛЮЧЕНО
+health-status.database.degraded=НЕСТАБИЛЬНО
+health-status.diskspace.ok=НОРМА
+health-status.diskspace.warning=ВНИМАНИЕ
+health-status.diskspace.critical=КРИТИЧЕСКИ
+
+# HomeInfo DTO
+home-info.status.running=РАБОТАЕТ
+home-info.status.stopped=ОСТАНОВЛЕНО
+home-info.application.name=Домашний Учет
+home-info.application.version=1.0.0
+
+# ====================================================================
+# КОНТРОЛЛЕРЫ
+# ====================================================================
+
+# --------------------------------------------------------------------
+# AdminRestController
+# --------------------------------------------------------------------
+admin-rest-controller.user.not.authenticated=Пользователь не аутентифицирован
+admin-rest-controller.log.getting.current.admin=Получение текущего администратора: {0}
+admin-rest-controller.error.current.admin.not.found=Текущий администратор не найден: {0}
+admin-rest-controller.log.admin.fetching.users=Администратор {0} получает список пользователей (ID: {1})
+admin-rest-controller.log.searching.users.with.criteria=Поиск пользователей с критериями - email: {0}, тел: {1}, имя: {2}, фамилия: {3}
+admin-rest-controller.log.getting.all.users=Получение всех пользователей, сортировка: {0}
+admin-rest-controller.log.returning.users=Возвращено {0} пользователей
+admin-rest-controller.user.fetched=Пользователи успешно получены
+admin-rest-controller.error.authentication=Ошибка аутентификации: {0}
+admin-rest-controller.user.fetch.error=Ошибка получения пользователей: {0}
+admin-rest-controller.log.admin.creating.user=Администратор {0} создает пользователя с email: {1}
+admin-rest-controller.log.user.created.success=Пользователь успешно создан: {0}
+admin-rest-controller.user.created=Пользователь успешно создан
+admin-rest-controller.user.create.validation=Ошибка валидации создания пользователя: {0} для email: {1}, тел: {2}
+admin-rest-controller.user.create.error=Ошибка создания пользователя: {0}
+admin-rest-controller.log.admin.changing.role=Администратор {0} меняет роль пользователя {1} на: {2}
+admin-rest-controller.user.role.updated=Роль пользователя успешно обновлена
+admin-rest-controller.user.role.validation=Ошибка валидации роли: {0} для пользователя {1} с ролью: {2}
+admin-rest-controller.user.role.denied=Доступ запрещен для изменения роли: {0}
+admin-rest-controller.user.role.error=Ошибка обновления роли: {0}
+admin-rest-controller.user.status.active=Активен
+admin-rest-controller.user.status.inactive=Неактивен
+admin-rest-controller.log.admin.changing.status=Администратор {0} меняет статус пользователя {1} на: {2}
+admin-rest-controller.user.status.updated=Статус пользователя успешно обновлен
+admin-rest-controller.user.status.validation=Ошибка валидации статуса: {0} для пользователя {1} с активностью: {2}
+admin-rest-controller.user.status.denied=Доступ запрещен для изменения статуса: {0}
+admin-rest-controller.user.status.error=Ошибка обновления статуса: {0}
+admin-rest-controller.log.admin.deleting.user=Администратор {0} удаляет пользователя: {1}
+admin-rest-controller.log.admin.attempt.delete.self=Администратор попытался удалить себя
+admin-rest-controller.user.self.delete=Невозможно удалить свою учетную запись
+admin-rest-controller.log.admin.insufficient.permissions=У администратора {0} недостаточно прав для удаления пользователя с ролью: {1}
+admin-rest-controller.user.delete.denied=Невозможно удалить пользователя с ролью: {0}
+admin-rest-controller.log.user.deleted.success=Пользователь успешно удален: {0}
+admin-rest-controller.user.deleted=Пользователь успешно удален
+admin-rest-controller.user.delete.validation=Ошибка валидации удаления: {0}
+admin-rest-controller.user.delete.denied.general=Доступ запрещен для удаления пользователя: {0}
+admin-rest-controller.log.getting.user.by.id=Получение пользователя по ID: {0}
+admin-rest-controller.user.found=Пользователь найден
+admin-rest-controller.user.not.found=Пользователь не найден: {0}
+admin-rest-controller.log.admin.searching.users=Администратор {0} ищет пользователей по: {1}
+admin-rest-controller.user.search.not.found=Пользователи не найдены по запросу: {0}
+admin-rest-controller.user.search.results=Результаты поиска
+admin-rest-controller.user.search.error=Ошибка поиска пользователей: {0}
+admin-rest-controller.log.admin.getting.stats=Администратор {0} получает статистику
+admin-rest-controller.stats.total=Всего пользователей
+admin-rest-controller.stats.active=Активные пользователи
+admin-rest-controller.stats.inactive=Неактивные пользователи
+admin-rest-controller.stats.admins=Администраторы
+admin-rest-controller.stats.managers=Менеджеры
+admin-rest-controller.stats.users=Обычные пользователи
+admin-rest-controller.stats.logged=Авторизованные пользователи
+admin-rest-controller.stats.fetched=Статистика успешно получена
+admin-rest-controller.stats.error=Ошибка получения статистики: {0}
+
+# --------------------------------------------------------------------
+# AuthRestController
+# --------------------------------------------------------------------
+auth-rest-controller.log.register.attempt=Попытка регистрации для email: {0}
+auth-rest-controller.log.user.registered=Пользователь успешно зарегистрирован: {0}
+auth-rest-controller.auth.register.success=Регистрация успешна
+auth-rest-controller.log.register.completed=Регистрация завершена для пользователя: {0}
+auth-rest-controller.log.register.email.exists=Email уже существует: {0}
+auth-rest-controller.log.register.validation.failed=Ошибка валидации при регистрации: {0}
+auth-rest-controller.log.registration.failed=Ошибка регистрации для {0}: {1}
+auth-rest-controller.auth.register.error=Ошибка регистрации: {0}
+auth-rest-controller.log.login.attempt=Попытка входа для пользователя: {0}
+auth-rest-controller.error.user.not.found.identify=Пользователь не найден: {0}
+auth-rest-controller.log.login.user.inactive=Неактивный пользователь попытался войти: {0}
+auth-rest-controller.auth.login.user.inactive=Учетная запись деактивирована
+auth-rest-controller.auth.login.success=Вход выполнен успешно
+auth-rest-controller.log.login.success=Пользователь {0} успешно вошел (ID: {1})
+auth-rest-controller.log.login.user.not.found=Пользователь не найден при входе: {0}
+auth-rest-controller.auth.login.invalid.credentials=Неверный email/телефон или пароль
+auth-rest-controller.log.login.bad.credentials=Неверные учетные данные для пользователя: {0}
+auth-rest-controller.log.logins.failed=Ошибка входа для {0}: {1}
+auth-rest-controller.auth.login.error=Ошибка входа: {0}
+auth-rest-controller.log.logout.attempt=Попытка выхода с токеном: {0}
+auth-rest-controller.log.logout.token.received=Получен JWT токен для выхода
+auth-rest-controller.auth.logout.success=Выход выполнен успешно
+auth-rest-controller.log.logout.success=Пользователь успешно вышел
+auth-rest-controller.log.logout.failed=Ошибка при выходе: {0}
+auth-rest-controller.auth.logout.error=Ошибка выхода: {0}
+auth-rest-controller.log.token.validate.attempt=Попытка валидации токена: {0}
+auth-rest-controller.auth.token.invalid.format=Неверный формат токена
+auth-rest-controller.log.token.invalid.format=Неверный формат токена
+auth-rest-controller.auth.token.invalid.expired=Токен истек или недействителен
+auth-rest-controller.log.token.invalid.expired=Токен истек или недействителен
+auth-rest-controller.log.token.identify.extracted=Идентификатор пользователя извлечен из токена: {0}
+auth-rest-controller.log.token.user.inactive=Ошибка валидации токена - пользователь неактивен: {0}
+auth-rest-controller.auth.token.user.inactive=Учетная запись деактивирована
+auth-rest-controller.auth.token.valid=Токен действителен
+auth-rest-controller.log.token.valid=Токен успешно проверен для пользователя: {0}
+auth-rest-controller.auth.token.user.not.found=Пользователь по токену не найден
+auth-rest-controller.log.token.validation.error=Ошибка валидации токена: {0}
+auth-rest-controller.auth.token.validation.error=Ошибка валидации токена
+auth-rest-controller.log.refresh.attempt=Попытка обновления токена
+auth-rest-controller.auth.refresh.token.missing=Отсутствует refresh токен
+auth-rest-controller.log.refresh.token.missing=Отсутствует refresh токен
+auth-rest-controller.auth.refresh.token.invalid=Недействительный refresh токен
+auth-rest-controller.log.refresh.token.invalid=Недействительный refresh токен
+auth-rest-controller.log.refresh.identify.extracted=Идентификатор пользователя извлечен из refresh токена: {0}
+auth-rest-controller.log.refresh.user.inactive=Ошибка обновления - пользователь неактивен: {0}
+auth-rest-controller.auth.refresh.user.inactive=Невозможно обновить токен - пользователь неактивен
+auth-rest-controller.auth.refresh.success=Токен успешно обновлен
+auth-rest-controller.log.refresh.success=Токен успешно обновлен для пользователя: {0}
+auth-rest-controller.log.refresh.error=Ошибка обновления токена: {0}
+auth-rest-controller.auth.refresh.error=Ошибка обновления токена
+
+# --------------------------------------------------------------------
+# HomeRestController
+# --------------------------------------------------------------------
+home-rest-controller.app.name=Домашний Учет
+home-rest-controller.app.version=1.0.0
+home-rest-controller.app.status.running=Работает
+home-rest-controller.home.welcome=Добро пожаловать в API Домашнего Учета
+home-rest-controller.log.home.requested=Запрошена домашняя страница
+home-rest-controller.health.status.up=РАБОТАЕТ
+home-rest-controller.health.message.normal=Система работает нормально
+home-rest-controller.log.health.requested=Запрошена проверка состояния
+home-rest-controller.info.message=Информация о системе успешно получена
+home-rest-controller.log.info.requested=Запрошена информация о системе
+home-rest-controller.ping.response=Пинг успешен
+home-rest-controller.log.ping.requested=Запрошен пинг
+home-rest-controller.endpoint.home=Главная страница с информацией о системе
+home-rest-controller.endpoint.health=Проверка состояния системы
+home-rest-controller.endpoint.info=Детальная информация о системе
+home-rest-controller.endpoint.ping=Простая проверка доступности
+home-rest-controller.endpoint.login=Вход в систему
+home-rest-controller.endpoint.register=Регистрация пользователя
+home-rest-controller.endpoint.admin.users=Управление пользователями (админ)
+home-rest-controller.endpoint.products=Управление товарами
+home-rest-controller.endpoint.orders=Управление заказами
+
+# --------------------------------------------------------------------
+# UserRestController
+# --------------------------------------------------------------------
+user-rest-controller.log.auth.header.missing=Отсутствует заголовок Authorization
+user-rest-controller.error.auth.header.missing=Отсутствует заголовок авторизации
+user-rest-controller.log.auth.token.invalid=Недействительный или просроченный токен
+user-rest-controller.error.auth.token.invalid=Недействительный или просроченный токен
+user-rest-controller.log.auth.token.identify=Идентификатор из токена: {0}
+user-rest-controller.error.user.not.found=Пользователь не найден: {0}
+user-rest-controller.log.profile.update.start=Обработка запроса на обновление профиля
+user-rest-controller.log.profile.update.success=Профиль пользователя успешно обновлен: {0}
+user-rest-controller.log.profile.update.unauthorized=Неавторизованная попытка обновления профиля: {0}
+user-rest-controller.log.profile.update.notfound=Пользователь не найден при обновлении профиля: {0}
+user-rest-controller.log.profile.update.validation=Ошибка валидации при обновлении профиля: {0}
+user-rest-controller.log.profile.update.error=Непредвиденная ошибка при обновлении профиля: {0}
+user-rest-controller.msg.profile.update.success=Профиль успешно обновлен
+user-rest-controller.log.password.update.start=Обработка запроса на обновление пароля
+user-rest-controller.log.password.update.success=Пароль успешно обновлен для пользователя: {0}
+user-rest-controller.log.password.update.unauthorized=Неавторизованная попытка обновления пароля: {0}
+user-rest-controller.log.password.update.notfound=Пользователь не найден при обновлении пароля: {0}
+user-rest-controller.log.password.update.validation=Ошибка валидации при обновлении пароля: {0}
+user-rest-controller.log.password.update.error=Непредвиденная ошибка при обновлении пароля: {0}
+user-rest-controller.msg.password.update.success=Пароль успешно обновлен
+user-rest-controller.log.profile.fetch.start=Получение профиля текущего пользователя
+user-rest-controller.log.profile.fetch.success=Профиль пользователя успешно получен: {0}
+user-rest-controller.log.profile.fetch.unauthorized=Неавторизованный доступ к профилю: {0}
+user-rest-controller.log.profile.fetch.notfound=Пользователь не найден при получении профиля: {0}
+user-rest-controller.log.profile.fetch.error=Непредвиденная ошибка при получении профиля: {0}
+user-rest-controller.msg.profile.fetch.success=Профиль пользователя успешно получен
+
+# ====================================================================
+# ГЛОБАЛЬНЫЙ ОБРАБОТЧИК ИСКЛЮЧЕНИЙ
+# ====================================================================
+global-exception-handler.invalid.request=Неверный формат запроса
+global-exception-handler.error.access.denied=Доступ запрещен
+global-exception-handler.error.authentication=Ошибка аутентификации
+global-exception-handler.log.authentication.error=Ошибка аутентификации: {0}
+global-exception-handler.error.user.operation=Операция с пользователем не удалась
+global-exception-handler.log.user.operation.error=Ошибка операции с пользователем: {0}
+global-exception-handler.error.validation=Ошибка валидации: {0}
+global-exception-handler.log.validation.request.exception=Ошибка валидации: {0}
+global-exception-handler.log.validation.request.principal=Ошибка валидации для пользователя: {0}
+global-exception-handler.error.validation.with.principal=Ошибка валидации: {0} для пользователя: {1}
+global-exception-handler.error.user.not.found=Пользователь не найден
+global-exception-handler.error.user.access=Доступ к ресурсу пользователя запрещен
+global-exception-handler.validation.general.error=Ошибка валидации
+global-exception-handler.log.validation.general.error=Ошибка валидации: {0}
+global-exception-handler.log.validation.field.error=Ошибка валидации поля '{0}': {1}
+global-exception-handler.log.validation.field.missing=Поле '{0}' отсутствует
+global-exception-handler.validation.password.current.required=Текущий пароль обязателен
+global-exception-handler.validation.password.new.empty=Новый пароль не может быть пустым
+global-exception-handler.validation.password.confirm.empty=Подтверждение пароля обязательно
+global-exception-handler.validation.field.required=Поле '{0}' обязательно
+global-exception-handler.validation.password.current.size=Текущий пароль должен содержать минимум {0} символов
+global-exception-handler.validation.password.new.size=Новый пароль должен содержать минимум {0} символов
+global-exception-handler.validation.field.size=Поле '{0}' имеет неверный размер
+global-exception-handler.validation.password.new.invalid=Пароль должен содержать минимум одну цифру, одну строчную, одну заглавную букву и один спецсимвол
+global-exception-handler.validation.field.error=Неверное значение для поля '{0}'
+global-exception-handler.log.message.source.error=Ошибка источника сообщений: {0}
+global-exception-handler.error.configuration=Ошибка конфигурации
+global-exception-handler.error.internal=Внутренняя ошибка сервера
+global-exception-handler.auth.register.error=Ошибка регистрации: {0}
+global-exception-handler.auth.login.error=Ошибка входа: {0}
+global-exception-handler.auth.token.validation.error=Ошибка валидации токена
+global-exception-handler.auth.register.email.exists=Email уже существует: {0}
+global-exception-handler.auth.login.user.inactive=Учетная запись деактивирована
+global-exception-handler.error.auth.failed=Ошибка аутентификации
+global-exception-handler.error.user.fetch=Не удалось получить данные пользователя
+
+# ====================================================================
+# КОНФИГУРАЦИЯ И БЕЗОПАСНОСТЬ
+# ====================================================================
+
+# --------------------------------------------------------------------
+# AdminInitializer
+# --------------------------------------------------------------------
+admin-initializer.admin.default.firstname=Админ
+admin-initializer.admin.default.lastname=Пользователь
+admin-initializer.manager.default.firstname=Менеджер
+admin-initializer.manager.default.lastname=Пользователь
+admin-initializer.system=Система
+admin-initializer.log.admin.created=Создан администратор по умолчанию: {0} / {1}
+admin-initializer.log.manager.created=Создан менеджер по умолчанию: {0} / {1}
+
+# --------------------------------------------------------------------
+# SecurityConfig
+# --------------------------------------------------------------------
+security-config.log.creating.authentication.manager=Создание менеджера аутентификации
+security-config.error.creating.authentication.manager=Не удалось создать менеджер аутентификации: {0}
+security-config.log.error.authentication.failed=Ошибка аутентификации для {0}: {1}
+security-config.error.authentication.required=Требуется аутентификация
+security-config.log.error.access.denied=Доступ запрещен для {0}: {1}
+security-config.error.access.denied.message=Доступ запрещен
+security-config.log.security.filter.chain.configured=Цепочка фильтров безопасности настроена
+security-config.log.cors.allowed.headers=Разрешенные CORS заголовки: {0}
+security-config.log.cors.allowed.methods=Разрешенные CORS методы: {0}
+security-config.log.cors.allowed.origins=Разрешенные CORS источники: {0}
+security-config.log.cors.configuration.source.configured=Источник конфигурации CORS настроен
+
+# --------------------------------------------------------------------
+# SwaggerGeneralConfig
+# --------------------------------------------------------------------
+swagger-general-config.app.name=Домашний Учет
+swagger-general-config.app.description=Домашний Учет - приложение для управления домашним хозяйством
+swagger-general-config.app.version=1.0.0
+swagger-general-config.contact.name=Поддержка
+swagger-general-config.contact.email=support@household-store.ru
+swagger-general-config.license.name=Apache 2.0
+swagger-general-config.license.url=https://www.apache.org/licenses/LICENSE-2.0.html
+
+# ====================================================================
+# СЕРВИСЫ
+# ====================================================================
+
+# --------------------------------------------------------------------
+# AdminUserCreationService
+# --------------------------------------------------------------------
+admin-user-creation-service.error.admin.insufficient.rights.create=Администратор не может создать пользователя с ролью: {0}
+admin-user-creation-service.log.admin.insufficient.rights.create=Администратор {0} попытался создать пользователя с недостаточными правами для роли: {1}
+admin-user-creation-service.log.user.birthdate.default=Установлена дата рождения по умолчанию (18 лет назад)
+admin-user-creation-service.log.admin.user.created=Администратор {0} создал пользователя {1} с ролью: {2}
+admin-user-creation-service.log.admin.user.password.generated=Пользователь {0} создан с сгенерированным паролем: {1}
+admin-user-creation-service.log.admin.cannot.create.role=Администратор {0} не может создать пользователя с ролью: {1}
+
+# --------------------------------------------------------------------
+# SystemService
+# --------------------------------------------------------------------
+system-service.system.uptime.format=%dд %dч %dм %dс
+system-service.log.system.uptime=Время работы системы: {0}
+system-service.log.system.database.connected=Подключение к базе данных успешно
+system-service.system.database.connected=ПОДКЛЮЧЕНО
+system-service.system.database.disconnected=ОТКЛЮЧЕНО
+system-service.log.system.database.error=Ошибка подключения к базе данных: {0}
+system-service.log.system.disk.ok=Проверка дискового пространства OK
+system-service.system.disk.ok=НОРМА
+system-service.log.system.spring.version=Версия Spring: {0}
+system-service.log.system.environment=Активное окружение: {0}
+system-service.log.system.server.info=Информация о сервере: {0}
+
+# --------------------------------------------------------------------
+# UserDeletedService
+# --------------------------------------------------------------------
+user-deleted-service.error.user.not.found.id=Пользователь с ID {0} не найден
+
+
+# --------------------------------------------------------------------
+# UserRoleService
+# --------------------------------------------------------------------
+user-role-service.error.role.insufficient.rights.assign=Администратор не может назначить роль: {0}
+user-role-service.log.role.insufficient.rights.assign=Администратор {0} попытался назначить недостаточные права для роли: {1}
+user-role-service.error.role.insufficient.rights.manage=Невозможно управлять пользователем с ролью: {0}
+user-role-service.log.role.insufficient.rights.manage=Администратор {0} попытался управлять пользователем с недостаточными правами для роли: {1}
+user-role-service.error.user.not.found.id=Пользователь с ID {0} не найден
+user-role-service.error.role.change.self=Невозможно изменить свою собственную роль
+user-role-service.log.role.changed=Администратор {0} изменил роль пользователя {1} с {2} на {3}
+user-role-service.log.role.can.manage=Администратор {0} может управлять ролью {1}: {2}
+user-role-service.log.role.change.self.check=Администратор {0} попытался изменить свою собственную роль
+user-role-service.log.role.cannot.assign=Администратор {0} не может назначить роль: {1}
+user-role-service.log.role.cannot.manage.current=Администратор {0} не может управлять пользователем с текущей ролью: {1}
+user-role-service.log.role.check.error=Ошибка проверки изменения роли для пользователя {0}: {1}
+
+# --------------------------------------------------------------------
+# UserSearchService
+# --------------------------------------------------------------------
+user-search-service.log.user.search.all=Найдено {0} пользователей, сортировка: {1}
+user-search-service.log.user.search.criteria=Найдено {0} пользователей по критериям - email: {1}, тел: {2}, имя: {3}, фамилия: {4}
+user-search-service.log.user.search.identify.found=Пользователь найден по идентификатору {0}: {1}
+user-search-service.log.user.search.identify.not.found=Пользователь не найден по идентификатору: {0}
+user-search-service.log.user.search.role=Найдено {0} пользователей с ролью: {1}
+user-search-service.log.user.exists.email=Пользователь с email {0} существует: {1}
+user-search-service.log.user.find.email.found=Пользователь найден с email: {0}
+user-search-service.log.user.find.email.not.found=Пользователь не найден с email: {0}
+user-search-service.error.user.not.found.id=Пользователь с ID {0} не найден
+user-search-service.log.user.exists.id=Пользователь с ID {0} существует: {1}
+user-search-service.log.user.statistics=Всего: {0}, Активных: {1}, Админов: {2}, Менеджеров: {3}, Обычных: {4}
+
+# ====================================================================
+# UserService
+# ====================================================================
+user-service.error.user.email.exists=Пользователь с email {0} уже существует
+user-service.error.user.mobile.exists=Пользователь с номером телефона {0} уже существует
+user-service.log.user.newregistered=Пользователь успешно зарегистрирован: {0} (ID: {1})
+user-service.error.login.invalid.credentials=Неверный email/телефон или пароль
+user-service.log.login.failed.not.found=Ошибка входа - пользователь не найден: {0}
+user-service.log.login.failed.wrong.password=Ошибка входа - неверный пароль для пользователя: {0}
+user-service.error.login.account.deactivated=Учетная запись деактивирована
+user-service.log.login.failed.deactivated=Ошибка входа - учетная запись деактивирована: {0}
+user-service.log.login.success=Пользователь {0} успешно вошел в систему (ID: {1})
+user-service.validation.password.current.required=Текущий пароль обязателен
+user-service.validation.password.current.incorrect=Неверный текущий пароль
+user-service.validation.password.new.required=Новый пароль обязателен
+user-service.validation.password.confirm.mismatch=Подтверждение пароля не совпадает
+user-service.validation.password.new.same.as.old=Новый пароль должен отличаться от текущего
+user-service.validation.password.new.complexity=Новый пароль должен содержать минимум одну цифру, одну строчную, одну заглавную букву и один спецсимвол
+user-service.error.security.user.not.found=Пользователь безопасности не найден
+# --------------------------------------------------------------------
+# UserStatusService
+# --------------------------------------------------------------------
+user-status-service.error.user.not.found.id=Пользователь с ID {0} не найден
+user-status-service.error.status.insufficient.rights.manage=Невозможно управлять пользователем с ролью: {0}
+user-status-service.log.status.insufficient.rights.manage=Администратор {0} попытался управлять пользователем с недостаточными правами для роли: {1}
+user-status-service.error.status.deactivate.self=Вы не можете деактивировать свою собственную учетную запись
+user-status-service.user.status.active=Активен
+user-status-service.user.status.inactive=Неактивен
+user-status-service.log.status.changed=Администратор {0} изменил статус пользователя {1} с {2} на {3}
+user-status-service.log.status.check=Статус активности пользователя {0}: {1}
+user-status-service.log.status.user.not.found=Пользователь {0} не найден для проверки статуса
+user-status-service.log.status.cannot.manage.self=Администратор {0} не может управлять своим собственным статусом
+user-status-service.log.status.can.manage=Администратор {0} может управлять статусом пользователя {1}: {2}
+user-status-service.log.status.check.error=Ошибка проверки статуса для пользователя {0}: {1}
+
+# ====================================================================
+# БЕЗОПАСНОСТЬ И JWT
+# ====================================================================
+
+# --------------------------------------------------------------------
+# CustomUserDetailsService
+# --------------------------------------------------------------------
+custom-user-details-service.security.user.not.found=Пользователь не найден: {0}
+custom-user-details-service.security.user.inactive=Учетная запись пользователя неактивна: {0}
+custom-user-details-service.security.user.authenticated=Пользователь {0} аутентифицирован с ролью: {1}
+
+# --------------------------------------------------------------------
+# JwtAuthenticationFilter
+# --------------------------------------------------------------------
+jwt-authentication-filter.log.auth.context.set=Аутентификация установлена в контексте безопасности для пользователя: {0}
+jwt-authentication-filter.log.auth.token.invalid=Недействительный JWT токен: {0}
+jwt-authentication-filter.log.auth.error=Ошибка JWT аутентификации: {0}
+jwt-authentication-filter.error.auth.failed=Ошибка аутентификации
+jwt-authentication-filter.log.auth.skip=Пропуск JWT фильтра для пути: {0}
+
+# --------------------------------------------------------------------
+# JwtTokenProvider
+# --------------------------------------------------------------------
+jwt-token-provider.jwt.key.created=Ключ шифрования создан, длина: {0} байт
+jwt-token-provider.jwt.key.error=Ошибка создания ключа шифрования: {0}
+jwt-token-provider.jwt.token.creating=Создание JWT токена для пользователя: {0} с ролью: {1}
+jwt-token-provider.jwt.token.create.error=Ошибка создания JWT токена: {0}
+jwt-token-provider.jwt.refresh.creating=Создание refresh токена для пользователя: {0}
+jwt-token-provider.jwt.refresh.create.error=Ошибка создания refresh токена: {0}
+jwt-token-provider.jwt.error.expired=Срок действия JWT токена истек: {0}
+jwt-token-provider.jwt.error.unsupported=Неподдерживаемый JWT токен: {0}
+jwt-token-provider.jwt.error.malformed=Некорректный JWT токен: {0}
+jwt-token-provider.jwt.error.security=Ошибка безопасности JWT: {0}
+jwt-token-provider.jwt.error.invalid=Недействительный JWT токен: {0}
+jwt-token-provider.jwt.username.extracted=Имя пользователя извлечено из токена: {0}
+jwt-token-provider.jwt.username.error=Ошибка извлечения имени пользователя: {0}
+jwt-token-provider.jwt.identifier.extracted=Идентификатор извлечен из токена: {0}
+jwt-token-provider.jwt.identifier.error=Ошибка извлечения идентификатора: {0}
+jwt-token-provider.jwt.role.extracted=Роль извлечена из токена: {0}
+jwt-token-provider.jwt.role.error=Ошибка извлечения роли: {0}
+
+# ====================================================================
+# МАППЕРЫ
+# ====================================================================
+user-to-entity.log.mapper.request.null=Запрос на создание пользователя равен null
+user-to-entity.log.mapper.converting.user=Конвертация пользователя с email: {0}
+user-to-entity.error.mapper.birthdate.invalid=Неверный формат даты рождения: {0}
+user-to-entity.log.mapper.updating.user=Обновление пользователя с ID: {0}
+
+# ====================================================================
+# UserIdentifierResolver
+# ====================================================================
+user-identifier-resolver.log.identifier.using.email=Используется email для аутентификации: {0}
+user-identifier-resolver.log.identifier.using.mobile=Используется номер телефона для аутентификации: {0}
+user-identifier-resolver.error.identifier.not.provided=Email или номер телефона обязательны
+auth-rest-controller.error.security.user.not.found=Пользователь безопасности не найден
+user-search-service.error.security.user.not.found=Пользователь безопасности не найден для ID пользователя: {0}
+
+# ====================================================================
+# DatabaseInitializer
+# ====================================================================
+database-initializer.log.tables.not.ready=Таблицы еще не готовы, ожидание создания схемы Hibernate...
+database-initializer.log.schema.ready=Схема базы данных готова, инициализация данных по умолчанию...
+database-initializer.log.completed=Инициализация базы данных завершена
+database-initializer.log.table.not.exists=Таблица {0} еще не существует
+database-initializer.log.database.not.ready=База данных не готова: {0}
+database-initializer.log.creating.admin=Создание администратора по умолчанию...
+database-initializer.log.admin.exists=Администратор уже существует
+database-initializer.log.admin.create.failed=Не удалось создать администратора: {0}
+database-initializer.log.creating.manager=Создание менеджера по умолчанию...
+database-initializer.log.manager.exists=Менеджер уже существует
+database-initializer.log.manager.create.failed=Не удалось создать менеджера: {0}
+database-initializer.log.force.start=Принудительная инициализация базы данных...
+database-initializer.log.force.not.ready=База данных не готова. Невозможно выполнить принудительную инициализацию.
+database-initializer.log.force.completed=Принудительная инициализация завершена
+
+# ====================================================================
+# UserType
+# ====================================================================
+usertype.RETAIL=Розничный покупатель
+usertype.WHOLESALE=Оптовый покупатель
+usertype.VIP=VIP клиент
+usertype.CORPORATE=Корпоративный клиент
+usertype.PARTNER=Партнер
+usertype.EMPLOYEE=Сотрудник
+
+# ====================================================================
+# UserTypeAssignmentService
+# ====================================================================
+user-type-assignment.service.assigned=Тип пользователя {0} назначен пользователю {1} пользователем {2}
+user-type-assignment.service.deactivated=Тип пользователя деактивирован для пользователя {0}
+
+# ====================================================================
+# Product validation messages
+# ====================================================================
+product.validation.barcode.size=Штрих-код должен содержать от 8 до 20 символов
+product.validation.barcode.unique=Штрих-код уже существует
+
+# ====================================================================
+# Cart validation messages
+# ====================================================================
+cart.validation.product.id.empty=ID товара обязателен
+cart.validation.quantity.empty=Количество обязательно
+cart.validation.quantity.min=Количество должно быть не менее 1
+
+# ====================================================================
+# Cart status localization
+# ====================================================================
+cart.status.ACTIVE=Активная
+cart.status.CHECKOUT=Оформление
+cart.status.COMPLETED=Завершена
+cart.status.ABANDONED=Брошена
+cart.status.EXPIRED=Истекла
+
+# ====================================================================
+# Cart service messages
+# ====================================================================
+cart.service.not.found=Корзина не найдена для пользователя: {0}
+cart.service.item.not.found=Товар не найден в корзине: {0}
+cart.service.product.not.found=Товар не найден: {0}
+cart.service.product.out.of.stock=Товара нет в наличии: {0}
+cart.service.added=Товар добавлен в корзину: {0}
+cart.service.removed=Товар удален из корзины: {0}
+cart.service.updated=Количество товара обновлено: {0}
+cart.service.cleared=Корзина очищена: {0}
+cart.service.merged=Корзины объединены для пользователя: {0}
+
+# ====================================================================
+# Media validation messages
+# ====================================================================
+media.validation.file.empty=Файл обязателен
+media.validation.upload.failed=Не удалось загрузить файл: {0}
+media.validation.delete.failed=Не удалось удалить файл: {0}
+media.validation.not.found=Медиафайл не найден: {0}
+
+discount.user.type=Скидка для {0}
+discount.user.type.description=Скидка {0}%
+promo.code.not.found=Промокод {0} не найден
+promo.code.invalid=Промокод {0} недействителен или истек
+promo.code.not.applicable=Промокод {0} не применим для вашего типа пользователя
+promo.code.min.salesOrder=Промокод {0} требует минимальную сумму заказа
+promo.code.user.limit=Достигнут лимит использования промокода {0}
+promo.code.discount=Скидка по промокоду {0}
+
+# ====================================================================
+# PromoCode messages
+# ====================================================================
+promo.code.global.limit=Промокод {0} достиг глобального лимита использования
+
+# ====================================================================
+# Supplier messages
+# ====================================================================
+supplier.status.PENDING=На проверке
+supplier.status.ACTIVE=Активен
+supplier.status.INACTIVE=Неактивен
+supplier.status.BLOCKED=Заблокирован
+supplier.status.VERIFIED=Проверен
+
+supplier.not.found=Поставщик с ID {0} не найден
+supplier.inn.exists=Поставщик с ИНН {0} уже существует
+supplier.email.exists=Поставщик с email {0} уже существует
+supplier.created=Поставщик успешно создан: {0}
+supplier.updated=Поставщик успешно обновлен: {0}
+supplier.deleted=Поставщик успешно удален: {0}
+
+supplier.product.added=Товар добавлен поставщику {0}
+supplier.product.removed=Товар удален у поставщика {0}
+supplier.product.updated=Товар поставщика обновлен
+
+supplier.rating.added=Оценка добавлена для поставщика {0}
+supplier.rating.updated=Оценка обновлена для поставщика {0}
+supplier.rating.deleted=Оценка удалена для поставщика {0}
+
+# ====================================================================
+# SalesOrder Status
+# ====================================================================
+salesOrder.status.PENDING=Ожидает оплаты
+salesOrder.status.PAID=Оплачен
+salesOrder.status.PROCESSING=В обработке
+salesOrder.status.SHIPPED=Отправлен
+salesOrder.status.DELIVERED=Доставлен
+salesOrder.status.COMPLETED=Завершен
+salesOrder.status.CANCELLED=Отменен
+salesOrder.status.REFUNDED=Возвращен
+
+# ====================================================================
+# SalesOrder messages
+# ====================================================================
+salesOrder.created=Заказ {0} создан для пользователя {1}
+salesOrder.not.found=Заказ не найден: {0}
+salesOrder.cart.not.found=Корзина не найдена для пользователя: {0}
+salesOrder.cart.empty=Корзина пуста
+salesOrder.cancelled=Заказ {0} отменен
+salesOrder.updated=Заказ {0} обновлен
+
+# ====================================================================
+# OrderItem messages
+# ====================================================================
+salesOrder.item.not.found=Позиция заказа с ID {0} не найдена
+salesOrder.item.added=Товар добавлен в заказ {0}
+salesOrder.item.removed=Товар удален из заказа {0}
+salesOrder.item.updated=Позиция заказа обновлена
+salesOrder.item.quantity.updated=Количество товара изменено с {0} на {1}
+salesOrder.item.price.updated=Цена товара изменена с {0} на {1}
+
+# ====================================================================
+# Manager Controller Response Messages
+# ====================================================================
+manager.product.created=Товар успешно создан
+manager.product.updated=Товар успешно обновлен
+manager.product.fetched=Товар успешно получен
+manager.products.fetched=Список товаров успешно получен
+manager.stock.adjusted=Остатки успешно скорректированы
+manager.price.updated=Цена успешно обновлена
+manager.purchase.created=Заказ на закупку успешно создан
+manager.purchases.fetched=Список заказов на закупку получен
+manager.purchase.fetched=Заказ на закупку получен
+manager.purchase.received=Закупка получена, остатки обновлены
+manager.stock.writeoff.completed=Списание товара выполнено
+manager.inventory.low.stock=Товары с низким остатком получены
+manager.orders.fetched=Список заказов клиентов получен
+manager.salesOrder.fetched=Заказ клиента получен
+manager.salesOrder.status.updated=Статус заказа обновлен
+manager.salesOrder.price.updated=Цена позиции заказа обновлена
+manager.salesOrder.cancelled=Заказ отменен
+manager.supplier.created=Поставщик успешно создан
+manager.supplier.updated=Поставщик успешно обновлен
+manager.suppliers.fetched=Список поставщиков получен
+
+# ====================================================================
+# Manager Product Service
+# ====================================================================
+manager.product.error.sku.exists=Товар с артикулом {0} уже существует
+manager.product.error.barcode.exists=Товар со штрих-кодом {0} уже существует
+manager.product.error.not.found=Товар с ID {0} не найден
+manager.stock.error.negative=Невозможно уменьшить остаток ниже нуля. Текущий остаток: {0}
+manager.price.error.negative=Цена не может быть отрицательной
+
+manager.product.created.log=Товар {0} (ID: {1}) создан менеджером {2}
+manager.product.updated.log=Товар ID: {0} обновлен
+manager.products.fetched.log=Получено {0} товаров
+manager.stock.adjusted.log=Остаток товара {0} изменен на {1}. Новое количество: {2}. Причина: {3}
+manager.price.updated.log=Цена товара {0} изменена с {1} на {2}. Причина: {3}
+manager.low.stock.fetched.log=Найдено {0} товаров с низким остатком
+manager.product.activated.log=Товар {0} активирован
+manager.product.deactivated.log=Товар {0} деактивирован
+manager.product.variant.created.log=Вариант {0} (ID: {1}) создан для родительского товара {2}
+
+# ====================================================================
+# Manager SalesOrder Service
+# ====================================================================
+manager.salesOrder.error.not.found=Заказ с ID {0} не найден
+manager.salesOrder.error.item.not.found=Позиция заказа с ID {0} не найдена
+manager.salesOrder.error.item.exists=Товар {0} уже существует в этом заказе
+manager.salesOrder.error.cannot.modify=Невозможно изменить заказ в статусе: {0}
+manager.salesOrder.error.invalid.status.transition=Невозможно изменить статус с {0} на {1}
+manager.salesOrder.error.insufficient.stock=Недостаточно товара {0} на складе. Доступно: {1}
+
+manager.salesOrder.fetched.log=Получено {0} заказов клиентов
+manager.purchase.fetched.log=Получено {0} заказов на закупку
+manager.salesOrder.status.updated.log=Статус заказа {0} изменен с {1} на {2} менеджером {3}
+manager.salesOrder.price.updated.log=Цена позиции {1} в заказе {0} изменена с {2} на {3} менеджером {4}. Причина: {5}
+manager.salesOrder.quantity.updated.log=Количество позиции {1} в заказе {0} изменено с {2} на {3} менеджером {4}. Причина: {5}
+manager.salesOrder.item.added.log=Товар (ID {1}, количество {2}) добавлен в заказ {0} менеджером {3}
+manager.salesOrder.item.removed.log=Позиция {1} удалена из заказа {0} менеджером {2}
+manager.salesOrder.note.added.log=Примечание добавлено к заказу {0} менеджером {1}
+
+# ====================================================================
+# Manager Purchase Service
+# ====================================================================
+manager.purchase.error.supplier.not.found=Поставщик с ID {0} не найден
+manager.purchase.error.supplier.inactive=Поставщик неактивен. Текущий статус: {0}
+manager.purchase.error.product.not.from.supplier=Товар {0} не поставляется поставщиком {1}
+manager.purchase.error.not.purchase.salesOrder=Заказ {0} не является заказом на закупку
+manager.purchase.error.cannot.receive=Невозможно принять заказ в статусе: {0}
+manager.purchase.error.purchase.details.not.found=Детали закупки не найдены для заказа: {0}
+
+manager.purchase.created.log=Заказ на закупку {0} создан для поставщика {1} менеджером {2}
+manager.purchase.received.log=Заказ на закупку {0} получен менеджером {1}
+manager.purchase.stock.updated.log=Остаток товара {0} обновлен с {1} до {2}
+
+# ====================================================================
+# Stock Write-Off
+# ====================================================================
+manager.writeoff.error.insufficient.stock=Недостаточно товара {0} на складе. Доступно: {1}, запрошено: {2}
+manager.writeoff.executed.log=Списание товара {0}: {1} единиц. Причина: {2}. Менеджер: {3}
+
+# ====================================================================
+# Supplier Management
+# ====================================================================
+manager.supplier.error.email.exists=Поставщик с email {0} уже существует
+manager.supplier.error.inn.exists=Поставщик с ИНН {0} уже существует
+manager.supplier.error.not.found=Поставщик с ID {0} не найден
+manager.supplier.error.product.already.added=Товар {0} уже добавлен к поставщику {1}
+manager.supplier.product.error.not.found=Товар поставщика с ID {0} не найден
+
+manager.supplier.created.log=Поставщик {0} (ID: {1}) создан менеджером {2}
+manager.supplier.updated.log=Поставщик ID: {0} обновлен
+manager.suppliers.fetched.log=Получено {0} поставщиков
+manager.supplier.product.added.log=Товар {0} добавлен к поставщику {1} менеджером {2}
+manager.supplier.product.updated.log=Товар поставщика {0} обновлен менеджером {1}
+manager.supplier.product.removed.log=Товар {0} удален у поставщика {1} менеджером {2}
+
+# ====================================================================
+# Purchase SalesOrder Repository Messages
+# ====================================================================
+purchase.salesOrder.not.found=Заказ на закупку с ID {0} не найден
+purchase.salesOrder.not.found.by.salesOrder=Заказ на закупку для заказа ID {0} не найден
+purchase.salesOrder.invoice.exists=Заказ на закупку с номером счета {0} уже существует
+purchase.salesOrder.received=Заказ на закупку {0} получен пользователем {1}
+purchase.salesOrder.quality.checked=Проверка качества для заказа {0} завершена: {1}
+purchase.salesOrder.payment.updated=Статус оплаты для заказа {0} обновлен на {1}
+
+# ====================================================================
+# Purchase SalesOrder Validation
+# ====================================================================
+purchase.validation.supplier.id.empty=ID поставщика обязателен
+purchase.validation.supplier.id.positive=ID поставщика должен быть положительным
+purchase.validation.items.empty=Необходимо указать хотя бы одну позицию
+purchase.validation.product.id.empty=ID товара обязателен
+purchase.validation.product.id.positive=ID товара должен быть положительным
+purchase.validation.quantity.empty=Количество обязательно
+purchase.validation.quantity.positive=Количество должно быть положительным
+
+# ====================================================================
+# Write-Off Validation
+# ====================================================================
+writeoff.validation.items.empty=Необходимо указать хотя бы одну позицию
+writeoff.validation.reason.empty=Необходимо указать причину списания
+writeoff.validation.product.id.empty=ID товара обязателен
+writeoff.validation.product.id.positive=ID товара должен быть положительным
+writeoff.validation.quantity.empty=Количество обязательно
+writeoff.validation.quantity.positive=Количество должно быть положительным
+
+
+# ====================================================================
+# Supplier Validation
+# ====================================================================
+supplier.validation.name.empty=Название компании обязательно
+supplier.validation.name.size=Название компании должно содержать от 2 до 200 символов
+supplier.validation.email.invalid=Неверный формат email
+supplier.validation.email.size=Email не должен превышать 100 символов
+supplier.validation.phone.invalid=Неверный формат номера телефона
+supplier.validation.contact.person.size=Имя контактного лица не должно превышать 100 символов
+supplier.validation.inn.invalid=ИНН должен содержать 10 или 12 цифр
+supplier.validation.kpp.invalid=КПП должен содержать 9 цифр
+supplier.validation.ogrn.invalid=ОГРН должен содержать 13 цифр
+supplier.validation.legal.address.size=Юридический адрес не должен превышать 500 символов
+supplier.validation.actual.address.size=Фактический адрес не должен превышать 500 символов
+supplier.validation.bank.name.size=Название банка не должно превышать 200 символов
+supplier.validation.bank.bic.invalid=БИК банка должен содержать 9 цифр
+supplier.validation.bank.account.invalid=Номер счета должен содержать 20 цифр
+supplier.validation.correspondent.account.invalid=Корреспондентский счет должен содержать 20 цифр
+
+# ====================================================================
+# Supplier Product Validation
+# ====================================================================
+supplier.product.validation.price.empty=Цена поставщика обязательна
+supplier.product.validation.price.positive=Цена поставщика должна быть положительной
+supplier.product.validation.sku.empty=Артикул поставщика обязателен
+supplier.product.validation.delivery.time.positive=Время доставки должно быть положительным
+supplier.product.validation.min.salesOrder.quantity.positive.or.zero=Минимальное количество заказа должно быть нулевым или положительным
+
+# ====================================================================
+# Price Calculation Validation
+# ====================================================================
+price.validation.user.id.empty=ID пользователя обязателен
+price.validation.items.empty=Необходимо указать хотя бы одну позицию
+manager.salesOrder.error.not.customer.salesOrder=Заказ {0} не является заказом клиента
+
+# ====================================================================
+# Manager SalesOrder Service
+# ====================================================================
+manager.salesOrder.error.invalid.status=Неверный статус заказа: {0}
+manager.salesOrder.error.invalid.date=Неверный формат даты: {0}
+manager.salesOrder.error.date.range=Начальная дата {0} позже конечной {1}
+manager.salesOrder.error.invalid.price=Цена должна быть неотрицательной
+
+# ====================================================================
+# Mapper messages
+# ====================================================================
+mapper.entity.null=Сущность равна null, невозможно преобразовать
+mapper.dto.null=DTO равен null, невозможно преобразовать
+mapper.list.null=Список равен null, невозможно преобразовать
+
+# Bulk Operations
+# ====================================================================
+manager.bulk.price.updated.log=Массово обновлены цены для {0} товаров. Причина: {1}
+manager.bulk.activated.log=Массово активировано {0} товаров
+manager.bulk.deactivated.log=Массово деактивировано {0} товаров
+
+# ====================================================================
+# Manager SalesOrder Service
+# ====================================================================
+
+manager.salesOrder.error.invalid.quantity=Количество должно быть положительным
+
+
+# ====================================================================
+# Manager Controller
+# ====================================================================
+manager.error.not.authenticated=Менеджер не аутентифицирован
+manager.error.not.found=Менеджер не найден: {0}
+
+manager.product.error.exists=Товар с {0} {1} уже существует
+
+manager.price.error.invalid=Некорректная цена: {0}
+manager.product.variant.error=Ошибка при создании варианта товара для родительского продукта {0}
+manager.bulk.operation.error=Массовая операция выполнена частично: успешно {0} из {1}
+manager.stock.reason.default=Причина не указана
+manager.price.reason.default=Причина не указана
+
+# Логи
+manager.product.log.sku.exists=Товар с SKU {0} уже существует
+manager.product.log.barcode.exists=Товар со штрих-кодом {0} уже существует
+manager.product.log.not.found=Товар с ID {0} не найден
+manager.stock.log.invalid=Некорректная операция со складом. Текущее: {0}, запрошено изменение: {1}
+manager.price.log.invalid=Некорректная цена: {0}
+manager.product.variant.log.error=Ошибка при создании варианта товара для родительского продукта {0}: {1}
+manager.bulk.log.no.products=Товары с ID {0} не найдены для массовой операции
+manager.bulk.log.partial=Массовая операция выполнена частично. Успешно: {0} из {1}
+
+# SalesOrder errors
+
+
+# SalesOrder logs
+manager.salesOrder.log.not.found=Заказ с ID {0} не найден
+manager.salesOrder.log.invalid.status=Некорректный статус заказа: {0}
+manager.salesOrder.log.date.range=Некорректный диапазон дат: начало {0} позже окончания {1}
+manager.salesOrder.log.cannot.modify=Невозможно изменить заказ в статусе {0}
+manager.salesOrder.log.item.not.found=Элемент заказа с ID {0} не найден
+manager.salesOrder.log.invalid.price=Некорректная цена: {0}
+manager.salesOrder.log.invalid.quantity=Некорректное количество: {0}
+manager.salesOrder.log.item.exists=Товар с ID {0} уже есть в заказе
+manager.salesOrder.log.insufficient.stock=Недостаточно товара "{0}" на складе. Доступно: {1}, запрошено: {2}
+manager.salesOrder.log.stock.restored=Восстановлено {0} единиц товара {1} из отмененного заказа
+manager.salesOrder.log.date.parse.failed=Не удалось распарсить дату: {0}
+manager.salesOrder.log.not.customer.salesOrder=Заказ с ID {0} не является клиентским заказом
+manager.salesOrder.log.invalid.status.transition=Невозможно изменить статус с {0} на {1}
+
+
+
+
+# Default reasons
+manager.salesOrder.reason.default=Причина не указана
+manager.salesOrder.note.manager.prefix=Менеджер {0}
+
+
+# User logs
+user-service.log.user.email.exists=Пользователь с email {0} уже существует
+user-service.log.user.mobile.exists=Пользователь с номером телефона {0} уже существует
+
+user-service.log.security.user.not.found=SecurityUser с ID {0} не найден
+
+# User search logs
+
+user-search-service.log.user.not.found.id=Пользователь с ID {0} не найден
+
+user-search-service.log.security.user.not.found=SecurityUser с ID {0} не найден
+
+# User role logs
+user-role-service.log.admin.security.not.found=SecurityUser администратора с ID {0} не найден
+
+user-role-service.log.target.security.not.found=SecurityUser целевого пользователя с ID {0} не найден
+user-role-service.log.role.change.self=Попытка изменения своей собственной роли: {0}
+
+# User status logs
+user-status-service.log.admin.security.not.found=SecurityUser администратора с ID {0} не найден
+user-status-service.log.user.not.found.id=Пользователь с ID {0} не найден
+
+user-status-service.log.status.deactivate.self=Попытка деактивации собственного аккаунта: {0}
+
+
+# User deleted logs
+
+
+
+# Admin user creation logs
+
+admin-user-creation-service.log.password.generated=Сгенерирован временный пароль для пользователя {0}
+
+# Auth logs
+auth.log.register.attempt=Попытка регистрации пользователя с email: {0}
+auth.log.security.user.not.found=SecurityUser с ID {0} не найден после регистрации
+auth.log.user.registered=Пользователь {0} успешно зарегистрирован
+auth.log.login.attempt=Попытка входа пользователя: {0}
+auth.log.login.deactivated=Попытка входа в деактивированный аккаунт: {0}
+auth.log.login.success=Успешный вход пользователя {0} (SecurityUser ID: {1})
+auth.log.login.bad.credentials=Неверные учетные данные для пользователя: {0}
+auth.log.logout.attempt=Попытка выхода, токен: {0}
+auth.log.logout.success=Успешный выход из системы
+auth.log.token.validate.attempt=Попытка валидации токена: {0}
+auth.log.token.invalid.format=Неверный формат токена (отсутствует Bearer)
+auth.log.token.invalid.expired=Токен недействителен или истек
+auth.log.token.userid.extracted=Извлечен userId из токена: {0}
+auth.log.token.user.inactive=Пользователь с ID {0} неактивен
+auth.log.token.valid=Токен валиден для пользователя с ID {0}
+auth.log.refresh.attempt=Попытка обновления токена
+auth.log.refresh.token.missing=Refresh token отсутствует
+auth.log.refresh.token.invalid=Недействительный refresh token
+auth.log.refresh.userid.extracted=Извлечен userId из refresh token: {0}
+auth.log.refresh.user.inactive=Пользователь с ID {0} неактивен для обновления токена
+auth.log.refresh.success=Токен успешно обновлен для пользователя с ID {0}
+
+# Auth errors
+auth.error.invalid.credentials=Неверный email/телефон или пароль
+auth.error.account.deactivated=Учетная запись деактивирована. Обратитесь к администратору
+auth.error.token.expired=Срок действия токена истек
+auth.error.token.malformed=Неверный формат токена
+auth.error.token.unsupported=Неподдерживаемый тип токена
+auth.error.token.security=Ошибка безопасности при обработке токена
+auth.error.token.invalid.format=Неверный формат токена. Ожидается 'Bearer <token>'
+auth.error.refresh.token.missing=Refresh token обязателен
+auth.error.identifier.not.provided=Необходимо указать email или номер телефона
+auth.error.security.user.not.found=SecurityUser с ID {0} не найден
+
+# Auth success messages
+auth.success.registered=Регистрация выполнена успешно
+auth.success.login=Вход выполнен успешно
+auth.success.logout=Выход выполнен успешно
+auth.success.token.valid=Токен действителен
+auth.success.refresh=Токен успешно обновлен
+
+# JWT logs
+jwt.log.key.created=Ключ шифрования создан, длина: {0} байт
+jwt.log.key.error=Ошибка создания ключа шифрования: {0}
+jwt.log.token.creating=Создание токена для пользователя {0} с ролью {1}
+jwt.log.token.create.error=Ошибка создания токена: {0}
+jwt.log.refresh.creating=Создание refresh токена для пользователя {0}
+jwt.log.refresh.create.error=Ошибка создания refresh токена: {0}
+jwt.log.error.expired=Токен истек: {0}
+jwt.log.error.unsupported=Неподдерживаемый тип токена: {0}
+jwt.log.error.malformed=Неверный формат токена: {0}
+jwt.log.error.security=Ошибка безопасности токена: {0}
+jwt.log.error.invalid=Недействительный токен: {0}
+jwt.log.username.extracted=Извлечено имя пользователя из токена: {0}
+jwt.log.username.error=Ошибка извлечения имени пользователя из токена
+jwt.log.userid.extracted=Извлечен userId из токена: {0}
+jwt.log.userid.error=Ошибка извлечения userId из токена
+jwt.log.role.extracted=Извлечена роль из токена: {0}
+jwt.log.role.error=Ошибка извлечения роли из токена
+
+# User identifier resolver logs
+
+user-identifier-resolver.log.identifier.not.provided=Не предоставлен email или номер телефона для идентификации
+
+# JWT Errors
+jwt.error.token.expired=Срок действия токена истек
+jwt.error.token.malformed=Неверный формат токена
+jwt.error.token.unsupported=Неподдерживаемый тип токена
+jwt.error.token.security=Ошибка безопасности токена
+
+# SalesOrder logs
+salesOrder.log.creation.start=Начало создания заказа для пользователя: {0}
+salesOrder.log.cart.not.found=Корзина для пользователя {0} не найдена
+salesOrder.log.cart.empty=Корзина пользователя {0} пуста
+salesOrder.log.generated.number=Сгенерирован номер заказа: {0}
+salesOrder.log.created.success=Заказ {0} успешно создан для пользователя {1}
+salesOrder.log.creation.error=Ошибка при создании заказа {0}: {1}
+salesOrder.log.product.not.found=Товар с ID {0} не найден при создании заказа
+salesOrder.log.insufficient.stock=Недостаточно товара "{0}" на складе. Доступно: {1}, запрошено: {2}
+salesOrder.log.stock.negative=Отрицательный остаток для товара {0}: текущий {1}, запрошено списание {2}
+salesOrder.log.stock.updated=Обновлен остаток товара {0}: было {1}, стало {2}
+
+# SalesOrder errors
+salesOrder.error.cart.not.found=Корзина для пользователя с ID {0} не найдена
+salesOrder.error.cart.empty=Корзина пуста. Добавьте товары перед оформлением заказа
+salesOrder.error.creation.failed=Не удалось создать заказ: {0}
+
+# System service logs
+
+system-service.log.system.uptime.error=Ошибка получения времени работы: {0}
+
+system-service.log.system.database.invalid=Подключение к базе данных невалидно
+
+system-service.log.system.database.unexpected=Неожиданная ошибка при проверке базы данных: {0}
+
+system-service.log.system.disk.error=Ошибка проверки диска: {0}
+
+system-service.log.system.spring.version.error=Ошибка получения версии Spring Boot: {0}
+
+system-service.log.system.environment.error=Ошибка получения активных профилей: {0}
+
+system-service.log.system.server.info.error=Ошибка получения информации о сервере: {0}
+
+
+
+# System service errors
+system-service.error.database.connection=Ошибка подключения к базе данных
+system-service.error.database.invalid=Подключение к базе данных неактивно
+system-service.error.database.unexpected=Неожиданная ошибка при проверке базы данных
+system-service.error.uptime=Ошибка получения времени работы системы
+system-service.error.disk=Ошибка проверки дискового пространства
+system-service.error.spring.version=Ошибка получения версии Spring Boot
+system-service.error.environment=Ошибка получения активных профилей
+system-service.error.server.info=Ошибка получения информации о сервере
+
+# System errors
+system.error.database.connection=Не удалось подключиться к базе данных
+system.error.info=Ошибка получения информации о системе: {0}
+
+# User Type logs
+user-type.log.assignment.start=Назначение типа {0} для пользователя {1} от {2}
+user-type.log.previous.deactivated=Деактивировано предыдущее назначение типа {0} для пользователя {1}
+user-type.log.assigned.success=Тип {0} назначен пользователю {1} от {2}
+user-type.log.assignment.error=Ошибка назначения типа для пользователя {1}: {0}
+user-type.log.get.current=Получение текущего типа для пользователя {0}
+user-type.log.not.found=Тип пользователя {0} не найден
+user-type.log.get.history=Получение истории типов для пользователя {0}
+user-type.log.history.size=Найдено {0} записей истории для пользователя {1}
+user-type.log.deactivate.start=Деактивация текущего типа для пользователя {0}
+user-type.log.deactivated.success=Деактивирован тип {0} для пользователя {1}
+user-type.log.no.active.assignment=Нет активного назначения для пользователя {0}
+user-type.log.reactivate.start=Реактивация назначения с ID {0}
+user-type.log.assignment.not.found=Назначение с ID {0} не найдено
+user-type.log.already.active=Назначение {0} уже активно
+user-type.log.reactivated.success=Назначение {0} реактивировано для пользователя {1}
+user-type.log.get.history.localized=Получение локализованной истории типов для пользователя {0}
+user-type.log.invalid.date.range=Некорректный диапазон дат: {0} после {1}
+
+# User Type errors
+user-type.error.not.found=Тип пользователя для ID {0} не найден
+user-type.error.assignment=Ошибка назначения типа {0} для пользователя {1}
+user-type.error.assignment.failed=Не удалось назначить тип: {0}
+user-type.error.assignment.not.found=Назначение с ID {0} не найдено
+user-type.error.invalid.date.range=Дата окончания должна быть позже даты начала
+
+# User Type names
+usertype.retail=Розничный покупатель
+usertype.wholesale=Оптовый покупатель
+usertype.vip=VIP клиент
+usertype.corporate=Корпоративный клиент
+usertype.partner=Партнер
+usertype.employee=Сотрудник
+
+# Purchase salesOrder logs
+manager.purchase.log.date.parse.failed=Не удалось распарсить дату: {0}
+
+# Supplier logs
+manager.supplier.log.inactive=Поставщик {0} неактивен. Текущий статус: {1}
+
+# ====================================================================
+# Product Media Errors
+# ====================================================================
+manager.product.media.empty.file=Файл {0} пуст
+manager.product.media.invalid.type=Файл {0} имеет недопустимый тип: {1}
+manager.product.media.upload.error=Не удалось загрузить файл {0}: {1}
+manager.product.media.parse.error=Ошибка парсинга метаданных медиа: {0}
+manager.product.media.all.failed=Не удалось загрузить все файлы: {0}
+manager.product.media.partial.success=Загружено {0} из {1} файлов. Ошибки: {2}
+manager.product.media.delete.error=Не удалось удалить файл {0}: {1}
+manager.product.media.not.image=Файл {0} не является изображением
+manager.product.media.main.error=Не удалось установить главное изображение {0}: {1}
+
+# ====================================================================
+# File Storage Service
+# ====================================================================
+file.storage.upload.success=Файл успешно загружен: {0}
+file.storage.upload.error=Ошибка загрузки файла {0}: {1}
+file.storage.delete.success=Файл успешно удален: {0}
+file.storage.delete.error=Ошибка удаления файла {0}: {1}
+file.storage.directory.deleted=Пустая директория удалена: {0}
+file.storage.directory.create.error=Ошибка создания директории для товара {0}: {1}
+file.storage.file.not.found=Файл {0} не найден для товара {1}
+file.storage.size.exceeded=Размер файла {1} превышает максимально допустимый {0}
+file.storage.invalid.type=Недопустимый тип файла: {0}. Разрешенные типы: {1}
+
+# Product media
+manager.product.media.uploaded=Media файлы успешно загружены
+manager.product.media.deleted=Media файл удален
+manager.product.media.main.set=Главное изображение установлено
+
+# Media Controller Logs
+media.controller.log.request.file=Запрос на получение файла с ID: {0}
+media.controller.log.request.info=Запрос на получение информации о медиа с ID {0}
+media.controller.log.request.product=Запрос на получение всех медиа продукта {0}
+media.controller.log.request.main=Запрос на получение главного изображения продукта {0}
+media.controller.log.request.file.by.name=Запрос на получение файла {0} для продукта {1}
+
+# Media Service Logs
+media.service.log.file.not.found=Файл с ID {0} не найден в БД
+media.service.log.file.not.readable=Файл {0} (ID: {1}) не найден на диске или недоступен для чтения
+media.service.log.file.error=Ошибка при чтении файла: {0}
+media.service.log.file.not.found.by.name=Файл {0} для продукта {1} не найден
+media.service.log.file.error.by.name=Ошибка при чтении файла {0} для продукта {1}: {2}
+
+# Media Service Errors
+media.service.error.file.not.found=Файл с ID {0} не найден
+media.service.error.file.not.readable=Файл с ID {0} недоступен для чтения
+media.service.error.file.read=Ошибка при чтении файла: {0}
+media.service.error.file.not.found.by.name=Файл {0} для продукта {1} не найден
+media.service.error.file.read.by.name=Ошибка при чтении файла {0} для продукта {1}: {2}
+
+# Product Media Service Logs
+product.media.service.upload.start=Начало загрузки {0} файлов для продукта {1}
+product.media.service.product.not.found=Продукт с ID {0} не найден
+product.media.service.processing.file=Обработка файла {0}: {1}
+product.media.service.file.saved=Файл {0} сохранен с ID {1}
+product.media.service.file.error=Ошибка при сохранении файла {0}: {1}
+product.media.service.file.failed=Не удалось загрузить файл {0}: {1}
+product.media.service.upload.complete=Загружено {0} файлов для продукта {1} пользователем {2}
+product.media.service.delete.start=Удаление медиа с ID {0} пользователем {1}
+product.media.service.media.not.found=Медиа с ID {0} не найдено
+product.media.service.delete.success=Медиа с ID {0} успешно удалено пользователем {1}
+product.media.service.delete.error=Ошибка при удалении медиа {0}: {1}
+product.media.service.setmain.start=Установка главного изображения {0} пользователем {1}
+product.media.service.not.image=Медиа {0} имеет тип {1}, не является изображением
+product.media.service.reset.main=Сброшен флаг главного изображения для продукта {0}
+product.media.service.set.new.main=Установлен новый флаг главного изображения для медиа {0}
+product.media.service.setmain.success=Главное изображение {0} установлено пользователем {1}
+product.media.service.setmain.error=Ошибка при установке главного изображения {0}: {1}
+product.media.service.getmedia.start=Получение медиа для продукта {0}
+product.media.service.getmedia.found=Для продукта {0} найдено {1} медиафайлов
+product.media.service.parse.metadata=Парсинг метаданных: {0}
+product.media.service.parse.metadata.error=Ошибка парсинга метаданных {0}: {1}
+product.media.service.file.empty=Файл {0} пуст
+product.media.service.all.failed=Не удалось загрузить ни одного файла: {0}
+product.media.service.partial.success=Загружено {0} из {1} файлов. Неудачные: {2}
+product.media.service.main.updated=Обновлено главное изображение продукта {0} (медиа {1})
+product.media.service.main.reset=Сброшено главное изображение для продукта {0}
+
+# Product Media Service Errors
+product.media.service.error.single=Не удалось загрузить файл {0}: {1}
+product.media.service.error.not.found=Медиа с ID {0} не найдено
+product.media.service.error.delete=Ошибка при удалении медиа {0}: {1}
+product.media.service.error.not.image=Медиа с ID {0} не является изображением
+product.media.service.error.setmain=Ошибка при установке главного изображения {0}: {1}
+product.media.service.error.file.empty=Файл {0} пуст
+product.media.service.error.all.failed=Не удалось загрузить ни одного файла: {0}
+
+# File Storage Errors
+file.error.delete=Ошибка при удалении файла {0} для продукта {1}
+file.error.read=Ошибка при чтении файла: {0}
+file.error.read.with.details=Ошибка при чтении файла {0} для продукта {1}
+file.error.size.exceeded=Файл {0} превышает максимальный размер. Максимум: {1}, текущий: {2}
+file.error.storage=Ошибка файлового хранилища: {0}
+file.error.storage.with.details=Ошибка при обработке файла {0} для продукта {1}: {2}
+file.error.storage.product=Ошибка при обработке файлов для продукта {1}: {2}
+file.error.invalid.type=Недопустимый тип файла {0}. Тип: {1}. Разрешенные типы: {2}
+
+# Warehouse logs
+warehouse.log.code.exists=Склад с кодом {0} уже существует
+warehouse.log.barcode.exists=Склад со штрих-кодом {0} уже существует
+warehouse.log.created=Склад {0} (ID: {1}) создан пользователем {2}
+warehouse.log.fetched=Получено {0} складов
+warehouse.log.not.found=Склад с ID {0} не найден
+
+# Cell logs
+cell.log.code.exists=Ячейка с кодом {0} на складе {1} уже существует
+cell.log.created=Ячейка {0} создана на складе {1} пользователем {2}
+cell.log.already.occupied=Ячейка {0} уже занята товаром {1}
+cell.log.product.assigned=Товар {0} назначен в ячейку {1} в количестве {2} пользователем {3}
+cell.log.already.empty=Ячейка {0} уже пуста
+cell.log.cleared=Ячейка {0} очищена от товара {1} (количество: {2}) пользователем {3}
+cell.log.not.found=Ячейка с ID {0} не найдена
+cell.log.available.fetched=Найдено {0} свободных ячеек типа {1} на складе {2}
+
+# Warehouse errors
+warehouse.error.not.found.id=Склад с ID {0} не найден
+warehouse.error.not.found.code=Склад с кодом {0} не найден
+warehouse.error.already.exists={0} {1} уже используется другим складом
+warehouse.error.not.found=Склады не найдены или не созданы
+
+# Cell errors
+cell.error.not.found.id=Ячейка с ID {0} не найдена
+cell.error.not.found.code=Ячейка с кодом {0} на складе {1} не найдена
+cell.error.already.exists=Ячейка с кодом {0} на складе {1} уже существует
+cell.error.already.occupied.id=Ячейка {0} уже занята товаром {1}
+cell.error.already.occupied.code=Ячейка {0} уже занята товаром {1}
+cell.error.already.empty.id=Ячейка {0} уже пуста
+cell.error.already.empty.code=Ячейка {0} уже пуста
+cell.error.insufficient.capacity.id=В ячейке {0} недостаточно места. Доступно: {1}, запрошено: {2}
+cell.error.insufficient.capacity.code=В ячейке {0} недостаточно места. Доступно: {1}, запрошено: {2}
+cell.error.incompatible.type.id=Ячейка {0} имеет тип {1}, требуется {2}
+cell.error.incompatible.type.code=Ячейка {0} имеет тип {1}, требуется {2}
+cell.error.weight.limit.exceeded=Превышен лимит веса ячейки {0}. Максимум: {1} кг, запрошено: {2} кг
+cell.error.volume.limit.exceeded=Превышен лимит объема ячейки {0}. Максимум: {1} м³, запрошено: {2} м³
+
+# Stock movement errors
+movement.error.not.found=Движение товара с ID {0} не найдено
+movement.error.invalid=Некорректное движение товара: {0} (товар {1})
+
+# Cell validation
+cell.validation.code.empty=Код ячейки обязателен
+cell.validation.code.pattern=Код ячейки должен быть в формате A-01-01-01 (буквы и цифры через дефис)
+cell.validation.type.empty=Тип ячейки обязателен
+cell.validation.max.weight.positive=Максимальный вес должен быть положительным числом
+cell.validation.max.volume.positive=Максимальный объем должен быть положительным числом
+
+cell.log.inactive=Ячейка {0} не активна
+cell.log.incompatible.type=Ячейка {0} имеет тип {1}, требуется {2}
+cell.log.fridge.not.needed=Ячейка {0} холодильная, но товар не требует охлаждения
+cell.log.freezer.not.needed=Ячейка {0} морозильная, но товар не требует заморозки
+cell.log.dangerous.not.needed=Ячейка {0} для опасных грузов, но товар не опасный
+cell.log.weight.limit.exceeded=Превышен лимит веса в ячейке {0}. Максимум: {1} кг, требуется: {2} кг
+cell.log.volume.limit.exceeded=Превышен лимит объема в ячейке {0}. Максимум: {1} м³, требуется: {2} м³
+cell.log.product.already.in.warehouse=Товар {0} уже находится на этом складе в ячейке {1}
+product.log.insufficient.stock=Недостаточно товара {0} на складе. Доступно: {1}, запрошено: {2}
+
+# Purchase receiving
+purchase.error.item.not.found=Товар {0} не найден в заказе {1}
+purchase.error.quantity.exceeded=Количество {0} превышает заказанное {1}
+purchase.log.item.stocked=Товар {0} в количестве {1} размещен в ячейке {2}
+manager.purchase.received.with.stock.log=Заказ {0} принят, размещено {1} позиций, менеджер {2}
+
+# Cell errors
+cell.error.no.available=Нет доступных ячеек типа {1} на складе {0}
+cell.error.no.suitable=Нет подходящих ячеек типа {1} для товара {2} на складе {0}
+cells.error.not.found=Ячейки не найдены
+
+# Receive validation
+receive.validation.warehouse.id.empty=Не указан склад для приемки
+receive.validation.items.empty=Список товаров для приемки не может быть пустым
+receive.validation.product.id.empty=Не указан ID товара
+receive.validation.quantity.empty=Не указано количество товара
+receive.validation.quantity.min=Количество товара должно быть не менее 1
+
+# Cell selector
+cell.selector.start=Подбор ячейки для товара {0} (количество: {1}) на складе {2}
+cell.selector.required.type=Требуемый тип ячейки: {0}
+cell.selector.available.count=Найдено свободных ячеек: {0}
+cell.selector.suitable.count=Подходящих ячеек: {0}
+cell.selector.selected=Выбрана ячейка {0} (ID: {1})
+cell.selector.weight.exceeded=Ячейка {0}: превышение веса ({1} > {2})
+cell.selector.volume.exceeded=Ячейка {0}: превышение объема ({1} > {2})
+cell.selector.using.empty=Используем пустую ячейку (доступно: {0})
+cell.selector.using.same.product=Используем ячейку с тем же товаром (доступно: {0})
+cell.selector.using.partial=Используем частично заполненную ячейку
+
+# Movement types
+movement.type.RECEIPT=Поступление
+movement.type.SHIPMENT=Отгрузка
+movement.type.TRANSFER=Перемещение
+movement.type.WRITE_OFF=Списание
+movement.type.INVENTORY=Инвентаризация
+movement.type.RETURN=Возврат
+
+# Movement logs
+movement.log.fetched.product=Получено {0} движений для товара {1}
+movement.log.fetched.cell=Получено {0} движений для ячейки {1}
+
+# Movement validation
+movement.validation.product.id.empty=Не указан ID товара
+movement.validation.quantity.empty=Не указано количество
+movement.validation.quantity.min=Количество должно быть не менее 1
+movement.validation.type.empty=Не указан тип движения
+
+# ========== WAREHOUSE MESSAGES ==========
+manager.warehouse.created=Склад успешно создан
+manager.warehouses.fetched=Список складов получен
+manager.warehouse.fetched=Информация о складе получена
+manager.warehouse.not.found=Склад не найден
+manager.warehouse.updated=Склад успешно обновлен
+manager.warehouse.deleted=Склад удален
+manager.warehouse.activated=Склад активирован
+manager.warehouse.deactivated=Склад деактивирован
+
+# ========== STORAGE CELL MESSAGES ==========
+manager.cell.created=Ячейка успешно создана
+manager.cells.fetched=Список ячеек получен
+manager.cell.fetched=Информация о ячейке получена
+manager.cells.available.fetched=Список доступных ячеек получен
+manager.cell.product.assigned=Товар назначен в ячейку
+manager.cell.cleared=Ячейка очищена
+manager.cell.not.found=Ячейка не найдена
+manager.cell.updated=Ячейка успешно обновлена
+manager.cell.deleted=Ячейка удалена
+manager.cell.activated=Ячейка активирована
+manager.cell.deactivated=Ячейка деактивирована
+
+# ========== STOCK MOVEMENT MESSAGES ==========
+manager.movements.fetched=История движений получена
+manager.movement.created=Движение товара зарегистрировано
+manager.movement.not.found=Движение не найдено
+
+# ========== PURCHASE RECEIVING MESSAGES ==========
+manager.purchase.received.with.stock=Закупка принята и товары размещены на складе
+
+manager.suppliers.error.not.found=Поставщики не найдены
+
+# Attribute validation
+attribute.validation.name.empty=Название атрибута обязательно
+attribute.validation.value.empty=Значение атрибута обязательно
+attribute.validation.id.empty=ID атрибута обязателен
+
+manager.supplier.product.added=Товар добавлен поставщику
+
+# Rollback error messages
+error.rollback.already.pending=Для заказа {0} уже существует активный запрос на откат
+error.rollback.approval.not.found=Запрос на откат с ID {0} не найден
+error.rollback.execution.failed=Не удалось выполнить откат заказа {0}: {1}
+error.rollback.final.status=Невозможно откатить заказ в статусе "{0}"
+error.rollback.already.processed=Запрос на откат уже обработан
+error.rollback.invalid.transition=Невозможно откатить статус с {0} на {1}
+
+# Rollback success messages
+rollback.request.created=Запрос на откат статуса успешно создан
+rollback.request.approved=Запрос на откат одобрен, статус изменен
+rollback.request.rejected=Запрос на откат отклонен
+rollback.requests.fetched=Список запросов на откат получен
+
+# Rollback messages
+manager.rollback.requested=Запрос на откат статуса отправлен администратору
+admin.rollback.pending.fetched=Список запросов на откат получен
+admin.rollback.approved=Запрос на откат одобрен
+admin.rollback.rejected=Запрос на откат отклонен
+
+# Rollback logs
+rollback.log.requested=Запрошен откат заказа {0} менеджером {1}
+rollback.log.already.pending=Заказ {0} уже имеет активный запрос на откат
+rollback.log.approved=Откат заказа {0} одобрен администратором {1}
+rollback.log.rejected=Откат заказа {0} отклонен администратором {1}
+rollback.log.not.found=Запрос на откат с ID {0} не найден
+rollback.log.approval.failed=Ошибка при выполнении отката заказа {0}: {1}
+
+# Rollback errors
+rollback.error.final.status=Невозможно откатить финальный статус {0}
+rollback.error.already.processed=Запрос уже обработан
+
+# Rollback logs
+manager.salesOrder.rollback.start.log=Начат откат заказа {0} менеджером {1}. Причина: {2}
+manager.salesOrder.rollback.success.log=Заказ {0} откачен с {1} на {2} менеджером {3}. Причина: {4}
+manager.salesOrder.rollback.error.final=Невозможно откатить финальный статус {0}
+manager.salesOrder.rollback.error.shipped.with.courier=Заказ уже передан курьеру, откат невозможен
+manager.salesOrder.rollback.error.delivered.timeout=Прошло более 24 часов с доставки, откат невозможен
+manager.salesOrder.rollback.payment.reversed=Платеж по заказу {0} отменен
+manager.salesOrder.rollback.stock.released=Освобожден резерв товаров по заказу {0}
+manager.salesOrder.rollback.item.released=Товар {0} в количестве {1} возвращен в резерв
+manager.salesOrder.rollback.shipment.cancelled=Отгрузка по заказу {0} отменена
+
+# Rollback errors
+error.rollback.invalid.state=Заказ {0} в статусе {1} не может быть откачен: {2}
+error.rollback.timeout=Заказ {0} доставлен {1}, откат невозможен (прошло более 24 часов)
+
+# SalesOrder status transitions
+salesOrder.error.customer.invalid.status.transition=Невозможно изменить статус заказа покупателя с {0} на {1}
+salesOrder.error.purchase.invalid.status.transition=Невозможно изменить статус закупки с {0} на {1}
+
+# Purchase receiving
+purchase.receiving.start=Начало приемки заказа {0} ({1} позиций) менеджером {2}
+purchase.receiving.complete=Приемка заказа {0} завершена, создано {1} движений
+purchase.receiving.using.cell.id=Используется ячейка с ID {0}
+purchase.receiving.using.cell.code=Используется ячейка с кодом {0} на складе {1}
+purchase.receiving.auto.select=Автоматический подбор ячейки для товара {0} (количество: {1})
+
+# Purchase errors
+purchase.error.item.not.found.message=Товар с ID {0} не найден в заказе {1}
+purchase.error.quantity.exceeded.message=Запрошенное количество {0} превышает заказанное {1}
+purchase.error.cell.not.found.id=Ячейка с ID {0} не найдена
+purchase.error.cell.not.found.code=Ячейка с кодом {0} на складе {1} не найдена
+
+# Purchase Stock Processor
+purchase.stock.processing.start=Обновление остатков для заказа {0} ({1} позиций)
+purchase.stock.processing.complete=Обновление остатков для заказа {0} завершено
+purchase.stock.item.updated=Товар {0}: остаток изменен с {1} на {2} (+{3})
+purchase.stock.supplier.info.updated=Обновлена информация о поставщике для товара {0} (поставщик: {1})
+purchase.stock.movement.created=Создано движение товара ID: {0} для товара {1}, количество: {2}
+purchase.stock.rollback.start=Откат изменений остатков для заказа {0}
+purchase.stock.rollback.item=Товар {0}: остаток возвращен с {1} на {2}
+purchase.stock.rollback.complete=Откат изменений для заказа {0} завершен
+purchase.stock.rollback.impossible=Невозможно выполнить откат для товара {0}: доступно {1}, требуется {2}
+
+# Purchase stock update
+purchase.stock.update.start=Обновление остатков для заказа {0} ({1} позиций) менеджером {2}
+purchase.stock.update.complete=Обновление остатков для заказа {0} завершено
+purchase.status.updated.log=Статус закупки {0} изменен с {1} на {2} менеджером {3}
+
+# Purchase salesOrder errors
+purchase.error.invalid.status.transition=Невозможно изменить статус закупки с {0} на {1}
+
+# Category warehouse messages
+manager.category.assigned=Категория привязана к складу
+manager.category.updated=Привязка категории обновлена
+manager.category.deleted=Привязка категории удалена
+manager.category.fetched=Информация о привязке получена
+manager.categories.fetched=Список привязок получен
+
+# Category errors
+category.already.assigned=Категория {0} уже привязана к складу
+category.not.found=Категория {0} не найдена
+category.validation.name.empty=Название категории обязательно
+category.validation.warehouse.id.empty=ID склада обязателен
+
+# Logs
+category.assigned.log=Категория {0} привязана к складу {1} пользователем {2}
+category.updated.log=Привязка категории {0} обновлена пользователем {1}
+category.deleted.log=Привязка категории {0} удалена пользователем {1}
+
+# Bulk category operations
+manager.categories.bulk.assigned.all=Все {0} категорий успешно привязаны к складу
+manager.categories.bulk.assigned.partial=Привязано {0} из {1} категорий (некоторые уже были привязаны)
+manager.warehouse.categories.fetched=Список категорий склада получен
+manager.categories.priority.updated=Приоритеты категорий обновлены
+manager.categories.bulk.deleted=Категории успешно удалены
+
+# Category validation
+category.validation.categories.empty=Список категорий не может быть пустым
+category.validation.categories.min=Необходимо указать хотя бы одну категорию
+
+# Logs
+category.bulk.assigned.log=Привязано {0} категорий к складу {1} пользователем {2}
+category.bulk.already.assigned.log=Следующие категории уже были привязаны: {0}
+category.bulk.priority.updated.log=Обновлен приоритет {0} категорий на {1} пользователем {2}
+category.bulk.deleted.log=Удалено {0} категорий пользователем {1}
+
+# Stock messages
+manager.warehouse.stock.fetched=Остатки по складу получены
+manager.product.stock.fetched=Остатки товара по всем складам получены
+manager.product.warehouse.stock.fetched=Остаток товара на складе получен
+manager.all.warehouses.summary=Сводка по всем складам получена
+manager.warehouse.low.stock=Товары с низким остатком получены
+manager.warehouse.stock.search=Результаты поиска получены
+
+# Stock logs
+stock.by.warehouse.fetched=Получено {0} записей остатков по складу {1}
+stock.by.product.fetched=Получено {0} записей остатков по товару {1}
+
+
+# Stock distribution
+manager.product.stock.distribution=Распределение товара по складам получено
+manager.product.stock.total=Общий остаток товара получен
+manager.product.warehouses.found=Склады с товаром найдены
+
+# Logs
+stock.by.product.all.warehouses=Найдено {0} записей о товаре {1} на разных складах
+
+# Sort messages
+sort.field.productName=Название товара
+sort.field.category=Категория
+sort.field.sku=Артикул
+sort.field.brand=Бренд
+sort.field.price=Цена
+sort.field.quantity=Количество
+sort.field.reservedQuantity=Зарезервировано
+
+# Stock movements
+stock.movement.created=Создано движение {0} для товара {1}, количество: {2}
+
+
+# Movement types
+movement.type.RETURN_TO_SUPPLIER=Возврат поставщику
+movement.type.RETURN_FROM_CUSTOMER=Возврат от клиента
+
+# PurchaseReceivingProcessor
+# ====================================================================
+# PURCHASE RECEIVING PROCESSOR
+# ====================================================================
+
+purchase.receiving.processor.missing.product=Товар {0} отсутствует в поставке
+purchase.receiving.processor.quantity.mismatch=Товар {0}: получено {1}, ожидалось {2}
+purchase.receiving.processor.item.not.received=Товар {0} не был принят
+purchase.receiving.processor.partial.remaining=Товар {0}: осталось принять {1}
+
+
+# OrderStatusUpdateProcessor
+salesOrder.status.update.processor.start=Обновление статуса заказа {0} менеджером {1}
+salesOrder.status.update.processor.fully.received=Заказ {0} полностью принят
+salesOrder.status.update.processor.partially.received=Заказ {0} принят частично
+salesOrder.status.update.processor.unreceived.count=Обнаружено {0} непринятых товаров в заказе {1}
+salesOrder.status.update.processor.unreceived.details=Непринятый товар: {0}, количество: {1}
+salesOrder.status.update.processor.missing.products=Обнаружено {0} отсутствующих товаров в заказе {1}
+salesOrder.status.update.processor.partial.count=Обнаружено {0} частично принятых товаров в заказе {1}
+salesOrder.status.update.processor.delivered.at=Заказ {0} отмечен как доставленный в {1}
+salesOrder.status.update.processor.payment.status=Статус оплаты установлен: {0}
+salesOrder.status.update.processor.quality.check=Результат проверки качества: {0}
+salesOrder.status.update.processor.complete=Обновление статуса заказа {0} завершено
+
+# Receiving notes
+salesOrder.status.update.processor.note.header=[{0}] ПРИНЯТ менеджером {1}
+salesOrder.status.update.processor.note.fully.received=Заказ полностью принят
+salesOrder.status.update.processor.note.partially.received=Заказ принят частично
+salesOrder.status.update.processor.note.unreceived.count=Не принято {0} позиций
+salesOrder.status.update.processor.note.quality.passed=Проверка качества ПРОЙДЕНА
+salesOrder.status.update.processor.note.quality.failed=Проверка качества НЕ ПРОЙДЕНА
+salesOrder.status.update.processor.note.notes=Примечания: {0}
+salesOrder.status.update.processor.note.added=Заметка о приемке добавлена
+salesOrder.status.update.processor.note.appended=Заметка о приемке добавлена к существующим
+
+# SalesOrder logs
+
+salesOrder.log.cart.completed=Корзина {0} завершена
+salesOrder.log.type.default=Используется тип заказа по умолчанию (RETAIL) для пользователя {0}
+salesOrder.log.type.default.role=Используется тип заказа по умолчанию (RETAIL) для роли {0}
+
+# Price calculation
+price.calculation.start=Начало расчета цены
+price.calculation.complete=Расчет цены завершен. Исходная: {}, итоговая: {}, применено скидок: {}
+
+
+promo.code.applied=Промокод {0} применен. Скидка: {1}, пользователь: {2}
+
+# Price rules
+price.rules.none.active=Нет активных правил ценообразования
+price.rule.applied=Применено правило: {0}, скидка: {1}
+
+# Promo discounts
+promo.discount.percentage.applied=Промокод {0}: применена процентная скидка {1}
+promo.discount.fixed.applied=Промокод {0}: применена фиксированная скидка {1}
+promo.discount.buyxgety.applied=Промокод {0}: применена скидка по акции "купи Х получи Y": {1}
+promo.discount.free.shipping=Промокод {0}: применена бесплатная доставка
+promo.discount.bundle.applied=Промокод {0}: применена скидка на комплект: {1}
+
+# Price rule discounts
+price.rule.percentage.applied=Правило {0}: применена скидка {1}%, итог: {2}
+price.rule.fixed.applied=Правило {0}: применена скидка {1}, итог: {2}
+price.rule.free.shipping=Правило {0}: применена бесплатная доставка
+
+
+price.rule.buyxgety.completed=Правило {0}: акция "купи Х получи Y" применена
+price.rule.bundle.applied=Правило {0}: применена скидка на комплект: {1}
+price.rule.bundle.error=Ошибка при применении правила комплекта {0}: {1}
+price.rule.bundle.completed=Правило {0}: скидка на комплект применена
+
+# Buy X Get Y discount
+price.rule.buyxgety.processing=Применение правила "Купи X получи Y": {0}, цель: {1}, купи: {2}, получи: {3}
+price.rule.buyxgety.no.items=Правило {0}: нет товаров, соответствующих цели "{1}"
+price.rule.buyxgety.items.found=Правило {0}: найдено {2} товаров для цели "{1}"
+price.rule.buyxgety.eligible.categories=Категории подходящих товаров: {0}
+price.rule.buyxgety.no.categories=Подходящие товары не имеют категорий
+price.rule.buyxgety.calculation=Всего подходящих единиц: {0}, правило: купи {1} получи {2}. Бесплатно: {3}
+price.rule.buyxgety.discount.detail=Скидка на товар "{0}": {1} шт. по цене {2}, категория: {3}
+price.rule.buyxgety.total.discount=Правило {0}: общая скидка {1}, бесплатных единиц: {2}
+price.rule.buyxgety.applied=Правило {0}: применена скидка {1}
+price.rule.buyxgety.invalid.format=Неверный формат правила "Купи X получи Y": {0}
+price.rule.buyxgety.error=Ошибка при применении правила {0}: {1}
+
+# Stock unknown values
+stock.product.unknown=Неизвестный товар
+stock.product.unknown.sku=Н/Д
+stock.warehouse.unknown=Неизвестный склад
+stock.cell.unknown=Неизвестная ячейка
+stock.user.unknown=Неизвестный пользователь
+
+# User delete validation
+user-deleted-service.log.user.not.found.id=Пользователь с ID {0} не найден
+user-deleted-service.log.target.security.not.found=Security запись для пользователя {0} не найдена
+user-deleted-service.log.admin.security.not.found=Security запись администратора {0} не найдена
+user-deleted-service.log.user.delete.self=Попытка удаления собственного аккаунта
+user-deleted-service.log.user.delete.insufficient.rights=Недостаточно прав для удаления пользователя с ролью {0}: {1}
+
+# User delete execution
+user-deleted-service.log.user.deleting=Удаление пользователя {0} (ID: {1})
+user-deleted-service.log.user.deleted.success=Пользователь с ID {0} успешно удален
+user-deleted-service.log.user.deleting.by.admin=Администратор {0} удаляет пользователя {1} (ID: {2}, email: {3})
+user-deleted-service.log.user.deleted.success.by.admin=Администратор {0} успешно удалил пользователя с ID {1}
+user-deleted-service.log.user.soft.deleted=Пользователь с ID {0} мягко удален, email анонимизирован: {1}
+
+# User delete errors
+user-deleted-service.error.user.delete.self=Вы не можете удалить свой собственный аккаунт
+user-deleted-service.error.user.delete.insufficient.rights=Недостаточно прав для удаления пользователя с ролью {0}
+
+# User service logs
+user-service.log.password.updated=Пароль успешно обновлен для пользователя: {}
+
+# User status logs
+user-status-service.log.status.change.error=Ошибка при изменении статуса пользователя {}: {}
+
+# Warehouse resolver messages
+warehouse.resolver.direct.assignment=Товар {0} имеет прямое назначение склада: {1}
+warehouse.resolver.category.assignment=Товар {0} (категория {1}) -> склад {2}
+warehouse.resolver.using.default=Используется склад по умолчанию: {0} для заказа {1}
+warehouse.resolver.selected=Выбран склад {0} для заказа {1} (вес: {2})
+warehouse.resolver.using.forced=Принудительно выбран склад {0} для заказа {1}
+warehouse.resolver.not.found=Склад с ID {0} не найден
+warehouse.resolver.no.items=Заказ {0} не содержит товаров
+warehouse.resolver.no.items.error=Заказ {0} не содержит товаров, невозможно определить склад
+
+# Cell validation logs
+cell.validation.inactive.log=Ячейка {0} не активна
+cell.validation.occupied.log=Ячейка {0} уже занята товаром {1}
+cell.validation.incompatible.type.log=Ячейка {0} (тип {1}) несовместима с требуемым типом {2}
+cell.validation.fridge.not.needed.log=Ячейка {0} холодильная, но товар не требует охлаждения
+cell.validation.freezer.not.needed.log=Ячейка {0} морозильная, но товар не требует заморозки
+cell.validation.dangerous.not.needed.log=Ячейка {0} для опасных грузов, но товар не опасный
+cell.validation.weight.limit.exceeded.log=Превышен лимит веса в ячейке {0}. Максимум: {1} кг, требуется: {2} кг
+cell.validation.volume.limit.exceeded.log=Превышен лимит объема в ячейке {0}. Максимум: {1} м³, требуется: {2} м³
+cell.validation.product.already.in.warehouse.log=Товар {0} уже находится на складе в ячейке {1}
+
+# Cell validation errors
+cell.validation.error.fridge.not.needed=Товар не требует охлаждения
+cell.validation.error.freezer.not.needed=Товар не требует заморозки
+cell.validation.error.dangerous.not.needed=Товар не является опасным
+
+category.log.already.assigned=Категория {0} уже привязана к складу
+category.log.not.found=Категория {0} не найдена
+category.log.bulk.empty=Список категорий для массового назначения не может быть пустым
+
+# Role names
+role.name.ADMIN=Администратор
+role.name.MANAGER=Менеджер
+role.name.USER=Пользователь
+
+# Role change logs
+role.change.log.message=[{0}] Смена роли: {1} изменил роль {2} с {3} на {4}
+role.change.failed.log=[{0}] Неудачная попытка смены роли: {1} попытался изменить роль пользователя {2} на {3}. Причина: {4}
+role.change.audit.saved=Запись аудита сохранена: администратор {0}, целевой пользователь {1}
+
+supplier.mapper.invalid.status=Cтатус поставщика {0} неверный
+
+role.admin.not.found=Администратор не найден
+role.permission.processor.target.user.not.found=Текущий пользователь не найден
+
+self-registration=самостоятельная регистрация
+
+salesOrder.status.PARTIALLY_RECEIVED=Частично получен
+
+# ====================================================================
+# ВАЛИДАЦИЯ СКЛАДОВ
+# ====================================================================
+receive.validation.warehouse.id.null=ID склада не может быть null
+warehouse.error.no.warehouses=В системе не создано ни одного склада. Пожалуйста, создайте склад через API: POST /api/v1/manager/warehouses
+warehouse.log.none.found=Склады не найдены. Создайте склад через API
+
+auth.log.token.validation.failed=Ошибка валидации токена - пользователь не аутентифицирован
+
+# ====================================================================
+# PURCHASE RECEIVING PROCESSOR
+# ====================================================================
+purchase.receiving.processor.start=Начало приемки заказа {0} ({1} позиций) менеджером {2}
+purchase.receiving.processor.product.not.found=Товар {0} не найден в заказе {1}, пропускаем
+purchase.receiving.processor.quantity.exceeds.remaining=Количество товара {0} ({1}) превышает остаток к приемке ({2}), будет принято {2}
+purchase.receiving.processor.already.received=Товар {0} уже полностью принят, пропускаем
+purchase.receiving.processor.partial.receipt=Товар {0} принят частично: {1} из {2}
+purchase.receiving.processor.stock.updated=Остаток товара {0} изменен с {1} на {2}
+purchase.receiving.processor.stock.created=Создана запись остатков для товара {0} на складе {1}, количество: {2}
+purchase.receiving.processor.stock.updated.detail=Обновлена запись остатков для товара {0} на складе {1}: {2} → {3}
+purchase.receiving.processor.batch.generated=Сгенерирован номер партии: {0}
+purchase.receiving.processor.movement.notes=Поступление от поставщика. Заказ: {0}
+purchase.receiving.processor.complete=Приемка заказа {0} завершена. Создано {1} движений. Полная приемка: {2}
+purchase.receiving.processor.not.fully.received=Товар {0}: принято {1} из {2}, ожидается еще {3}
+purchase.receiving.processor.remaining.quantity=Товар {0}: осталось принять {1}
+
+# ====================================================================
+# PURCHASE RECEIVING PROCESSOR
+# ====================================================================
+purchase.receiving.processor.wrong.salesOrder.type=Заказ {0} имеет тип {1}, ожидается PURCHASE
+
+# ====================================================================
+# PURCHASE ORDER ERRORS
+# ====================================================================
+manager.purchase.log.not.found=Заказ на закупку с ID {0} не найден
+manager.purchase.log.not.found.by.number=Заказ на закупку с номером {0} не найден
+manager.purchase.log.not.purchase.salesOrder=Заказ {0} не является заказом на закупку
+
+# ====================================================================
+# SUPPLIER VALIDATION
+# ====================================================================
+supplier.validation.contact.empty=Необходимо указать email или телефон
+supplier.validation.bank.bic.required=При указании банковского счета необходимо заполнить БИК
+supplier.validation.bank.name.required=При указании банковского счета необходимо заполнить название банка
+
+manager.supplier.error.blocked=Поставщик с ID {0} заблокирован и не может быть изменен
+manager.supplier.error.has.pending.orders=Поставщик с ID {0} имеет незавершенные заказы, удаление невозможно
+manager.supplier.error.already.blocked=Поставщик с ID {0} уже заблокирован
+
+# ====================================================================
+# PURCHASE ORDER CREATION
+# ====================================================================
+manager.purchase.create.start=Создание заказа на закупку для поставщика {0} менеджером {1}
+manager.purchase.salesOrder.created=Создан заказ на закупку с номером {0}
+manager.purchase.item.added=Добавлен товар {0} в количестве {1} на сумму {2}
+manager.purchase.error.price.not.set=Для товара {0} не установлена цена поставщика
+
+
+# ====================================================================
+# STATUS TRANSITIONS
+# ====================================================================
+salesOrder.status.transition.invalid.purchase=Невозможно изменить статус закупки с {0} на {1}
+salesOrder.status.transition.invalid.sale=Невозможно изменить статус заказа с {0} на {1}
+
+# ====================================================================
+# ROLLBACK MESSAGES
+# ====================================================================
+salesOrder.status.rollback.not.allowed=Невозможно откатить статус {0}
+salesOrder.status.rollback.not.allowed.purchase=Невозможно откатить статус закупки {0}
+salesOrder.status.rollback.not.allowed.sale=Невозможно откатить статус заказа {0}
+
+# ====================================================================
+# ROLLBACK RESULTS
+# ====================================================================
+salesOrder.status.rollback.target=Целевой статус для отката: {0}
+salesOrder.status.rollback.executed=Статус откачен с {0} на {1}
+salesOrder.status.rollback.invalid.state=Невозможно выполнить откат в текущем статусе {0}
+
+# ====================================================================
+# STOCK WRITE-OFF PROCESSOR
+# ====================================================================
+writeoff.processor.start=Начало списания товаров: {0} позиций, причина: {1}, менеджер: {2}
+writeoff.processor.item.processed=Товар {0}: списано {1} ед. Остаток: {2} → {3}
+writeoff.processor.item.failed=Ошибка при списании товара {0}: {1}
+writeoff.processor.complete=Списание завершено. Успешно: {0}, движений: {1}, ошибок: {2}
+writeoff.processor.insufficient.stock=Недостаточно товара {0} на складе. Доступно: {1}, запрошено: {2}
+writeoff.processor.stock.not.found=Не найдена запись остатков для товара {0} на складе {1}
+writeoff.processor.stock.negative=Отрицательный остаток для товара {0} на складе {1}. Текущий: {2}, списание: {3}
+writeoff.processor.stock.updated=Обновлены остатки товара {0} на складе {1}: {2} → {3}
+writeoff.processor.movement.notes=Списание товара. Причина: {0}. Детали: {1}. Документ: {2}
+writeoff.processor.salesOrder.item.written.off=Товар {0} списан в количестве {1} по заказу {2}
+
+# ====================================================================
+# CELL BASED RECEIVING PROCESSOR
+# ====================================================================
+cell.receiving.processor.start=Начало приемки заказа {0} ({1} позиций) на склад {2} менеджером {3}
+cell.receiving.processor.product.not.found=Товар {0} не найден в заказе {1}
+cell.receiving.processor.quantity.exceeds.remaining=Количество товара {0} ({1}) превышает остаток к приемке ({2}), будет принято {2}
+cell.receiving.processor.already.received=Товар {0} уже полностью принят
+cell.receiving.processor.stock.updated=Остаток товара {0} изменен с {1} на {2}
+cell.receiving.processor.stock.created=Создана запись остатков для товара {0} на складе {1}, количество: {2}
+cell.receiving.processor.stock.updated.detail=Обновлена запись остатков для товара {0} на складе {1}: {2} → {3}
+cell.receiving.processor.batch.generated=Сгенерирован номер партии: {0}
+cell.receiving.processor.movement.notes=Поступление от поставщика. Заказ: {0}, ячейка: {1}
+cell.receiving.processor.item.placed=Товар {0} в количестве {1} размещен в ячейке {2}
+cell.receiving.processor.item.failed=Ошибка при приемке товара {0}: {1}
+cell.receiving.processor.complete=Приемка заказа {0} завершена. Создано {1} движений, размещено {2} позиций. Результат: {3}
+
+
+# ====================================================================
+# SALES ORDER REPOSITORY
+# ====================================================================
+sales.order.fetched.log=Получено заказов: {0}
+sales.order.created.log=Заказ {0} создан для пользователя {1}. Позиций: {2}, сумма: {3}
+sales.order.status.updated.log=Статус заказа {0} изменен с {1} на {2} менеджером {3}
+sales.order.price.updated.log=Цена позиции {1} в заказе {0} изменена с {2} на {3} менеджером {4}. Причина: {5}
+sales.order.quantity.updated.log=Количество позиции {1} в заказе {0} изменено с {2} на {3} менеджером {4}. Причина: {5}
+sales.order.item.added.log=Товар (ID {1}, количество {2}) добавлен в заказ {0} менеджером {3}
+sales.order.item.removed.log=Позиция {1} удалена из заказа {0} менеджером {2}
+sales.order.note.added.log=Примечание добавлено к заказу {0} менеджером {1}
+sales.order.rollback.start.log=Начат откат заказа {0} менеджером {1}. Причина: {2}
+sales.order.rollback.success.log=Заказ {0} откачен с {1} на {2} менеджером {3}. Причина: {4}
+sales.order.rollback.payment.reversed=Платеж по заказу {0} отменен
+sales.order.rollback.stock.released=Освобожден резерв товаров по заказу {0}
+sales.order.rollback.shipment.cancelled=Отгрузка по заказу {0} отменена
+sales.order.stock.restored=Восстановлено {0} единиц товара {1}
+
+
+# ====================================================================
+# SALES ORDER VALIDATION
+# ====================================================================
+sales.order.not.found=Заказ на продажу с ID {0} не найден
+sales.order.not.belong.to.user=Заказ {0} не принадлежит пользователю {1}
+sales.order.cannot.modify=Невозможно изменить заказ в статусе {0}
+sales.order.item.exists=Товар {0} уже добавлен в заказ
+sales.order.item.not.found=Позиция заказа с ID {0} не найдена
+sales.order.invalid.status.transition=Невозможно изменить статус с {0} на {1}
+sales.order.final.status=Заказ в статусе {0} является финальным и не может быть изменен
+
+sales.validation.items.empty=Необходимо указать хотя бы одну позицию
+sales.validation.insufficient.stock=Недостаточно товара "{0}" на складе. Доступно: {1}, запрошено: {2}
+sales.validation.invalid.price=Некорректная цена для товара {0}
+sales.validation.shipping.address.empty=Адрес доставки обязателен
+sales.validation.payment.method.empty=Способ оплаты обязателен
+
+# ====================================================================
+# SALES ORDER VALIDATION HELPER
+# ====================================================================
+sales.validation.date.parse.failed=Не удалось распарсить дату: {0}
+sales.validation.date.range.invalid=Начальная дата {0} позже конечной {1}
+sales.validation.status.parse.failed=Не удалось распарсить статус: {0}
+sales.validation.status.invalid=Неверный статус заказа: {0}
+sales.validation.status.transition.invalid=Невозможно изменить статус с {0} на {1}
+sales.validation.rollback.not.allowed=Невозможно откатить статус {0}
+sales.validation.status.final=Статус {0} является финальным
+sales.validation.order.cannot.modify=Невозможно изменить заказ в статусе {0}
+sales.validation.price.invalid=Некорректная цена: {0}
+sales.validation.quantity.invalid=Некорректное количество: {0}
+sales.validation.quantity.positive=Количество должно быть положительным: {0}
+sales.validation.product.insufficient.stock=Недостаточно товара "{0}" на складе. Доступно: {1}, запрошено: {2}
+sales.validation.billing.address.empty=Платежный адрес обязателен
+
+# ====================================================================
+# SALES ORDER ITEM BUILDER
+# ====================================================================
+sales.order.item.created=Создана позиция заказа: товар={0}, количество={1}, цена={2}
+sales.order.item.quantity.updated=Количество позиции {0} изменено с {1} на {2}
+sales.order.item.price.updated=Цена позиции {0} изменена с {1} на {2}
+sales.order.item.updated=Позиция заказа обновлена: товар={0}, количество={1}, цена={2}
+sales.order.item.returned=Создана позиция возврата: товар={0}, количество={1}, цена={2}, причина={3}
+
+# ====================================================================
+# SALES ORDER CONVERTER
+# ====================================================================
+sales.order.converted=Заказ {0} сконвертирован в DTO
+sales.order.items.converted=Сконвертировано {0} позиций заказа {1}
+
+# ====================================================================
+# SALES ORDER ITEM
+# ====================================================================
+sales.order.item.calculated=Рассчитана позиция заказа: цена={0}, количество={1}, итого={2}
+sales.order.item.discounted=Применена скидка {0} к позиции заказа
+
+# ====================================================================
+# ROLLBACK EXCEPTIONS
+# ====================================================================
+rollback.not.allowed.for.status=Невозможно откатить статус "{0}"
+rollback.not.allowed.for.order=Невозможно откатить заказ {0} в статусе "{1}"
+rollback.not.allowed.reason=Откат невозможен: {0}
+
+# ====================================================================
+# SALES ORDER TYPE NAMES
+# ====================================================================
+sales.order.type.RETAIL=Розничный заказ
+sales.order.type.WHOLESALE=Оптовый заказ
+sales.order.type.description.RETAIL=Заказ для физических лиц
+sales.order.type.description.WHOLESALE=Заказ для юридических лиц
+
+# ====================================================================
+# PURCHASE ORDER TYPE NAMES
+# ====================================================================
+purchase.order.type.PURCHASE=Закупка
+purchase.order.type.description.PURCHASE=Заказ на закупку товаров у поставщика
+
+# ====================================================================
+# ORDER TYPE NAMES (общие, если нужны)
+# ====================================================================
+order.type.RETAIL=Розничный
+order.type.WHOLESALE=Оптовый
+order.type.PURCHASE=Закупка
+
+# ====================================================================
+# PRICE CALCULATION PROCESSOR
+# ====================================================================
+price.calculation.processor.start=Начало расчета цены
+price.calculation.processor.complete=Расчет цены завершен. Исходная: {0}, итоговая: {1}, применено скидок: {2}
+
+# ====================================================================
+# PRICE CALCULATION SERVICE
+# ====================================================================
+price.calculation.service.start=Вызов сервиса расчета цены
+price.calculation.service.for.items.start=Расчет цены для товаров пользователя {0}
+price.calculation.service.with.promo.start=Расчет цены с промокодом {0}
+price.calculation.service.base.start=Расчет базовой цены
+
+sales.validation.order.type.empty=Тип заказа обязателен
+
+# ====================================================================
+# CART CONTROLLER
+# ====================================================================
+cart.fetched=Корзина успешно получена
+
+# ====================================================================
+# CHECKOUT CONTROLLER
+# ====================================================================
+checkout.price.calculated=Цена рассчитана успешно
+checkout.order.created=Заказ успешно создан
+
+# ====================================================================
+# INVOICE MESSAGES
+# ====================================================================
+invoice.create.start=Создание счета для заказа {0} типа {1}
+invoice.created=Счет {0} успешно создан
+invoice.paid=Счет {0} оплачен
+
+# ====================================================================
+# INVOICE STATUS
+# ====================================================================
+invoice.status.PENDING=Ожидает оплаты
+invoice.status.PAID=Оплачен
+invoice.status.PARTIALLY_PAID=Частично оплачен
+invoice.status.CANCELLED=Отменен
+invoice.status.REFUNDED=Возвращен
+
+# ====================================================================
+# PAYMENT METHOD
+# ====================================================================
+payment.method.CASH=Наличные
+payment.method.CARD=Банковская карта
+payment.method.BANK_TRANSFER=Банковский перевод
+payment.method.ONLINE=Онлайн оплата
+payment.method.CREDIT=Кредит
+
+# ====================================================================
+# TRANSACTION TYPE
+# ====================================================================
+transaction.type.INCOME=Приход
+transaction.type.EXPENSE=Расход
+transaction.type.REFUND=Возврат
+
+# ====================================================================
+# INVOICE VALIDATION
+# ====================================================================
+invoice.validation.order.type.empty=Тип заказа обязателен
+invoice.validation.order.id.empty=ID заказа обязателен
+invoice.validation.order.id.positive=ID заказа должен быть положительным
+invoice.validation.amount.empty=Сумма счета обязательна
+invoice.validation.amount.positive=Сумма должна быть положительной
+invoice.validation.payment.method.empty=Способ оплаты обязателен
+
+# ====================================================================
+# CASH TRANSACTION VALIDATION
+# ====================================================================
+cash.transaction.validation.register.id.empty=ID кассы обязателен
+cash.transaction.validation.type.empty=Тип операции обязателен
+cash.transaction.validation.amount.empty=Сумма операции обязательна
+cash.transaction.validation.amount.positive=Сумма должна быть положительной
+
+# ====================================================================
+# PAYMENT METHOD DESCRIPTIONS
+# ====================================================================
+payment.method.description.CASH=Оплата наличными деньгами в кассу
+payment.method.description.CARD=Оплата банковской картой через терминал
+payment.method.description.BANK_TRANSFER=Оплата по безналичному расчету
+payment.method.description.ONLINE=Оплата через интернет-эквайринг
+payment.method.description.CREDIT=Оплата в кредит / рассрочку
+
+# ====================================================================
+# PAYMENT METHOD VALIDATION
+# ====================================================================
+payment.method.validation.required=Способ оплаты обязателен
+payment.method.validation.invalid=Недопустимый способ оплаты: {0}
+
+# ====================================================================
+# INVOICE CONVERTER
+# ====================================================================
+invoice.converter.purchase.order.not.found=Заказ на закупку для счета {0} не найден
+invoice.converter.sales.order.not.found=Заказ на продажу для счета {0} не найден
+
+# ====================================================================
+# INVOICE DTO HELPERS
+# ====================================================================
+invoice.overdue=Просрочен
+invoice.paid.percent=Оплачено {0}%
+invoice.remaining=Осталось оплатить: {0} {1}  
+
+# ====================================================================
+# CASH TRANSACTION DTO
+# ====================================================================
+cash.transaction.income=Приход
+cash.transaction.expense=Расход
+cash.transaction.refund=Возврат
+cash.transaction.formatted.amount={0}{1} {2}
+cash.transaction.balance.before=Остаток до операции: {0} {1}
+cash.transaction.balance.after=Остаток после операции: {0} {1}
+cash.transaction.cashier=Кассир: {0}
+cash.transaction.register=Касса: {0} ({1})
+
+# =========================================================================
+# CASH TRANSACTION VALIDATION
+# =========================================================================
+cash.transaction.validation.register.active=Касса должна быть открыта для проведения операций
+cash.transaction.validation.insufficient.balance=Недостаточно средств в кассе. Доступно: {0} {1}, требуется: {2} {3}
+
+# ====================================================================
+# TRANSACTION PROCESSOR
+# ====================================================================
+transaction.processor.start=Начало обработки операции {0} на сумму {1}
+transaction.processor.complete=Операция {0} типа {1} на сумму {2} успешно выполнена
+transaction.processor.insufficient.cash=Недостаточно средств в кассе. Доступно: {0}, запрошено: {1}
+
+# ====================================================================
+# CASH TRANSACTION CONVERTER
+# ====================================================================
+cash.transaction.converter.balance.calculated=Рассчитан баланс: до={0}, после={1}
+cash.transaction.converter.batch.converted=Сконвертировано {0} операций
+cash.transaction.converter.report.generated=Сформирован отчет по операциям кассира {0}
+
+# ====================================================================
+# INVOICE SERVICE
+# ====================================================================
+invoice.pay.start=Начало оплаты счета {0}
+invoice.partial.pay.start=Частичная оплата счета {0} на сумму {1}
+invoice.partial.paid=Счет {0} частично оплачен на сумму {1}
+invoice.cancel.start=Отмена счета {0}, причина: {1}
+invoice.cancelled=Счет {0} отменен
+invoice.not.found=Счет с ID {0} не найден
+invoice.not.found.by.number=Счет с номером {0} не найден
+invoice.not.payable=Счет {0} не может быть оплачен в статусе {1}
+invoice.not.cancellable=Счет {0} не может быть отменен в статусе {1}
+invoice.partial.amount.invalid=Сумма частичной оплаты {0} превышает остаток по счету {1}
+
+# ====================================================================
+# INVOICE STATISTICS
+# ====================================================================
+invoice.statistics.pending.total=Общая сумма ожидающих оплаты: {0} {1}
+invoice.statistics.paid.period=Оплачено за период: {0} {1}
+invoice.statistics.overdue.count=Просроченных счетов: {0} на сумму {1} {2}
+invoice.statistics.upcoming.count=Счетов со скорым сроком оплаты: {0} на сумму {1} {2}
+
+# ====================================================================
+# INVOICE NOT FOUND EXCEPTION
+# ====================================================================
+invoice.not.found.unknown=Счет не найден
+
+# ====================================================================
+# INVOICE HELPER METHODS
+# ====================================================================
+invoice.payable=Счет может быть оплачен
+invoice.cancellable=Счет может быть отменен
+invoice.remaining.amount=Остаток к оплате: {0} {1}
+invoice.total.paid=Всего оплачено: {0} {1}
+cash.transaction.currency.default=Валюта по умолчанию: RUB
+cash.transaction.signed.amount=Сумма с учетом знака: {0}
+
+# ====================================================================
+# CASH REGISTER EXCEPTIONS
+# ====================================================================
+
+# --------------------------------------------------------------------
+# CashRegisterNotFoundException
+# --------------------------------------------------------------------
+cash.register.not.found.id=Касса с ID {0} не найдена
+cash.register.not.found.number=Касса с номером {0} не найдена
+cash.register.not.found=Касса не найдена
+
+# --------------------------------------------------------------------
+# CashRegisterClosedException
+# --------------------------------------------------------------------
+cash.register.closed=Касса с ID {0} закрыта
+cash.register.closed.with.name=Касса "{0}" закрыта
+
+# --------------------------------------------------------------------
+# InsufficientCashException
+# --------------------------------------------------------------------
+cash.register.insufficient.balance=Недостаточно средств. Доступно: {0}, запрошено: {1}
+cash.register.insufficient.balance.with.id=В кассе {0} недостаточно средств. Доступно: {1}, запрошено: {2}
+cash.register.insufficient.balance.with.name=В кассе "{0}" недостаточно средств. Доступно: {1}, запрошено: {2}
+
+# ====================================================================
+# FINANCE CONTROLLER
+# ====================================================================
+
+# --------------------------------------------------------------------
+# INVOICE MESSAGES
+# --------------------------------------------------------------------
+invoice.fetched=Счет успешно получен
+invoices.fetched=Список счетов успешно получен
+invoices.by.status.fetched=Счета со статусом "{0}" успешно получены
+invoices.by.purchase.order.fetched=Счета для заказа на закупку {0} успешно получены
+invoices.by.sales.order.fetched=Счета для заказа на продажу {0} успешно получены
+invoice.paid.success=Счет успешно оплачен
+invoice.partially.paid.success=Счет частично оплачен на сумму {0}
+invoice.cancelled.success=Счет успешно отменен
+
+# --------------------------------------------------------------------
+# CASH REGISTER MESSAGES
+# --------------------------------------------------------------------
+cash.register.created=Касса успешно создана
+cash.registers.fetched=Список касс успешно получен
+cash.registers.active.fetched=Список активных касс успешно получен
+cash.register.fetched=Касса успешно получена
+cash.register.opened=Касса успешно открыта
+cash.register.balance.fetched=Текущий баланс кассы успешно получен
+ON MESSAGES
+# --------------------------------------------------------------------
+cash.transaction.created=Кассовая операция успешно создана
+cash.transactions.by.register.fetched=Операции для кассы {0} успешно получены
+cash.transactions.by.invoice.fetched=Операции для счета {0} успешно получены
+cash.transactions.by.period.fetched=Операции за период успешно получены
+
+# ====================================================================
+# CASH REGISTER DTO
+# ====================================================================
+cash.register.display.name={0} ({1})
+cash.register.full.info={0} ({1}) - {2}
+cash.register.status.active=Активна
+cash.register.status.inactive=Закрыта
+cash.register.today.income=Приход за сегодня: {0}
+cash.register.today.expense=Расход за сегодня: {0}
+cash.register.today.transactions=Количество операций за сегодня: {0}
+
+# ====================================================================
+# CASH REGISTER DTO LOCALIZATION
+# ====================================================================
+
+# Балансы
+cash.register.balance.opening=Начальный остаток: {0} {1}
+cash.register.balance.closing=Конечный остаток: {0} {1}
+cash.register.balance.current=Текущий остаток: {0} {1}
+
+# Даты
+cash.register.opened.at=Открыта: {0}
+cash.register.closed.at=Закрыта: {0}
+cash.register.created.at=Создана: {0}
+
+# Валюты
+currency.rub=₽
+currency.usd=$
+currency.eur=€
+
+# ====================================================================
+# CURRENCY CREATE REQUEST VALIDATION
+# ====================================================================
+
+# Code validation
+currency.validation.code.empty=Код валюты обязателен
+currency.validation.code.pattern=Код валюты должен состоять из 3 заглавных латинских букв (ISO 4217)
+
+# Name validation
+currency.validation.name.empty=Название валюты обязательно
+currency.validation.name.size=Название валюты должно содержать от 2 до 100 символов
+
+# Symbol validation
+currency.validation.symbol.empty=Символ валюты обязателен
+currency.validation.symbol.size=Символ валюты должен содержать от 1 до 5 символов
+
+# Exchange rate validation
+currency.validation.exchange.rate.empty=Курс обмена обязателен
+currency.validation.exchange.rate.min=Курс обмена должен быть больше 0
+
+# Decimal places validation
+currency.validation.decimal.places.min=Количество знаков после запятой должно быть не менее 0
+currency.validation.decimal.places.max=Количество знаков после запятой не должно превышать 4
+
+# ====================================================================
+# CURRENCY REPOSITORY
+# ====================================================================
+
+# Repository messages
+currency.repository.reset.base=Сброшен флаг базовой валюты для всех записей
+currency.repository.rate.updated=Курс валюты {0} обновлен на {1}
+currency.repository.active.status.updated=Статус активности валюты {0} изменен на {1}
+currency.repository.active.count=Количество активных валют: {0}
+currency.repository.active.codes=Коды активных валют: {0}
+currency.repository.used.in.invoices=Валюта {0} используется в счетах, деактивация невозможна
+currency.repository.used.in.cash=Валюта {0} используется в кассовых операциях, деактивация невозможна
+
+# ====================================================================
+# CURRENCY CONVERTER
+# ====================================================================
+
+# Конвертация
+currency.converter.to.base=Конвертация {0} {1} в базовую валюту: {2} RUB
+currency.converter.from.base=Конвертация {0} RUB в {1}: {2}
+currency.converter.between=Конвертация {0} {1} → {2} {3}
+
+# Форматирование
+currency.converter.formatted=Форматированная сумма: {0}
+
+# Ошибки
+currency.converter.rate.null=Курс обмена для валюты {0} не установлен
+currency.converter.rate.zero=Курс обмена для валюты {0} равен нулю
+
+# ====================================================================
+# CASH REGISTER CREATE REQUEST VALIDATION
+# ====================================================================
+
+# Register number validation
+cash.register.validation.number.empty=Номер кассы обязателен
+cash.register.validation.number.pattern=Номер кассы должен содержать только заглавные латинские буквы, цифры и дефис (3-20 символов)
+
+# Name validation
+cash.register.validation.name.empty=Название кассы обязательно
+cash.register.validation.name.size=Название кассы должно содержать от 2 до 100 символов
+
+# Location validation
+cash.register.validation.location.size=Местоположение кассы не должно превышать 200 символов
+
+# Opening balance validation
+cash.register.validation.opening.balance.min=Начальный баланс не может быть отрицательным
+
+# ====================================================================
+# CASH REGISTER DTO
+# ====================================================================
+cash.register.create.success=Касса {0} успешно создана
+cash.register.create.error=Ошибка при создании кассы: {0}
+
+# ====================================================================
+# CASH REGISTER SUMMARY DTO
+# ====================================================================
+
+# Period
+cash.register.summary.period=Период: {0} - {1}
+
+# Balances
+cash.register.summary.opening.balance=Начальный остаток: {0} {1}
+cash.register.summary.closing.balance=Конечный остаток: {0} {1}
+cash.register.summary.balance.increase=Увеличение баланса: +{0} {1}
+cash.register.summary.balance.decrease=Уменьшение баланса: -{0} {1}
+
+# Turnover
+cash.register.summary.total.income=Приход: {0} {1}
+cash.register.summary.total.expense=Расход: {0} {1}
+cash.register.summary.net.turnover=Чистый оборот: {0} {1}
+
+# Transactions
+cash.register.summary.transaction.count=Количество операций: {0}
+cash.register.summary.average.amount=Средний чек: {0} {1}
+
+# Income/Expense percentages
+cash.register.summary.income.percentage=Доходы составляют {0}% от оборота
+cash.register.summary.expense.percentage=Расходы составляют {0}% от оборота
+
+# ====================================================================
+# CASH TRANSACTION VALIDATION
+# ====================================================================
+
+cash.transaction.validation.not.found=Операция с ID {0} не найдена
+cash.transaction.validation.cannot.cancel.refund=Операция возврата {0} не может быть отменена
+cash.transaction.validation.already.cancelled=Операция {0} уже была отменена
+cash.transaction.validation.cash.register.empty=ID кассы обязателен
+cash.transaction.validation.cash.register.null=Касса не найдена
+cash.transaction.validation.cash.register.inactive=Касса {0} не активна
+cash.transaction.validation.invoice.not.found=Счет не найден
+cash.transaction.validation.amount.exceeds=Сумма операции {0} превышает остаток по счету {1}
+
+# ====================================================================
+# INVOICE CREATOR
+# ====================================================================
+
+# Registration
+invoice.creator.registered=Зарегистрирован создатель счетов для типа {0}
+invoice.creator.initialized=Создатели счетов инициализированы
+
+# Creation
+invoice.creator.purchase.start=Создание счета для заказа на закупку {0} на сумму {1}
+invoice.creator.sales.start=Создание счета для заказа на продажу {0} на сумму {1}
+invoice.creator.order.null=Заказ не может быть null
+invoice.creator.not.found=Не найден создатель счетов для типа {0}
+invoice.creator.skip=Автоматическое создание счета пропущено для {0}
+invoice.creator.already.exists=Счет для этого заказа уже существует
+invoice.creator.created=Счет {0} создан для {1}
+
+# Update
+invoice.creator.update.start=Обновление суммы счета {0} с {1} на {2}
+invoice.creator.update.note=[{0}] Изменение суммы: {1} → {2}. Причина: {3}. Пользователь: {4}
+invoice.creator.updated=Счет {0} обновлен: сумма изменена с {1} на {2}
+
+# Descriptions
+invoice.description.purchase=Счет от поставщика по заказу {0}
+invoice.description.sales=Счет к заказу {0}
+
+# Notes
+invoice.notes.purchase=Создан автоматически для заказа {0}. Дата создания: {1}. Срок оплаты: {2}
+invoice.notes.sales.retail=Создан автоматически для розничного заказа {0}. Дата создания: {1}. Срок оплаты: {2}
+invoice.notes.sales.wholesale=Создан автоматически для оптового заказа {0}. Дата создания: {1}. Срок оплаты: {2}
+
+# ====================================================================
+# INVOICE AUTO CREATION
+# ====================================================================
+invoice.auto.create.for.sales.start=Автоматическое создание счета для заказа на продажу {0}
+invoice.auto.create.for.purchase.start=Автоматическое создание счета для заказа на закупку {0}
+invoice.auto.created=Счет {0} автоматически создан для заказа {1}
+
+# ====================================================================
+# ORDER PAYMENT
+# ====================================================================
+order.status.updated.after.payment=Заказ {0} переведен в статус {1} после оплаты
+order.payment.required=Заказ {0} требует оплаты. Сумма: {1} {2}
+order.payment.complete=Заказ {0} полностью оплачен
+order.payment.partial=Заказ {0} частично оплачен. Оплачено: {1} {2}, остаток: {3} {4}
+
+# ====================================================================
+# SALES ORDER PROCESSOR
+# ====================================================================
+
+# Create from cart
+sales.order.processor.create.from.cart.start=Создание заказа из корзины для пользователя {0}
+sales.order.processor.create.from.cart.complete=Заказ {0} создан для пользователя {1} на сумму {2}
+sales.order.processor.invoice.created=Счет {0} автоматически создан для заказа {1}
+
+# Create direct
+sales.order.processor.create.start=Создание заказа менеджером для пользователя {0}
+sales.order.processor.create.complete=Заказ {0} создан для пользователя {1}. Позиций: {2}, сумма: {3}
+
+# Update
+sales.order.processor.update.start=Обновление заказа {0}
+sales.order.processor.update.reason=Обновление заказа пользователем {0}
+sales.order.processor.update.complete=Заказ {0} обновлен. Новая сумма: {1}
+
+# Cancel
+sales.order.processor.cancel.start=Отмена заказа {0}, причина: {1}
+sales.order.processor.cancel.complete=Заказ {0} отменен пользователем {1}
+
+# Validation
+sales.order.processor.cart.empty=Корзина пуста
+sales.order.processor.cart.invalid=Корзина содержит некорректные товары
+sales.order.processor.order.not.modifiable=Заказ не может быть изменен в статусе {0}
+sales.order.processor.order.not.cancellable=Заказ не может быть отменен в статусе {0}
+
+# ====================================================================
+# PURCHASE ORDER PROCESSOR
+# ====================================================================
+
+# Create
+purchase.order.processor.create.start=Создание заказа на закупку для поставщика {0} менеджером {1}
+purchase.order.processor.create.complete=Заказ {0} создан менеджером {1}. Позиций: {2}, сумма: {3}
+purchase.order.processor.invoice.created=Счет {0} автоматически создан для заказа {1}
+
+# Receive
+purchase.order.processor.receive.start=Приемка заказа {0} менеджером {1}
+purchase.order.processor.item.not.found=Товар {0} не найден в заказе {1}
+purchase.order.processor.item.already.received=Товар {0} уже полностью принят
+purchase.order.processor.item.received=Товар {0} принят в количестве {1}. Всего принято: {2}
+purchase.order.processor.receive.complete=Приемка заказа {0} завершена. Создано {1} движений. Результат: {2}
+purchase.order.processor.movement.notes=Поступление по заказу {0}
+purchase.order.processor.cell.not.specified=Ячейка не указана для размещения товара
+
+# Receive with cells
+purchase.order.processor.receive.with.cells.start=Приемка заказа {0} на склад {1} менеджером {2}
+purchase.order.processor.receive.with.cells.complete=Приемка заказа {0} завершена. Создано {1} движений, размещено {2} позиций. Результат: {3}
+
+# Cancel
+purchase.order.processor.cancel.start=Отмена заказа {0}, причина: {1}
+purchase.order.processor.cancel.complete=Заказ {0} отменен пользователем {1}
+
+# ====================================================================
+# PURCHASE ORDER VALIDATOR
+# ====================================================================
+
+# Create request validation
+purchase.validator.request.null=Запрос на создание заказа не может быть null
+purchase.validator.supplier.id.empty=ID поставщика обязателен
+
+# Order validation
+purchase.order.not.found=Заказ на закупку с ID {0} не найден
+purchase.order.cannot.cancel=Невозможно отменить заказ в статусе {0}
+cash.register.summary.fetched=Сводка по кассе успешно получена
+
+
+
+
+
+

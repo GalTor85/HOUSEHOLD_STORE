@@ -42,7 +42,7 @@ public class SecurityConfig {
 
     @Bean
     public JwtTokenCleanupFilter jwtTokenCleanupFilter() {
-        return new JwtTokenCleanupFilter();
+        return new JwtTokenCleanupFilter(messageService);
     }
 
     @Bean

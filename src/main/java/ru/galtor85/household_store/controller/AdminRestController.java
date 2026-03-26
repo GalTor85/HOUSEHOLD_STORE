@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.annotations.NotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -84,6 +85,11 @@ public class AdminRestController {
         List<UserResponse> userResponses = users.stream()
                 .map(userMapper::build)
                 .collect(Collectors.toList());
+
+        if (users.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(
+                    messageService.get("user-search-service.user.search.criteria.not.found", mobileNumber, email, firstName, lastName)));
+        }
 
         log.info(messageService.get("admin-rest-controller.log.returning.users", userResponses.size()));
 
@@ -204,9 +210,9 @@ public class AdminRestController {
         List<User> users = userSearchService.searchUsersByCriteria(identify, identify, null, null, sort);
 
         if (users.isEmpty()) {
-            return ResponseEntity.ok(ApiResponse.success(
-                    messageService.get("admin-rest-controller.user.search.not.found", identify),
-                    List.of()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(
+                    messageService.get("admin-rest-controller.user.search.not.found", identify.toString(),
+                    List.of())));
         }
 
         List<UserResponse> userResponses = users.stream()
@@ -249,6 +255,11 @@ public class AdminRestController {
             @RequestParam(defaultValue = "20") int size) {
 
         Page<RollbackApprovalDto> approvals = rollbackService.getPendingRollbacks(page, size);
+
+        if (approvals.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(
+                    messageService.get("admin-rollback.pending.fetched.not.found")));
+        }
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("admin.rollback.pending.fetched"),
