@@ -6,9 +6,9 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.galtor85.household_store.dto.ProductMediaDto;
-import ru.galtor85.household_store.service.MediaService;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
+import ru.galtor85.household_store.service.file.MediaService;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.util.List;
 

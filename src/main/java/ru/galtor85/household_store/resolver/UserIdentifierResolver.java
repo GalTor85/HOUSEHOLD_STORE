@@ -4,9 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import ru.galtor85.household_store.advice.exception.IdentifierNotProvidedException;
-import ru.galtor85.household_store.dto.LoginForm;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.advice.exception.auth.IdentifierNotProvidedException;
+import ru.galtor85.household_store.dto.request.auth.LoginFormRequest;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.util.Locale;
 
@@ -17,7 +17,7 @@ public class UserIdentifierResolver {
 
     private final MessageService messageService;
 
-    public String resolve(LoginForm form, Locale locale) {
+    public String resolve(LoginFormRequest form, Locale locale) {
         locale = locale != null ? locale : Locale.getDefault();
 
         if (StringUtils.hasText(form.getEmail())) {
@@ -40,7 +40,7 @@ public class UserIdentifierResolver {
         throw new IdentifierNotProvidedException();
     }
 
-    public String resolve(LoginForm form) {
+    public String resolve(LoginFormRequest form) {
         return resolve(form, Locale.getDefault());
     }
 }

@@ -3,11 +3,11 @@ package ru.galtor85.household_store.converter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.InvoiceDto;
-import ru.galtor85.household_store.entity.Invoice;
-import ru.galtor85.household_store.repository.PurchaseOrderRepository;
-import ru.galtor85.household_store.repository.SalesOrderRepository;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
+import ru.galtor85.household_store.entity.finance.Invoice;
+import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
+import ru.galtor85.household_store.repository.order.SalesOrderRepository;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 import java.util.List;

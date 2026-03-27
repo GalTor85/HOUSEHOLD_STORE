@@ -10,7 +10,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import ru.galtor85.household_store.entity.Role;
+import ru.galtor85.household_store.entity.user.Role;
 
 import java.time.LocalDateTime;
 import java.util.Collection;

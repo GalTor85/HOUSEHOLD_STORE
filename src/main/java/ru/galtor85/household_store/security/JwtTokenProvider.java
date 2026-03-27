@@ -4,9 +4,12 @@ import io.jsonwebtoken.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.advice.exception.*;
-import ru.galtor85.household_store.entity.User;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.advice.exception.auth.TokenExpiredException;
+import ru.galtor85.household_store.advice.exception.auth.TokenMalformedException;
+import ru.galtor85.household_store.advice.exception.auth.TokenSecurityException;
+import ru.galtor85.household_store.advice.exception.auth.TokenUnsupportedException;
+import ru.galtor85.household_store.entity.user.User;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;

@@ -3,10 +3,10 @@ package ru.galtor85.household_store.converter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.CashRegisterDto;
-import ru.galtor85.household_store.entity.CashRegister;
-import ru.galtor85.household_store.repository.CashTransactionRepository;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.dto.response.finance.CashRegisterDto;
+import ru.galtor85.household_store.entity.finance.CashRegister;
+import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 import java.util.List;

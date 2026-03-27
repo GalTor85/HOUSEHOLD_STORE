@@ -9,13 +9,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import ru.galtor85.household_store.dto.*;
-import ru.galtor85.household_store.entity.User;
-import ru.galtor85.household_store.mapper.UserMapper;
+import ru.galtor85.household_store.dto.request.user.UserEditRequest;
+import ru.galtor85.household_store.dto.request.user.UserUpdatePasswordRequest;
+import ru.galtor85.household_store.dto.response.system.ApiResponse;
+import ru.galtor85.household_store.dto.response.user.UserResponse;
+import ru.galtor85.household_store.entity.user.User;
+import ru.galtor85.household_store.mapper.user.UserMapper;
 import ru.galtor85.household_store.security.SecurityUser;
-import ru.galtor85.household_store.service.MessageService;
-import ru.galtor85.household_store.service.UserSearchService;
-import ru.galtor85.household_store.service.UserService;
+import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.user.UserSearchService;
+import ru.galtor85.household_store.service.auth.UserService;
 
 @Slf4j
 @RestController

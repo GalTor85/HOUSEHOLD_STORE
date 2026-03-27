@@ -1,8 +1,8 @@
 package ru.galtor85.household_store.security;
 
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.entity.Role;
-import ru.galtor85.household_store.entity.User;
+import ru.galtor85.household_store.entity.user.Role;
+import ru.galtor85.household_store.entity.user.User;
 
 import java.time.LocalDateTime;
 

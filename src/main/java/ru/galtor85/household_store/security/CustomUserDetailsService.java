@@ -6,8 +6,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import ru.galtor85.household_store.repository.SecurityUserRepository;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.repository.auth.SecurityUserRepository;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 @Slf4j
 @Service

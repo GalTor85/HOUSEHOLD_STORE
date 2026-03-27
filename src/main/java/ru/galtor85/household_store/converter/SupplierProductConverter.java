@@ -2,12 +2,12 @@ package ru.galtor85.household_store.converter;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.SupplierProductDto;
-import ru.galtor85.household_store.entity.Product;
-import ru.galtor85.household_store.entity.Supplier;
-import ru.galtor85.household_store.entity.SupplierProduct;
-import ru.galtor85.household_store.repository.ProductRepository;
-import ru.galtor85.household_store.repository.SupplierRepository;
+import ru.galtor85.household_store.dto.response.supplier.SupplierProductDto;
+import ru.galtor85.household_store.entity.product.Product;
+import ru.galtor85.household_store.entity.supplier.Supplier;
+import ru.galtor85.household_store.entity.supplier.SupplierProduct;
+import ru.galtor85.household_store.repository.product.ProductRepository;
+import ru.galtor85.household_store.repository.supplier.SupplierRepository;
 
 @Component
 @RequiredArgsConstructor

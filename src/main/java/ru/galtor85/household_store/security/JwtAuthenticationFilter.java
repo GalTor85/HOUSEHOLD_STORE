@@ -18,11 +18,14 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-import ru.galtor85.household_store.advice.exception.*;
-import ru.galtor85.household_store.dto.ApiResponse;
-import ru.galtor85.household_store.repository.BlacklistedTokenRepository;
-import ru.galtor85.household_store.service.JwtTokenHolder;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.advice.exception.auth.TokenExpiredException;
+import ru.galtor85.household_store.advice.exception.auth.TokenMalformedException;
+import ru.galtor85.household_store.advice.exception.auth.TokenSecurityException;
+import ru.galtor85.household_store.advice.exception.auth.TokenUnsupportedException;
+import ru.galtor85.household_store.dto.response.system.ApiResponse;
+import ru.galtor85.household_store.repository.security.BlacklistedTokenRepository;
+import ru.galtor85.household_store.service.auth.JwtTokenHolder;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.io.IOException;
 

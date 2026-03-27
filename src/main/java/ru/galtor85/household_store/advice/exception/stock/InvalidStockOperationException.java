@@ -1,0 +1,20 @@
+package ru.galtor85.household_store.advice.exception.stock;
+
+public class InvalidStockOperationException extends RuntimeException {
+    private final int currentStock;
+    private final int requestedChange;
+
+    public InvalidStockOperationException(int currentStock, int requestedChange) {
+        super();
+        this.currentStock = currentStock;
+        this.requestedChange = requestedChange;
+    }
+
+    public int getCurrentStock() {
+        return currentStock;
+    }
+
+    public int getRequestedChange() {
+        return requestedChange;
+    }
+}

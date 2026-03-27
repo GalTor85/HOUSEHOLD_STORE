@@ -2,10 +2,10 @@ package ru.galtor85.household_store.calculator;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.WarehouseStockDto;
-import ru.galtor85.household_store.entity.ProductStock;
-import ru.galtor85.household_store.entity.Warehouse;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.dto.response.warehouse.WarehouseStockDto;
+import ru.galtor85.household_store.entity.product.ProductStock;
+import ru.galtor85.household_store.entity.warehouse.Warehouse;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.util.List;
 

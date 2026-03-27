@@ -13,13 +13,21 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import ru.galtor85.household_store.advice.exception.CustomAuthenticationException;
-import ru.galtor85.household_store.dto.*;
-import ru.galtor85.household_store.entity.User;
+import ru.galtor85.household_store.advice.exception.auth.CustomAuthenticationException;
+import ru.galtor85.household_store.dto.response.order.PurchaseOrderDto;
+import ru.galtor85.household_store.dto.request.order.PurchaseOrderCreateRequest;
+import ru.galtor85.household_store.dto.request.order.ReceiveAndStockRequest;
+import ru.galtor85.household_store.dto.request.supplier.SupplierCreateRequest;
+import ru.galtor85.household_store.dto.request.supplier.SupplierProductRequest;
+import ru.galtor85.household_store.dto.request.supplier.SupplierUpdateRequest;
+import ru.galtor85.household_store.dto.response.system.ApiResponse;
+import ru.galtor85.household_store.dto.response.supplier.SupplierDto;
+import ru.galtor85.household_store.dto.response.supplier.SupplierProductDto;
+import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.security.SecurityUser;
-import ru.galtor85.household_store.service.*;
-
-import java.util.List;
+import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.manager.ManagerPurchaseService;
+import ru.galtor85.household_store.service.user.UserSearchService;
 
 @SecurityRequirement(name = "Bearer Authentication")
 @Slf4j

@@ -14,13 +14,32 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import ru.galtor85.household_store.advice.exception.CustomAuthenticationException;
-import ru.galtor85.household_store.dto.*;
-import ru.galtor85.household_store.entity.User;
-import ru.galtor85.household_store.entity.Warehouse;
-import ru.galtor85.household_store.mapper.WarehouseMapper;
+import ru.galtor85.household_store.advice.exception.auth.CustomAuthenticationException;
+import ru.galtor85.household_store.dto.response.product.ProductDto;
+import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
+import ru.galtor85.household_store.dto.response.product.ProductStockDistributionDto;
+import ru.galtor85.household_store.dto.response.product.ProductStockDto;
+import ru.galtor85.household_store.dto.request.product.ProductCreateRequest;
+import ru.galtor85.household_store.dto.request.product.ProductUpdateRequest;
+import ru.galtor85.household_store.dto.request.stock.StockWriteOffRequest;
+import ru.galtor85.household_store.dto.request.warehouse.StorageCellCreateRequest;
+import ru.galtor85.household_store.dto.request.warehouse.WarehouseCreateRequest;
+import ru.galtor85.household_store.dto.response.system.ApiResponse;
+import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
+import ru.galtor85.household_store.dto.response.warehouse.StorageCellDto;
+import ru.galtor85.household_store.dto.response.warehouse.WarehouseDto;
+import ru.galtor85.household_store.dto.response.warehouse.WarehouseStockSummaryDto;
+import ru.galtor85.household_store.entity.user.User;
+import ru.galtor85.household_store.entity.warehouse.CellType;
+import ru.galtor85.household_store.entity.warehouse.Warehouse;
+import ru.galtor85.household_store.mapper.warehouse.WarehouseMapper;
 import ru.galtor85.household_store.security.SecurityUser;
-import ru.galtor85.household_store.service.*;
+import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.manager.ManagerProductService;
+import ru.galtor85.household_store.service.manager.ManagerPurchaseService;
+import ru.galtor85.household_store.service.stock.StockService;
+import ru.galtor85.household_store.service.user.UserSearchService;
+import ru.galtor85.household_store.service.warehouse.WarehouseService;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -308,8 +327,8 @@ public class ManagerInventoryController {
             @PathVariable Long warehouseId,
             @RequestParam(required = false) String cellType) {
 
-        ru.galtor85.household_store.entity.CellType type = cellType != null ?
-                ru.galtor85.household_store.entity.CellType.valueOf(cellType.toUpperCase()) : null;
+        CellType type = cellType != null ?
+                CellType.valueOf(cellType.toUpperCase()) : null;
 
         List<StorageCellDto> cells = warehouseService.getAvailableCells(warehouseId, type);
 

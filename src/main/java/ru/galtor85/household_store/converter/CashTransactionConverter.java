@@ -3,12 +3,12 @@ package ru.galtor85.household_store.converter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.CashTransactionDto;
-import ru.galtor85.household_store.entity.CashRegister;
-import ru.galtor85.household_store.entity.CashTransaction;
-import ru.galtor85.household_store.entity.Invoice;
-import ru.galtor85.household_store.entity.User;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.dto.response.finance.CashTransactionDto;
+import ru.galtor85.household_store.entity.finance.CashRegister;
+import ru.galtor85.household_store.entity.finance.CashTransaction;
+import ru.galtor85.household_store.entity.finance.Invoice;
+import ru.galtor85.household_store.entity.user.User;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;

@@ -3,11 +3,11 @@ package ru.galtor85.household_store.converter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.CurrencyCreateRequest;
-import ru.galtor85.household_store.dto.CurrencyDto;
-import ru.galtor85.household_store.dto.CurrencyUpdateRequest;
-import ru.galtor85.household_store.entity.Currency;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.dto.request.finance.CurrencyCreateRequest;
+import ru.galtor85.household_store.dto.response.finance.CurrencyDto;
+import ru.galtor85.household_store.dto.request.finance.CurrencyUpdateRequest;
+import ru.galtor85.household_store.entity.finance.Currency;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

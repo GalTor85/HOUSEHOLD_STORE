@@ -2,7 +2,7 @@ package ru.galtor85.household_store.calculator;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.CartItemDto;
+import ru.galtor85.household_store.dto.response.cart.CartItemDto;
 
 import java.math.BigDecimal;
 import java.util.List;

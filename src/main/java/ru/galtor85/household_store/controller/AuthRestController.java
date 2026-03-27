@@ -8,12 +8,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import ru.galtor85.household_store.dto.*;
-import ru.galtor85.household_store.service.AuthService;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.dto.request.auth.LoginFormRequest;
+import ru.galtor85.household_store.dto.request.auth.RefreshTokenRequest;
+import ru.galtor85.household_store.dto.request.auth.UserCreateRequest;
+import ru.galtor85.household_store.dto.response.system.ApiResponse;
+import ru.galtor85.household_store.dto.response.auth.AuthResponse;
+import ru.galtor85.household_store.dto.response.user.UserResponse;
+import ru.galtor85.household_store.service.auth.AuthService;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 @Slf4j
 @RestController
@@ -43,7 +46,7 @@ public class AuthRestController {
     @Operation(summary = "Login to the system",
             description = "Authenticate user and get JWT token")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
-            @Valid @RequestBody LoginForm request) {
+            @Valid @RequestBody LoginFormRequest request) {
 
         AuthResponse authResponse = authService.login(request);
 

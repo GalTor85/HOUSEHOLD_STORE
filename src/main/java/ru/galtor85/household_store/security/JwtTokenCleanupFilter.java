@@ -8,8 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import ru.galtor85.household_store.service.JwtTokenHolder;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.service.auth.JwtTokenHolder;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.io.IOException;
 

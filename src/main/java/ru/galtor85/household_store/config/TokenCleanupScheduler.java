@@ -5,8 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.repository.BlacklistedTokenRepository;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.repository.security.BlacklistedTokenRepository;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.time.LocalDateTime;
 

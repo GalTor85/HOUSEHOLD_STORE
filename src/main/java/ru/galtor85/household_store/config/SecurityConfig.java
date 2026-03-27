@@ -19,11 +19,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import ru.galtor85.household_store.advice.exception.AuthenticationManagerException;
-import ru.galtor85.household_store.dto.ApiResponse;
+import ru.galtor85.household_store.advice.exception.auth.AuthenticationManagerException;
+import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.security.JwtAuthenticationFilter;
 import ru.galtor85.household_store.security.JwtTokenCleanupFilter;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.service.i18n.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 

@@ -8,12 +8,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.galtor85.household_store.dto.ApiResponse;
-import ru.galtor85.household_store.dto.HealthStatus;
-import ru.galtor85.household_store.dto.HomeInfo;
-import ru.galtor85.household_store.dto.SystemInfo;
-import ru.galtor85.household_store.service.SystemService;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.dto.response.system.ApiResponse;
+import ru.galtor85.household_store.dto.response.system.HealthStatus;
+import ru.galtor85.household_store.dto.response.system.HomeInfo;
+import ru.galtor85.household_store.dto.response.system.SystemInfo;
+import ru.galtor85.household_store.service.system.SystemService;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.time.LocalDateTime;
 

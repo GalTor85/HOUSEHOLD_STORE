@@ -10,9 +10,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import ru.galtor85.household_store.dto.*;
-import ru.galtor85.household_store.service.CurrencyService;
-import ru.galtor85.household_store.service.MessageService;
+import ru.galtor85.household_store.dto.response.finance.CurrencyDto;
+import ru.galtor85.household_store.dto.request.finance.CurrencyCreateRequest;
+import ru.galtor85.household_store.dto.request.finance.CurrencyUpdateRequest;
+import ru.galtor85.household_store.dto.response.system.ApiResponse;
+import ru.galtor85.household_store.service.currency.CurrencyService;
+import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 import java.util.List;

@@ -1,0 +1,114 @@
+package ru.galtor85.household_store.mapper.product;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import ru.galtor85.household_store.dto.request.product.AttributeCreateRequest;
+import ru.galtor85.household_store.dto.request.product.AttributeUpdateRequest;
+import ru.galtor85.household_store.dto.response.product.ProductAttributeDto;
+import ru.galtor85.household_store.entity.product.Product;
+import ru.galtor85.household_store.entity.product.ProductAttribute;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class ProductAttributeMapper {
+
+    public ProductAttribute toEntity(AttributeCreateRequest request, Product product) {
+        if (request == null) {
+            return null;
+        }
+
+        return ProductAttribute.builder()
+                .name(request.getName())
+                .value(request.getValue())
+                .order(request.getOrder() != null ? request.getOrder() : 0)
+                .required(request.getRequired() != null ? request.getRequired() : false)
+                .variant(request.getVariant() != null ? request.getVariant() : false)
+                .product(product)
+                .build();
+    }
+
+    public ProductAttribute toEntity(AttributeUpdateRequest request, Product product) {
+        if (request == null) {
+            return null;
+        }
+
+        return ProductAttribute.builder()
+                .id(request.getId())  // ID нужен для обновления
+                .name(request.getName())
+                .value(request.getValue())
+                .order(request.getOrder())
+                .required(request.getRequired())
+                .variant(request.getVariant())
+                .product(product)
+                .build();
+    }
+
+    public void updateEntity(ProductAttribute attribute, AttributeUpdateRequest request) {
+        if (attribute == null || request == null) {
+            return;
+        }
+
+        if (request.getName() != null) {
+            attribute.setName(request.getName());
+        }
+        if (request.getValue() != null) {
+            attribute.setValue(request.getValue());
+        }
+        if (request.getOrder() != null) {
+            attribute.setOrder(request.getOrder());
+        }
+        if (request.getRequired() != null) {
+            attribute.setRequired(request.getRequired());
+        }
+        if (request.getVariant() != null) {
+            attribute.setVariant(request.getVariant());
+        }
+    }
+
+    public List<ProductAttribute> toEntityList(List<?> requests, Product product) {
+        if (requests == null) {
+            return null;
+        }
+
+        return requests.stream()
+                .map(req -> {
+                    if (req instanceof AttributeCreateRequest) {
+                        return toEntity((AttributeCreateRequest) req, product);
+                    } else if (req instanceof AttributeUpdateRequest) {
+                        return toEntity((AttributeUpdateRequest) req, product);
+                    }
+                    return null;
+                })
+                .collect(Collectors.toList());
+    }
+
+    public ProductAttributeDto toDto(ProductAttribute attribute) {
+        if (attribute == null) {
+            return null;
+        }
+
+        return ProductAttributeDto.builder()
+                .id(attribute.getId())
+                .name(attribute.getName())
+                .value(attribute.getValue())
+                .order(attribute.getOrder())
+                .required(attribute.getRequired())
+                .variant(attribute.getVariant())
+                .build();
+    }
+
+    public List<ProductAttributeDto> toDtoList(List<ProductAttribute> attributes) {
+        if (attributes == null) {
+            return null;
+        }
+
+        return attributes.stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+}
