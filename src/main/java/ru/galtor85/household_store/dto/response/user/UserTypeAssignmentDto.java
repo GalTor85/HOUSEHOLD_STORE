@@ -1,5 +1,6 @@
 package ru.galtor85.household_store.dto.response.user;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "User type assignment DTO", title = "User Type Assignment")
 public class UserTypeAssignmentDto {
 

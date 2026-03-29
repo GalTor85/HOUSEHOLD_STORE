@@ -72,7 +72,7 @@ public class CurrencyValidator {
     public void validateBaseCurrencyExists() {
         if (!currencyRepository.existsByIsBaseTrue()) {
             log.error(messageService.get("currency.base.not.found"));
-            throw new IllegalArgumentException(
+            throw new IllegalStateException(
                     messageService.get("currency.base.not.found")
             );
         }

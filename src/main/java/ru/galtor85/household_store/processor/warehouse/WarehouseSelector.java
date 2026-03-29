@@ -20,11 +20,14 @@ public class WarehouseSelector {
     private final WarehouseConfig warehouseConfig;
     private final MessageService messageService;
 
+    /**
+     * Выбирает склад с максимальным приоритетом
+     */
     public Long selectByPriority(Map<Long, Integer> warehousePriorities, Long orderId) {
         if (warehousePriorities.isEmpty()) {
             Long defaultWarehouse = warehouseConfig.getDefaultWarehouseId();
-            log.info(messageService.get("warehouse.resolver.using.default",
-                    defaultWarehouse, orderId));
+            log.info(messageService.get("warehouse.resolver.using.default"),
+                    defaultWarehouse, orderId);
             return defaultWarehouse;
         }
 
@@ -33,22 +36,28 @@ public class WarehouseSelector {
                 .map(Map.Entry::getKey)
                 .orElse(warehouseConfig.getDefaultWarehouseId());
 
-        log.info(messageService.get("warehouse.resolver.selected",
+        log.info(messageService.get("warehouse.resolver.selected"),
                 selectedWarehouse, orderId,
-                warehousePriorities.getOrDefault(selectedWarehouse, 0)));
+                warehousePriorities.getOrDefault(selectedWarehouse, 0));
 
         return selectedWarehouse;
     }
 
+    /**
+     * Использует принудительно указанный склад
+     */
     public Long selectForced(Long forcedWarehouseId, SalesOrder salesOrder) {
         if (forcedWarehouseId != null) {
-            log.info(messageService.get("warehouse.resolver.using.forced",
-                    forcedWarehouseId, salesOrder.getId()));
+            log.info(messageService.get("warehouse.resolver.using.forced"),
+                    forcedWarehouseId, salesOrder.getId());
             return forcedWarehouseId;
         }
         return null;
     }
 
+    /**
+     * Возвращает отсортированные предложения складов
+     */
     public List<WarehouseSuggestion> getSortedSuggestions(Map<Long, Integer> suggestions) {
         return suggestions.entrySet().stream()
                 .map(e -> new WarehouseSuggestion(e.getKey(), e.getValue()))
@@ -56,6 +65,9 @@ public class WarehouseSelector {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Внутренний класс для предложения склада
+     */
     @lombok.Data
     @lombok.AllArgsConstructor
     public static class WarehouseSuggestion {

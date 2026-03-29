@@ -8,23 +8,28 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.entity.finance.Currency;
 import ru.galtor85.household_store.entity.user.Role;
 import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.entity.user.UserType;
+import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.repository.auth.SecurityUserRepository;
+import ru.galtor85.household_store.repository.currency.CurrencyRepository;
 import ru.galtor85.household_store.repository.user.UserRepository;
+import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
 import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.security.SecurityUserFactory;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
 
 import java.time.LocalDate;
-import java.util.Locale;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class DatabaseInitializer {
+
 
     private final UserRepository userRepository;
     private final SecurityUserRepository securityUserRepository;
@@ -33,21 +38,27 @@ public class DatabaseInitializer {
     private final MessageService messageService;
     private final JdbcTemplate jdbcTemplate;
     private final UserTypeAssignmentService userTypeAssignmentService;
+    private final WarehouseRepository warehouseRepository;
+    private final WarehouseConfig warehouseConfig;
+    private final CurrencyRepository currencyRepository;
+    private final CurrencyConfig currencyConfig;
 
     @PostConstruct
     @Transactional
     public void init() {
-        Locale locale = Locale.getDefault();
-
         if (!isTableExists("users")) {
             log.info(messageService.get("database-initializer.log.tables.not.ready"));
             return;
         }
 
+
+
         log.info(messageService.get("database-initializer.log.schema.ready"));
 
-        createDefaultAdmin(locale);
-        createDefaultManager(locale);
+        createDefaultAdmin();
+        createDefaultManager();
+        createDefaultWarehouse();
+        createDefaultCurrency();
 
         log.info(messageService.get("database-initializer.log.completed"));
     }
@@ -59,27 +70,16 @@ public class DatabaseInitializer {
             Integer result = jdbcTemplate.queryForObject(query, Integer.class, schema, tableName);
             return result != null && result == 1;
         } catch (DataAccessException e) {
-            log.debug(messageService.get("database-initializer.log.table.not.exists", tableName));
+            log.debug(messageService.get("database-initializer.log.table.not.exists"), tableName);
             return false;
         }
     }
 
-    private boolean isDatabaseReady() {
-        try {
-            jdbcTemplate.execute("SELECT 1");
-            return isTableExists("users") && isTableExists("security_users");
-        } catch (Exception e) {
-            log.debug(messageService.get("database-initializer.log.database.not.ready", e.getMessage()));
-            return false;
-        }
-    }
-
-    private void createDefaultAdmin(Locale locale) {
+    private void createDefaultAdmin() {
         try {
             if (userRepository.findByEmail("admin@household.store").isEmpty()) {
                 log.info(messageService.get("database-initializer.log.creating.admin"));
 
-                // Создаем User
                 User admin = User.builder()
                         .email("admin@household.store")
                         .firstName(messageService.get("admin-initializer.admin.default.firstname"))
@@ -90,14 +90,12 @@ public class DatabaseInitializer {
 
                 User savedAdmin = userRepository.save(admin);
 
-                // Создаем SecurityUser для администратора (ТОЛЬКО с userId)
                 SecurityUser adminSecurity = securityUserFactory.createNew(
-                        savedAdmin,  // User нужен только для получения ID
+                        savedAdmin,
                         passwordEncoder.encode("Admin123!"),
                         Role.ADMIN
                 );
 
-                // Сохраняем SecurityUser отдельно
                 securityUserRepository.save(adminSecurity);
 
                 log.info(messageService.get("admin-initializer.log.admin.created",
@@ -110,7 +108,7 @@ public class DatabaseInitializer {
         }
     }
 
-    private void createDefaultManager(Locale locale) {
+    private void createDefaultManager() {
         try {
             if (userRepository.findByEmail("manager@household.store").isEmpty()) {
                 log.info(messageService.get("database-initializer.log.creating.manager"));
@@ -133,14 +131,12 @@ public class DatabaseInitializer {
 
                 securityUserRepository.save(managerSecurity);
 
-                // ДЛЯ МЕНЕДЖЕРА - EMPLOYEE (сотрудник)
                 userTypeAssignmentService.assignUserType(
                         savedManager.getId(),
                         UserType.EMPLOYEE,
                         "system",
                         "Default manager user"
                 );
-
 
                 log.info(messageService.get("admin-initializer.log.manager.created",
                         "manager@household.store", "Manager123!"));
@@ -152,9 +148,79 @@ public class DatabaseInitializer {
         }
     }
 
+    private void createDefaultWarehouse() {
+        try {
+            Long defaultId = warehouseConfig.getDefaultId();
+            String defaultName = messageService.get("warehouse.default.name");
+
+            if (!warehouseRepository.existsById(defaultId)) {
+                log.info(messageService.get("database-initializer.log.creating.warehouse", defaultName));
+
+                Warehouse defaultWarehouse = Warehouse.builder()
+                        .code(warehouseConfig.getDefaultCode())
+                        .name(defaultName)
+                        .description(messageService.get("warehouse.default.description"))
+                        .barcode("WH-DEFAULT-BARCODE-" + System.currentTimeMillis())
+                        .barcodeFormat("CODE_128")
+                        .address(messageService.get("warehouse.default.address"))
+                        .isActive(true)
+                        .totalCapacity(1000)
+                        .usedCapacity(0)
+                        .createdBy(1L)
+                        .build();
+
+                warehouseRepository.save(defaultWarehouse);
+
+                log.info(messageService.get("database-initializer.log.warehouse.created", defaultName, defaultId));
+            } else {
+                log.debug(messageService.get("database-initializer.log.warehouse.exists", defaultName, defaultId));
+            }
+        } catch (Exception e) {
+            log.error(messageService.get("database-initializer.log.warehouse.create.failed", e.getMessage()), e);
+        }
+    }
+
+    private void createDefaultCurrency() {
+        try {
+            String defaultCode = currencyConfig.getDefaultCode();
+            String defaultName = messageService.get("currency.default.name");
+            String defaultSymbol = messageService.get("currency.default.symbol");
+
+            if (!currencyRepository.existsByCode(defaultCode)) {
+                log.info(messageService.get("database-initializer.log.creating.currency", defaultCode));
+
+                boolean hasBaseCurrency = currencyRepository.existsByIsBaseTrue();
+
+                Currency defaultCurrency = Currency.builder()
+                        .code(defaultCode)
+                        .name(defaultName)
+                        .symbol(defaultSymbol)
+                        .isBase(!hasBaseCurrency)
+                        .exchangeRate(currencyConfig.getDefaultExchangeRate())
+                        .decimalPlaces(currencyConfig.getDefaultDecimalPlaces())
+                        .isActive(currencyConfig.isDefaultActive())
+                        .createdBy(1L)
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+
+                currencyRepository.save(defaultCurrency);
+
+                String baseSuffix = !hasBaseCurrency ?
+                        messageService.get("database-initializer.log.currency.base.suffix") :
+                        messageService.get("database-initializer.log.currency.not.base.suffix");
+
+                log.info(messageService.get("database-initializer.log.currency.created", defaultCode, baseSuffix));
+            } else {
+                log.debug(messageService.get("database-initializer.log.currency.exists", defaultCode));
+            }
+        } catch (Exception e) {
+            log.error(messageService.get("database-initializer.log.currency.create.failed", e.getMessage()), e);
+        }
+    }
+
     @Transactional
     public void forceInitialize() {
-        Locale locale = Locale.getDefault();
         log.info(messageService.get("database-initializer.log.force.start"));
 
         if (!isDatabaseReady()) {
@@ -162,9 +228,21 @@ public class DatabaseInitializer {
             return;
         }
 
-        createDefaultAdmin(locale);
-        createDefaultManager(locale);
+        createDefaultAdmin();
+        createDefaultManager();
+        createDefaultWarehouse();
+        createDefaultCurrency();
 
         log.info(messageService.get("database-initializer.log.force.completed"));
+    }
+
+    private boolean isDatabaseReady() {
+        try {
+            jdbcTemplate.execute("SELECT 1");
+            return isTableExists("users") && isTableExists("security_users");
+        } catch (Exception e) {
+            log.debug(messageService.get("database-initializer.log.database.not.ready", e.getMessage()));
+            return false;
+        }
     }
 }

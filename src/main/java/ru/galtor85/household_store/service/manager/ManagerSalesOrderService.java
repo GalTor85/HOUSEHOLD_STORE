@@ -9,7 +9,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.cart.CartNotFoundException;
-import ru.galtor85.household_store.advice.exception.order.OrderNotFoundException;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.advice.exception.rollback.RollbackNotAllowedException;
 import ru.galtor85.household_store.converter.SalesOrderConverter;
@@ -145,10 +144,6 @@ public class ManagerSalesOrderService {
         // Поиск заказов через репозиторий
         Page<SalesOrder> orders = salesOrderRepository.search(userId, orderStatus, start, end, pageable);
 
-        if (orders.isEmpty()) {
-            log.debug(messageService.get("manager.orders.not.found"));
-            throw new OrderNotFoundException();
-        }
         log.debug(messageService.get("manager.orders.fetched.log", orders.getTotalElements()));
 
         return orders.map(salesOrderConverter::toDto);

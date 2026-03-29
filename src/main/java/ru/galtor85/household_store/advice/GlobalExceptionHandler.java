@@ -121,8 +121,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserNotFoundException(
-            UserNotFoundException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleUserNotFoundException() {
         String message = messageService.get("global-exception-handler.error.user.not.found");
         log.error("UserNotFoundException: {}", message);
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -513,7 +512,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidStatusTransitionException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidStatusTransition(
-            InvalidStatusTransitionException e, Locale locale) {
+            InvalidStatusTransitionException e) {
 
         String message = messageService.get(
                 "manager.order.error.invalid.status.transition",
@@ -819,8 +818,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(TokenMalformedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleTokenMalformed(
-            TokenMalformedException e, Locale locale) {
+    public ResponseEntity<ApiResponse<Void>> handleTokenMalformed() {
 
         String message = messageService.get("auth.error.token.malformed");
         log.warn("TokenMalformedException: {}", message);
@@ -1542,6 +1540,68 @@ public class GlobalExceptionHandler {
         }
 
         return messageService.get("global-exception-handler.validation.field.error", field);
+    }
+
+    // =========================================================================
+// БЛОК: СИСТЕМНЫЕ ИСКЛЮЧЕНИЯ
+// =========================================================================
+
+    /**
+     * Обработчик IllegalStateException - ошибка состояния системы
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalStateException(
+            IllegalStateException e) {
+
+        log.error("System state error: {}", e.getMessage());
+        log.debug("Stack trace: ", e);
+
+        String message = messageService.getWithDefault(
+                "system.error.state",
+                "System configuration error: ",e.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(message));
+    }
+
+    /**
+     * Обработчик UnsupportedOperationException - неподдерживаемая операция
+     */
+    @ExceptionHandler(UnsupportedOperationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnsupportedOperationException(
+            UnsupportedOperationException e) {
+
+        log.error("Unsupported operation: {}", e.getMessage(), e);
+
+        String message = messageService.getWithDefault(
+                "system.error.unsupported",
+                "Operation not supported: " + e.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(message));
+    }
+
+    /**
+     * Обработчик NumberFormatException - ошибка парсинга чисел
+     */
+    @ExceptionHandler(NumberFormatException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNumberFormatException(
+            NumberFormatException e) {
+
+        log.warn("Number format error: {}", e.getMessage());
+
+        String message = messageService.getWithDefault(
+                "validation.error.number.format",
+                "Invalid number format: " + e.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
     }
 
     private String formatFileSize(long size) {

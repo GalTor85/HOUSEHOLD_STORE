@@ -1,5 +1,6 @@
 package ru.galtor85.household_store.dto.response.finance;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,25 +14,26 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Currency DTO")
 public class CurrencyDto {
 
     @Schema(description = "Currency ID", example = "1")
-    private Long id;  // ← ДОБАВИТЬ ЭТО ПОЛЕ
+    private Long id;
 
     @Schema(description = "Currency code", example = "RUB")
     private String code;
 
-    @Schema(description = "Currency name", example = "Российский рубль")
+    @Schema(description = "Currency name (from database)", example = "Russian Ruble")
     private String name;
 
     @Schema(description = "Localized currency name", example = "Российский рубль")
     private String localizedName;
 
-    @Schema(description = "Currency symbol", example = "₽")
+    @Schema(description = "Currency symbol (from database)", example = "RUB")
     private String symbol;
 
-    @Schema(description = "Localized currency symbol", example = "руб.")
+    @Schema(description = "Localized currency symbol", example = "₽")
     private String localizedSymbol;
 
     @Schema(description = "Is base currency", example = "true")

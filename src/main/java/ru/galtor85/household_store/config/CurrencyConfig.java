@@ -6,22 +6,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+
 @Slf4j
 @Getter
 @Setter
 @Component
-@ConfigurationProperties(prefix = "app.warehouse")
-public class WarehouseConfig {
+@ConfigurationProperties(prefix = "app.currency")
+public class CurrencyConfig {
 
-    private Long defaultId;
     private String defaultCode;
-
-
-    public Long getDefaultWarehouseId() {
-        return defaultId;
-    }
-
-    public String getDefaultWarehouseCode() {
-        return defaultCode;
-    }
+    private BigDecimal defaultExchangeRate;
+    private Integer defaultDecimalPlaces;
+    private boolean defaultActive;
+    private boolean defaultBase;
 }

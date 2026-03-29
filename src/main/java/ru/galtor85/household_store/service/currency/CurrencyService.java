@@ -93,9 +93,7 @@ public class CurrencyService {
     @Transactional(readOnly = true)
     public CurrencyDto getBaseCurrency() {
         validator.validateBaseCurrencyExists();
-        Currency currency = currencyRepository.findByIsBaseTrue()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        messageService.get("currency.base.not.found")));
+        Currency currency = currencyRepository.findByIsBaseTrue().get();
         return converter.toDto(currency);
     }
 

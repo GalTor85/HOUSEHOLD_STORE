@@ -97,11 +97,6 @@ public class AdminRestController {
                 .map(userMapper::build)
                 .collect(Collectors.toList());
 
-        if (users.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(
-                    messageService.get("user-search-service.user.search.criteria.not.found", mobileNumber, email, firstName, lastName)));
-        }
-
         log.info(messageService.get("admin-rest-controller.log.returning.users", userResponses.size()));
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -220,12 +215,6 @@ public class AdminRestController {
 
         List<User> users = userSearchService.searchUsersByCriteria(identify, identify, null, null, sort);
 
-        if (users.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(
-                    messageService.get("admin-rest-controller.user.search.not.found", identify.toString(),
-                    List.of())));
-        }
-
         List<UserResponse> userResponses = users.stream()
                 .map(userMapper::build)
                 .collect(Collectors.toList());
@@ -266,11 +255,6 @@ public class AdminRestController {
             @RequestParam(defaultValue = "20") int size) {
 
         Page<RollbackApprovalDto> approvals = rollbackService.getPendingRollbacks(page, size);
-
-        if (approvals.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(
-                    messageService.get("admin-rollback.pending.fetched.not.found")));
-        }
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("admin.rollback.pending.fetched"),

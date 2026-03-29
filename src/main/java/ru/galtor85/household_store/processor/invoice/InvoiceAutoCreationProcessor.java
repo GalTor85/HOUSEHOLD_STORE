@@ -1,5 +1,6 @@
 package ru.galtor85.household_store.processor.invoice;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -25,8 +26,17 @@ public class InvoiceAutoCreationProcessor {
     private final InvoiceRepository invoiceRepository;
     private final NumberGenerator numberGenerator;
     private final MessageService messageService;
+    private final PurchaseOrderInvoiceCreator purchaseOrderInvoiceCreator;
+    private final SalesOrderInvoiceCreator salesOrderInvoiceCreator;
 
     private final Map<Class<?>, InvoiceCreator<?>> creators = new HashMap<>();
+
+    @PostConstruct
+    public void init() {
+        registerCreator(PurchaseOrder.class, purchaseOrderInvoiceCreator);
+        registerCreator(SalesOrder.class, salesOrderInvoiceCreator);
+        log.info(messageService.get("invoice.creator.initialized"));
+    }
 
     /**
      * Регистрирует создателей счетов для разных типов заказов

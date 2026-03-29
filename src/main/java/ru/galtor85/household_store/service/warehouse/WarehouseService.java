@@ -8,7 +8,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.advice.exception.cell.CellNotFoundException;
 import ru.galtor85.household_store.advice.exception.warehouse.WarehouseNotFoundException;
 import ru.galtor85.household_store.dto.request.warehouse.StorageCellCreateRequest;
 import ru.galtor85.household_store.dto.request.warehouse.WarehouseCreateRequest;
@@ -170,11 +169,6 @@ public class WarehouseService {
         warehouseValidator.validateWarehouseExists(warehouseId);
 
         List<StorageCell> cells = storageCellRepository.findByWarehouseId(warehouseId);
-
-        if (cells.isEmpty()) {
-            log.warn(messageService.get("cells.error.not.found", warehouseId));
-            throw new CellNotFoundException();
-        }
 
         return cells.stream()
                 .map(cellMapper::toDto)
