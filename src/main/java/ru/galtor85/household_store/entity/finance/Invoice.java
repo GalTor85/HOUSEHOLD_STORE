@@ -170,7 +170,6 @@ public class Invoice {
      */
     public BigDecimal getTotalPaidAmount() {
         return cashTransactions.stream()
-                .filter(ct -> ct.getTransactionType() == TransactionType.INCOME)
                 .map(CashTransaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }

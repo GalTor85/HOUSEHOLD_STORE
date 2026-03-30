@@ -171,7 +171,7 @@ public class FinanceController {
             @RequestParam Long cashRegisterId) {
 
         User currentUser = getCurrentUser();
-        InvoiceDto invoice = invoiceService.markAsPartiallyPaid(invoiceId, amount, currentUser.getId());
+        InvoiceDto invoice = invoiceService.markAsPartiallyPaid(invoiceId, amount,cashRegisterId, currentUser.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("invoice.partially.paid.success", amount),

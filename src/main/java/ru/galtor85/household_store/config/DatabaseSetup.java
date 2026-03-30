@@ -58,7 +58,7 @@ public class DatabaseSetup {
                 host, port, databaseName));
         dataSource.setUsername(adminUser);
         dataSource.setPassword(adminPassword);
-        log.debug(messageService.get("database.setup.datasource.created"), adminUser, databaseName);
+        log.debug(messageService.get("database.setup.datasource.created", adminUser, databaseName));
         return dataSource;
     }
 
@@ -74,7 +74,7 @@ public class DatabaseSetup {
                 stmt.executeUpdate(createDbSql);
                 log.info(messageService.get("database.setup.database.created"), databaseName);
             } else {
-                log.debug(messageService.get("database.setup.database.exists"), databaseName);
+                log.debug(messageService.get("database.setup.database.exists", databaseName));
             }
         } catch (Exception e) {
             log.error(messageService.get("database.setup.database.check.failed"), e.getMessage(), e);

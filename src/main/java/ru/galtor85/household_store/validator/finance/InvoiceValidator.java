@@ -3,11 +3,17 @@ package ru.galtor85.household_store.validator.finance;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.galtor85.household_store.advice.exception.cash.InsufficientCashException;
 import ru.galtor85.household_store.advice.exception.cash.InvoiceNotFoundException;
+import ru.galtor85.household_store.advice.exception.invoice.InvoiceAlreadyCancelledException;
+import ru.galtor85.household_store.advice.exception.invoice.InvoiceAlreadyPaidException;
+import ru.galtor85.household_store.advice.exception.invoice.InvoiceAlreadyRefundedException;
 import ru.galtor85.household_store.dto.request.finance.InvoiceCreateRequest;
+import ru.galtor85.household_store.entity.finance.CashRegister;
 import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.finance.PaymentMethod;
+import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
@@ -21,6 +27,8 @@ public class InvoiceValidator {
 
     private final InvoiceRepository invoiceRepository;
     private final MessageService messageService;
+    private final CashTransactionRepository cashTransactionRepository;
+
 
     // =========================================================================
     // ВАЛИДАЦИЯ СУЩЕСТВОВАНИЯ
@@ -30,7 +38,7 @@ public class InvoiceValidator {
      * Проверяет существование счета
      */
     public Invoice validateInvoiceExists(Long invoiceId) {
-        return invoiceRepository.findById(invoiceId)
+        return invoiceRepository.findByIdWithTransactions(invoiceId)
                 .orElseThrow(() -> {
                     log.error(messageService.get("invoice.not.found", invoiceId));
                     return new InvoiceNotFoundException(invoiceId);
@@ -130,6 +138,15 @@ public class InvoiceValidator {
      * Проверяет, можно ли оплатить счет
      */
     public void validateInvoicePayable(Invoice invoice) {
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new InvoiceAlreadyPaidException(invoice.getId(), invoice.getInvoiceNumber());
+        }
+        if (invoice.getStatus() == InvoiceStatus.CANCELLED) {
+            throw new InvoiceAlreadyCancelledException(invoice.getId(), invoice.getInvoiceNumber());
+        }
+        if (invoice.getStatus() == InvoiceStatus.REFUNDED) {
+            throw new InvoiceAlreadyRefundedException(invoice.getId(), invoice.getInvoiceNumber());
+        }
         if (!invoice.isPayable()) {
             log.error(messageService.get("invoice.not.payable",
                     invoice.getId(), invoice.getStatus()));
@@ -151,11 +168,8 @@ public class InvoiceValidator {
             );
         }
 
-        BigDecimal remaining = invoice.getAmount();
-        if (invoice.getStatus() == InvoiceStatus.PARTIALLY_PAID) {
-            // TODO: вычислить уже оплаченную сумму
-            remaining = invoice.getAmount();
-        }
+        BigDecimal totalPaid = invoice.getTotalPaidAmount();
+        BigDecimal remaining = invoice.getAmount().subtract(totalPaid);
 
         if (paidAmount.compareTo(remaining) > 0) {
             log.error(messageService.get("invoice.partial.amount.exceeds",
@@ -166,6 +180,81 @@ public class InvoiceValidator {
             );
         }
     }
+
+    /**
+     * Проверяет существование счёта и его возможность оплаты
+     */
+    public Invoice validateInvoiceForPayment(Long invoiceId) {
+        Invoice invoice = invoiceRepository.findByIdWithTransactions(invoiceId)
+                .orElseThrow(() -> new InvoiceNotFoundException(invoiceId));
+        validateInvoicePayable(invoice);
+        return invoice;
+    }
+
+    /**
+     * Проверяет, что сумма оплаты не превышает остаток по счёту
+     */
+    public void validatePaymentAmount(Invoice invoice, BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            log.error(messageService.get("invoice.validation.payment.amount.invalid", amount));
+            throw new IllegalArgumentException(
+                    messageService.get("invoice.validation.payment.amount.invalid", amount)
+            );
+        }
+
+        BigDecimal remaining = invoice.getRemainingAmount();
+        if (amount.compareTo(remaining) > 0) {
+            log.error(messageService.get("invoice.validation.payment.amount.exceeds",
+                    amount, remaining));
+            throw new IllegalArgumentException(
+                    messageService.get("invoice.validation.payment.amount.exceeds",
+                            amount, remaining)
+            );
+        }
+    }
+
+    /**
+     * Проверяет, что в кассе достаточно средств для оплаты (если оплата наличными)
+     * Для прихода (INCOME) эта проверка не нужна, но для полноты оставляем
+     */
+    public void validateSufficientCashForPayment(CashRegister cashRegister, BigDecimal amount) {
+        if (cashRegister == null || amount == null) {
+            return;
+        }
+
+        // Только для расходов нужна проверка баланса
+        // Для оплаты счёта это приход, поэтому проверка не требуется
+        // Но если в будущем понадобится проверять расход, вот метод:
+
+        BigDecimal currentBalance = cashRegister.getCurrentBalance();
+        if (currentBalance.compareTo(amount) < 0) {
+            log.error(messageService.get("cash.register.insufficient.balance",
+                    currentBalance, amount));
+            throw new InsufficientCashException(currentBalance, amount);
+        }
+    }
+
+    /**
+     * Проверяет, не переплачивает ли клиент (сумма оплаты не должна превышать остаток)
+     */
+    public void validateNoOverpayment(Invoice invoice, BigDecimal amount) {
+        BigDecimal remaining = invoice.getAmount().subtract(
+                cashTransactionRepository.findByInvoiceId(invoice.getId()).stream()
+                        .filter(t -> t.getTransactionType() == ru.galtor85.household_store.entity.finance.TransactionType.INCOME)
+                        .map(ru.galtor85.household_store.entity.finance.CashTransaction::getAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add)
+        );
+
+        if (amount.compareTo(remaining) > 0) {
+            log.error(messageService.get("invoice.validation.overpayment",
+                    amount, remaining));
+            throw new IllegalArgumentException(
+                    messageService.get("invoice.validation.overpayment", amount, remaining)
+            );
+        }
+    }
+
+
 
     // =========================================================================
     // ВАЛИДАЦИЯ ОТМЕНЫ

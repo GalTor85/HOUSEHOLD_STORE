@@ -181,4 +181,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     @Query("SELECT COUNT(i) > 0 FROM Invoice i WHERE i.salesOrderId = :orderId " +
             "AND i.status IN ('PENDING', 'PARTIALLY_PAID')")
     boolean hasUnpaidInvoicesForSalesOrder(@Param("orderId") Long orderId);
+
+    @Query("SELECT i FROM Invoice i LEFT JOIN FETCH i.cashTransactions WHERE i.id = :id")
+    Optional<Invoice> findByIdWithTransactions(@Param("id") Long id);
 }

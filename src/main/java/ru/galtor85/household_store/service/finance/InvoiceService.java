@@ -17,6 +17,7 @@ import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
 import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.finance.PaymentMethod;
+import ru.galtor85.household_store.processor.invoice.InvoicePaymentProcessor;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
@@ -43,6 +44,7 @@ public class InvoiceService {
     private final InvoiceValidator invoiceValidator;
     private final NumberGenerator numberGenerator;
     private final MessageService messageService;
+    private final InvoicePaymentProcessor paymentProcessor;
 
     // =========================================================================
     // СОЗДАНИЕ СЧЕТА
@@ -168,38 +170,33 @@ public class InvoiceService {
      */
     @Transactional
     public InvoiceDto markAsPaid(Long invoiceId, Long cashRegisterId, Long cashierId) {
-        log.info(messageService.get("invoice.pay.start", invoiceId));
 
-        Invoice invoice = invoiceValidator.validateInvoiceExists(invoiceId);
-        invoiceValidator.validateInvoicePayable(invoice);
+        InvoicePaymentProcessor.InvoicePaymentResult result = paymentProcessor.processPayment(
+                invoiceId,
+                getInvoiceAmount(invoiceId),
+                cashRegisterId,
+                cashierId,
+                false
+        );
 
-        invoice.markAsPaid();
-        Invoice saved = invoiceRepository.save(invoice);
+        log.info(messageService.get("invoice.paid", result.getInvoice().getInvoiceNumber()));
 
-        log.info(messageService.get("invoice.paid", saved.getInvoiceNumber()));
-
-        return invoiceConverter.toDto(saved);
+        return invoiceConverter.toDto(result.getInvoice());
     }
 
     /**
      * Частичная оплата счета
      */
     @Transactional
-    public InvoiceDto markAsPartiallyPaid(Long invoiceId, BigDecimal paidAmount, Long cashierId) {
-        log.info(messageService.get("invoice.partial.pay.start", invoiceId, paidAmount));
+    public InvoiceDto markAsPartiallyPaid(Long invoiceId, BigDecimal paidAmount,Long cashRegisterId, Long cashierId) {
+        InvoicePaymentProcessor.InvoicePaymentResult result = paymentProcessor.processPayment(
+                invoiceId, paidAmount, cashRegisterId, cashierId, true
+        );
 
-        Invoice invoice = invoiceValidator.validateInvoiceExists(invoiceId);
-        invoiceValidator.validateInvoicePayable(invoice);
-        invoiceValidator.validatePartialPaymentAmount(invoice, paidAmount);
+        log.info(messageService.get("invoice.partially.paid",
+                result.getInvoice().getInvoiceNumber(), paidAmount));
 
-        // Для частичной оплаты создается отдельная операция,
-        // а статус счета меняется на PARTIALLY_PAID
-        invoice.setStatus(InvoiceStatus.PARTIALLY_PAID);
-        Invoice saved = invoiceRepository.save(invoice);
-
-        log.info(messageService.get("invoice.partial.paid", saved.getInvoiceNumber(), paidAmount));
-
-        return invoiceConverter.toDto(saved);
+        return invoiceConverter.toDto(result.getInvoice());
     }
 
     // =========================================================================
@@ -312,6 +309,15 @@ public class InvoiceService {
     // =========================================================================
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================
+
+    /**
+     * Получает сумму счёта по ID
+     */
+    private BigDecimal getInvoiceAmount(Long invoiceId) {
+        return invoiceRepository.findById(invoiceId)
+                .map(Invoice::getAmount)
+                .orElseThrow(() -> new InvoiceNotFoundException(invoiceId));
+    }
 
     private void validatePurchaseOrder(Long purchaseOrderId) {
         if (!purchaseOrderRepository.existsById(purchaseOrderId)) {

@@ -1,0 +1,24 @@
+package ru.galtor85.household_store.advice.exception.invoice;
+
+import lombok.Getter;
+
+@Getter
+public class InvoiceAlreadyRefundedException extends RuntimeException {
+
+    private final Long invoiceId;
+    private final String invoiceNumber;
+
+    public InvoiceAlreadyRefundedException(Long invoiceId, String invoiceNumber) {
+        super();
+        this.invoiceId = invoiceId;
+        this.invoiceNumber = invoiceNumber;
+    }
+
+    public InvoiceAlreadyRefundedException(Long invoiceId) {
+        this(invoiceId, null);
+    }
+
+    public InvoiceAlreadyRefundedException(String invoiceNumber) {
+        this(null, invoiceNumber);
+    }
+}

@@ -21,6 +21,9 @@ import ru.galtor85.household_store.advice.exception.cash.InsufficientCashExcepti
 import ru.galtor85.household_store.advice.exception.cash.InvoiceNotFoundException;
 import ru.galtor85.household_store.advice.exception.cell.*;
 import ru.galtor85.household_store.advice.exception.file.*;
+import ru.galtor85.household_store.advice.exception.invoice.InvoiceAlreadyCancelledException;
+import ru.galtor85.household_store.advice.exception.invoice.InvoiceAlreadyPaidException;
+import ru.galtor85.household_store.advice.exception.invoice.InvoiceAlreadyRefundedException;
 import ru.galtor85.household_store.advice.exception.order.*;
 import ru.galtor85.household_store.advice.exception.product.*;
 import ru.galtor85.household_store.advice.exception.rollback.*;
@@ -1455,8 +1458,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
-    // GlobalExceptionHandler.java
-
 // =========================================================================
 // ОБРАБОТКА ИСКЛЮЧЕНИЙ КАССЫ
 // =========================================================================
@@ -1503,6 +1504,69 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvoiceAlreadyPaidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvoiceAlreadyPaid(
+            InvoiceAlreadyPaidException e) {
+
+        log.warn("InvoiceAlreadyPaidException: id={}, number={}",
+                e.getInvoiceId(), e.getInvoiceNumber());
+
+        String message;
+        if (e.getInvoiceNumber() != null) {
+            message = messageService.get("invoice.already.paid.with.number", e.getInvoiceNumber());
+        } else if (e.getInvoiceId() != null) {
+            message = messageService.get("invoice.already.paid", e.getInvoiceId());
+        } else {
+            message = messageService.get("invoice.already.paid.unknown");
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvoiceAlreadyCancelledException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvoiceAlreadyCancelled(
+            InvoiceAlreadyCancelledException e) {
+
+        log.warn("InvoiceAlreadyCancelledException: id={}, number={}",
+                e.getInvoiceId(), e.getInvoiceNumber());
+
+        String message;
+        if (e.getInvoiceNumber() != null) {
+            message = messageService.get("invoice.already.cancelled.with.number", e.getInvoiceNumber());
+        } else if (e.getInvoiceId() != null) {
+            message = messageService.get("invoice.already.cancelled", e.getInvoiceId());
+        } else {
+            message = messageService.get("invoice.already.cancelled.unknown");
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)  // 409 Conflict
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(InvoiceAlreadyRefundedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvoiceAlreadyRefunded(
+            InvoiceAlreadyRefundedException e) {
+
+        log.warn("InvoiceAlreadyRefundedException: id={}, number={}",
+                e.getInvoiceId(), e.getInvoiceNumber());
+
+        String message;
+        if (e.getInvoiceNumber() != null) {
+            message = messageService.get("invoice.already.refunded.with.number", e.getInvoiceNumber());
+        } else if (e.getInvoiceId() != null) {
+            message = messageService.get("invoice.already.refunded", e.getInvoiceId());
+        } else {
+            message = messageService.get("invoice.already.refunded.unknown");
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)  // 409 Conflict
                 .body(ApiResponse.error(message));
     }
 
