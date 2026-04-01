@@ -30,6 +30,14 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
     List<CashTransaction> findByInvoiceId(Long invoiceId);
     Page<CashTransaction> findByInvoiceId(Long invoiceId, Pageable pageable);
 
+
+    /**
+     * Finds transactions for a specific invoice
+     * Sorted chronologically
+     */
+    @Query("SELECT ct FROM CashTransaction ct WHERE ct.invoice.id = :invoiceId ORDER BY ct.createdAt ASC")
+    List<CashTransaction> findByInvoiceIdOrdered(@Param("invoiceId") Long invoiceId);
+
     // =========================================================================
     // ЗАПРОСЫ ПО ПЕРИОДУ
     // =========================================================================
@@ -72,6 +80,22 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
                                                         @Param("startDate") LocalDateTime startDate,
                                                         @Param("endDate") LocalDateTime endDate);
 
+    @Query("SELECT COALESCE(SUM(ct.amount), 0) FROM CashTransaction ct " +
+            "WHERE ct.cashRegister.id = :cashRegisterId " +
+            "AND ct.transactionType = 'REFUND' " +
+            "AND ct.createdAt BETWEEN :startDate AND :endDate")
+    BigDecimal getTotalRefundByCashRegisterAndDateRange(
+            @Param("cashRegisterId") Long cashRegisterId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COALESCE(SUM(ct.amount), 0) FROM CashTransaction ct " +
+            "WHERE ct.cashRegister.id = :cashRegisterId " +
+            "AND ct.transactionType = :type")
+    BigDecimal getTotalAmountByTypeAndCashRegister(
+            @Param("cashRegisterId") Long cashRegisterId,
+            @Param("type") TransactionType type);
+
     // =========================================================================
     // ПРОВЕРКИ
     // =========================================================================
@@ -109,4 +133,32 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
     @Modifying
     @Query("DELETE FROM CashTransaction ct WHERE ct.invoice.id = :invoiceId")
     void deleteByInvoiceId(@Param("invoiceId") Long invoiceId);
+
+    /**
+     * Finds all transactions for a cash register after a specific date
+     * Sorted chronologically
+     */
+    @Query("SELECT ct FROM CashTransaction ct " +
+            "WHERE ct.cashRegister.id = :cashRegisterId " +
+            "AND ct.createdAt >= :startDate " +
+            "ORDER BY ct.createdAt ASC")
+    List<CashTransaction> findAllTransactionsAfterDate(
+            @Param("cashRegisterId") Long cashRegisterId,
+            @Param("startDate") LocalDateTime startDate);
+
+    /**
+     * Finds all cash register transactions up to a specific date
+     * Sorted chronologically
+     *
+     * @param cashRegisterId cash register identifier
+     * @param endDate maximum transaction date (inclusive)
+     * @return list of transactions sorted by creation date
+     */
+    @Query("SELECT ct FROM CashTransaction ct " +
+            "WHERE ct.cashRegister.id = :cashRegisterId " +
+            "AND ct.createdAt <= :endDate " +
+            "ORDER BY ct.createdAt ASC")
+    List<CashTransaction> findAllTransactionsUpToDate(
+            @Param("cashRegisterId") Long cashRegisterId,
+            @Param("endDate") LocalDateTime endDate);
 }

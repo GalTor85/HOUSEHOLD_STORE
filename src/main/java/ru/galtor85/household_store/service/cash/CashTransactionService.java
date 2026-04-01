@@ -24,7 +24,7 @@ import ru.galtor85.household_store.validator.cash.CashTransactionValidator;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -37,7 +37,6 @@ public class CashTransactionService {
     private final CashTransactionValidator validator;
     private final CashTransactionProcessor processor;
     private final CashTransactionConverter converter;
-    private final CashTransactionMapper mapper;
     private final CashRegisterService cashRegisterService;
     private final UserSearchService userSearchService;
     private final MessageService messageService;
@@ -125,13 +124,35 @@ public class CashTransactionService {
     }
 
     /**
-     * Получает все операции по счету
+     * Gets all transactions for an invoice with correct balance calculation
+     * Balance is calculated based on ALL cash register transactions, not just this invoice
+     *
+     * @param invoiceId invoice identifier
+     * @return list of transaction DTOs with correct sequential balances
      */
     @Transactional(readOnly = true)
     public List<CashTransactionDto> getTransactionsByInvoice(Long invoiceId) {
-        return cashTransactionRepository.findByInvoiceId(invoiceId).stream()
-                .map(this::enrichWithDetails)
-                .collect(Collectors.toList());
+        List<CashTransaction> transactions = cashTransactionRepository
+                .findByInvoiceIdOrdered(invoiceId);
+
+        if (transactions.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<CashTransactionDto> result = new ArrayList<>();
+
+        for (CashTransaction tx : transactions) {
+            // Just read saved balances - no calculation needed!
+            CashTransactionDto dto = converter.toDtoWithBalance(
+                    tx,
+                    tx.getBalanceBefore(),  // ✅ already saved
+                    tx.getBalanceAfter()    // ✅ already saved
+            );
+            enrichDtoWithDetails(dto, tx);
+            result.add(dto);
+        }
+
+        return result;
     }
 
     /**
@@ -185,19 +206,25 @@ public class CashTransactionService {
         CashRegister cashRegister = cashRegisterService.validateCashRegisterExists(original.getCashRegister().getId());
         validator.validateCashRegisterActive(cashRegister);
 
+        // Получаем баланс кассы ДО создания возврата
+        BigDecimal balanceBeforeRefund = cashRegisterService.getCurrentBalance(cashRegister.getId());
+
         // Создаем возвратную операцию
         CashTransaction refundTransaction = processor.createRefundTransaction(original, reason, cashierId);
+
+        // Рассчитываем баланс после возврата
+        BigDecimal balanceAfterRefund = balanceBeforeRefund.add(refundTransaction.getAmount());
 
         // Обновляем статус счета (если есть)
         if (original.getInvoice() != null) {
             updateInvoiceStatusAfterRefund(original.getInvoice(), original.getAmount());
         }
 
-        CashTransactionDto result = converter.toDtoWithDetails(
-                refundTransaction, cashRegister, original.getInvoice(),
-                userSearchService.getUserById(cashierId),
-                cashRegisterService.getCurrentBalance(cashRegister.getId())
-        );
+        // ✅ Передаём правильные балансы в конвертер
+        CashTransactionDto result = converter.toDtoWithBalance(
+                refundTransaction, balanceBeforeRefund, balanceAfterRefund);
+
+        enrichDtoWithDetails(result, refundTransaction);
 
         log.info(messageService.get("cash.transaction.service.cancelled",
                 transactionId, refundTransaction.getId()));
@@ -221,7 +248,8 @@ public class CashTransactionService {
      * Получает сумму приходов по кассе за период
      */
     @Transactional(readOnly = true)
-    public BigDecimal getTotalIncomeByPeriod(Long cashRegisterId, LocalDateTime startDate, LocalDateTime endDate) {
+    public BigDecimal getTotalIncomeByPeriod(Long cashRegisterId, LocalDateTime startDate, LocalDateTime
+            endDate) {
         return cashTransactionRepository.getTotalIncomeByCashRegisterAndDateRange(
                 cashRegisterId, startDate, endDate);
     }
@@ -230,7 +258,8 @@ public class CashTransactionService {
      * Получает сумму расходов по кассе за период
      */
     @Transactional(readOnly = true)
-    public BigDecimal getTotalExpenseByPeriod(Long cashRegisterId, LocalDateTime startDate, LocalDateTime endDate) {
+    public BigDecimal getTotalExpenseByPeriod(Long cashRegisterId, LocalDateTime startDate, LocalDateTime
+            endDate) {
         return cashTransactionRepository.getTotalExpenseByCashRegisterAndDateRange(
                 cashRegisterId, startDate, endDate);
     }
@@ -239,7 +268,8 @@ public class CashTransactionService {
      * Получает чистый оборот по кассе за период
      */
     @Transactional(readOnly = true)
-    public BigDecimal getNetTurnoverByPeriod(Long cashRegisterId, LocalDateTime startDate, LocalDateTime endDate) {
+    public BigDecimal getNetTurnoverByPeriod(Long cashRegisterId, LocalDateTime startDate, LocalDateTime
+            endDate) {
         return cashTransactionRepository.getNetTurnoverByCashRegisterAndDateRange(
                 cashRegisterId, startDate, endDate);
     }
@@ -297,5 +327,37 @@ public class CashTransactionService {
             invoice.setStatus(InvoiceStatus.PAID);
         }
         invoiceRepository.save(invoice);
+    }
+
+    private BigDecimal calculateBalanceBeforeDate(CashRegister cashRegister, LocalDateTime date) {
+        // Суммируем все транзакции до указанной даты (включительно или нет — решите)
+        List<CashTransaction> previous = cashTransactionRepository
+                .findByCashRegisterIdAndDateRange(cashRegister.getId(), cashRegister.getOpenedAt(), date);
+        BigDecimal netChange = previous.stream()
+                .map(t -> t.getAmount().multiply(BigDecimal.valueOf(t.getTransactionType().getMultiplier())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return cashRegister.getOpeningBalance().add(netChange);
+    }
+
+    private void enrichDtoWithDetails(CashTransactionDto dto, CashTransaction tx) {
+        CashRegister cr = tx.getCashRegister();
+        Invoice inv = tx.getInvoice();
+        User cashier = tx.getCashierId() != null ? userSearchService.getUserById(tx.getCashierId()) : null;
+
+        dto.setCashRegisterId(cr.getId());
+        dto.setCashRegisterName(cr.getName());
+        dto.setCashRegisterNumber(cr.getRegisterNumber());
+
+        if (inv != null) {
+            dto.setInvoiceId(inv.getId());
+            dto.setInvoiceNumber(inv.getInvoiceNumber());
+        }
+
+        if (cashier != null) {
+            dto.setCashierId(cashier.getId());
+            dto.setCashierName(cashier.getFirstName() + " " + cashier.getLastName());
+            dto.setCashierEmail(cashier.getEmail());
+        }
+
     }
 }

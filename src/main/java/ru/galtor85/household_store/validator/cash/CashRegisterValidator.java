@@ -94,11 +94,33 @@ public class CashRegisterValidator {
      * Проверяет сумму закрытия кассы
      */
     public void validateClosingBalance(BigDecimal closingBalance) {
-        if (closingBalance != null && closingBalance.compareTo(BigDecimal.ZERO) < 0) {
+        if (closingBalance == null) {
+            log.error(messageService.get("cash.register.closing.balance.required"));
+            throw new IllegalArgumentException(
+                    messageService.get("cash.register.closing.balance.required"));
+        }
+
+        if (closingBalance.compareTo(BigDecimal.ZERO) < 0) {
             log.error(messageService.get("cash.register.closing.balance.negative", closingBalance));
             throw new IllegalArgumentException(
                     messageService.get("cash.register.closing.balance.negative", closingBalance)
             );
+        }
+    }
+
+    public void validateDiscrepancyReason(BigDecimal actualBalance,
+                                          BigDecimal calculatedBalance,
+                                          String discrepancyReason) {
+        if (actualBalance == null || calculatedBalance == null) {
+            return;
+        }
+
+        BigDecimal discrepancy = actualBalance.subtract(calculatedBalance);
+        if (discrepancy.compareTo(BigDecimal.ZERO) != 0) {
+            if (discrepancyReason == null || discrepancyReason.trim().isEmpty()) {
+                throw new IllegalArgumentException(
+                        messageService.get("cash.register.discrepancy.reason.required"));
+            }
         }
     }
 }

@@ -13,6 +13,7 @@ import ru.galtor85.household_store.entity.finance.*;
 import ru.galtor85.household_store.repository.cash.CashRegisterRepository;
 import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
+import ru.galtor85.household_store.service.cash.CashRegisterService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
@@ -27,6 +28,7 @@ public class CashTransactionProcessor {
     private final InvoiceRepository invoiceRepository;
     private final MessageService messageService;
     private final CashTransactionRepository cashTransactionRepository;
+    private final CashRegisterService cashRegisterService;
 
     @Transactional
     public CashTransaction processTransaction(CashTransactionRequest request, Long cashierId) {
@@ -84,6 +86,9 @@ public class CashTransactionProcessor {
                 request.getTransactionType().getLocalizedName(messageService),
                 request.getAmount()));
 
+        // Get current balance BEFORE transaction
+        BigDecimal currentBalance = cashRegisterService.getCurrentBalance(cashRegister.getId());
+
         CashTransaction transaction = CashTransaction.builder()
                 .cashRegister(cashRegister)
                 .invoice(invoice)
@@ -94,7 +99,14 @@ public class CashTransactionProcessor {
                 .cashierId(cashierId)
                 .description(request.getDescription())
                 .notes(request.getNotes())
+                .balanceBefore(currentBalance)
                 .build();
+
+        // Calculate balance after
+        BigDecimal balanceAfter = currentBalance.add(
+                request.getAmount().multiply(BigDecimal.valueOf(request.getTransactionType().getMultiplier()))
+        );
+        transaction.setBalanceAfter(balanceAfter);
 
         CashTransaction saved = cashTransactionRepository.save(transaction);
 
@@ -112,6 +124,9 @@ public class CashTransactionProcessor {
         log.info(messageService.get("cash.transaction.processor.refund.start",
                 original.getId(), reason));
 
+        // Get current balance BEFORE refund
+        BigDecimal currentBalance = cashRegisterService.getCurrentBalance(original.getCashRegister().getId());
+
         CashTransaction refund = CashTransaction.builder()
                 .cashRegister(original.getCashRegister())
                 .invoice(original.getInvoice())
@@ -120,11 +135,16 @@ public class CashTransactionProcessor {
                 .currency(original.getCurrency())
                 .paymentMethod(original.getPaymentMethod())
                 .cashierId(cashierId)
-                .description("Возврат: " + reason)
+                .description("Refund: " + reason)
                 .notes(original.getNotes() != null ?
-                        original.getNotes() + "\nВозврат: " + reason : "Возврат: " + reason)
+                        original.getNotes() + "\nRefund: " + reason : "Refund: " + reason)
                 .originalTransactionId(original.getId())
+                .balanceBefore(currentBalance)
                 .build();
+
+        // Calculate balance after
+        BigDecimal balanceAfter = currentBalance.add(original.getAmount());
+        refund.setBalanceAfter(balanceAfter);
 
         CashTransaction saved = cashTransactionRepository.save(refund);
 

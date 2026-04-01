@@ -5,12 +5,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
 import ru.galtor85.household_store.entity.finance.Invoice;
+import ru.galtor85.household_store.entity.order.PurchaseOrder;
+import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -23,26 +26,39 @@ public class InvoiceConverter {
     private final SalesOrderRepository salesOrderRepository;
 
     /**
-     * Конвертирует сущность счета в DTO
+     * Converts an invoice entity to DTO with payment information
+     *
+     * @param invoice   the invoice entity
+     * @param totalPaid total paid amount (calculated by service)
+     * @return InvoiceDto with all fields
      */
-    public InvoiceDto toDto(Invoice invoice) {
+    public InvoiceDto toDto(Invoice invoice, BigDecimal totalPaid) {
         if (invoice == null) {
             return null;
         }
 
-        // Получаем номера заказов
+        BigDecimal remainingAmount = invoice.getAmount().subtract(totalPaid);
+
+        // Calculate payment percentage
+        Double paymentPercent = null;
+        if (invoice.getAmount().compareTo(BigDecimal.ZERO) > 0) {
+            paymentPercent = totalPaid.doubleValue() / invoice.getAmount().doubleValue() * 100;
+            paymentPercent = Math.min(100.0, Math.max(0.0, paymentPercent));
+        }
+
+        // Get order numbers
         String purchaseOrderNumber = null;
         String salesOrderNumber = null;
         String orderTypeDescription = null;
 
         if (invoice.isPurchaseOrder()) {
             purchaseOrderNumber = purchaseOrderRepository.findById(invoice.getPurchaseOrderId())
-                    .map(order -> order.getOrderNumber())
+                    .map(PurchaseOrder::getOrderNumber)
                     .orElse(null);
             orderTypeDescription = messageService.get("invoice.order.type.purchase");
         } else if (invoice.isSalesOrder()) {
             salesOrderNumber = salesOrderRepository.findById(invoice.getSalesOrderId())
-                    .map(order -> order.getOrderNumber())
+                    .map(SalesOrder::getOrderNumber)
                     .orElse(null);
             orderTypeDescription = messageService.get("invoice.order.type.sales");
         }
@@ -69,44 +85,29 @@ public class InvoiceConverter {
                 .createdBy(invoice.getCreatedBy())
                 .createdAt(invoice.getCreatedAt())
                 .updatedAt(invoice.getUpdatedAt())
+                .totalPaid(totalPaid)
+                .remainingAmount(remainingAmount)
+                .paymentPercent(paymentPercent)
                 .build();
     }
 
     /**
-     * Конвертирует список счетов в список DTO
+     * Converts a list of invoices to DTOs
      */
-    public List<InvoiceDto> toDtoList(List<Invoice> invoices) {
+    public List<InvoiceDto> toDtoList(List<Invoice> invoices, Map<Long, BigDecimal> paidAmounts) {
         if (invoices == null) {
             return null;
         }
         return invoices.stream()
-                .map(this::toDto)
+                .map(invoice -> {
+                    BigDecimal totalPaid = paidAmounts.get(invoice.getId());
+                    return toDto(invoice, totalPaid != null ? totalPaid : BigDecimal.ZERO);
+                })
                 .collect(Collectors.toList());
     }
 
     /**
-     * Конвертирует сущность в DTO с дополнительной информацией о платежах
-     */
-    public InvoiceDto toDtoWithPayments(Invoice invoice,
-                                        BigDecimal totalPaid,
-                                        int paymentCount) {
-        InvoiceDto dto = toDto(invoice);
-        if (dto != null) {
-            dto.setTotalPaid(totalPaid);
-            dto.setRemainingAmount(invoice.getAmount().subtract(totalPaid));
-            dto.setPaymentCount(paymentCount);
-
-            // Вычисляем процент оплаты
-            if (invoice.getAmount().compareTo(BigDecimal.ZERO) > 0) {
-                double percent = totalPaid.doubleValue() / invoice.getAmount().doubleValue() * 100;
-                dto.setPaymentPercent(Math.min(100, percent));
-            }
-        }
-        return dto;
-    }
-
-    /**
-     * Конвертирует сущность в упрощенный DTO (без деталей заказа)
+     * Simplified DTO without payment details
      */
     public InvoiceDto toSimpleDto(Invoice invoice) {
         if (invoice == null) {

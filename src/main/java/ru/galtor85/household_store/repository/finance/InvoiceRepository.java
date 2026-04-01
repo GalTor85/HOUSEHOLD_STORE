@@ -112,6 +112,37 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             "WHERE i.status = 'PAID' GROUP BY i.paymentMethod")
     List<Object[]> getTotalAmountByPaymentMethod();
 
+    /**
+     * Gets total pending amount for purchase orders
+     * Sums remaining amounts for invoices linked to purchase orders
+     */
+    @Query("SELECT COALESCE(SUM(i.amount - COALESCE(" +
+            "(SELECT SUM(ct.amount) FROM CashTransaction ct " +
+            "WHERE ct.invoice.id = i.id " +
+            "AND ct.transactionType = 'EXPENSE'), 0) + " +
+            "COALESCE((SELECT SUM(ct.amount) FROM CashTransaction ct " +
+            "WHERE ct.invoice.id = i.id " +
+            "AND ct.transactionType = 'REFUND'), 0)), 0) " +
+            "FROM Invoice i WHERE i.purchaseOrderId IS NOT NULL " +
+            "AND i.status IN ('PENDING', 'PARTIALLY_PAID')")
+    BigDecimal getTotalPendingAmountForPurchase();
+
+    /**
+     * Gets total pending amount for sales orders
+     * Sums remaining amounts for invoices linked to sales orders
+     */
+    @Query("SELECT COALESCE(SUM(i.amount - COALESCE(" +
+            "(SELECT SUM(ct.amount) FROM CashTransaction ct " +
+            "WHERE ct.invoice.id = i.id " +
+            "AND ct.transactionType = 'INCOME'), 0) + " +
+            "COALESCE((SELECT SUM(ct.amount) FROM CashTransaction ct " +
+            "WHERE ct.invoice.id = i.id " +
+            "AND ct.transactionType = 'REFUND'), 0)), 0) " +
+            "FROM Invoice i WHERE i.salesOrderId IS NOT NULL " +
+            "AND i.status IN ('PENDING', 'PARTIALLY_PAID')")
+    BigDecimal getTotalPendingAmountForSales();
+
+
     // =========================================================================
     // ЗАПРОСЫ ПО ДАТАМ
     // =========================================================================

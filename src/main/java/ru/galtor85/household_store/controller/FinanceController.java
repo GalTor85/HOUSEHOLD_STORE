@@ -14,10 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import ru.galtor85.household_store.advice.exception.auth.CustomAuthenticationException;
-import ru.galtor85.household_store.dto.response.finance.CashRegisterDto;
-import ru.galtor85.household_store.dto.response.finance.CashRegisterSummaryDto;
-import ru.galtor85.household_store.dto.response.finance.CashTransactionDto;
-import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
+import ru.galtor85.household_store.dto.response.finance.*;
 import ru.galtor85.household_store.dto.request.finance.CashRegisterCreateRequest;
 import ru.galtor85.household_store.dto.request.finance.CashRegisterUpdateRequest;
 import ru.galtor85.household_store.dto.request.finance.CashTransactionRequest;
@@ -263,11 +260,12 @@ public class FinanceController {
     @Operation(summary = "Close cash register")
     public ResponseEntity<ApiResponse<CashRegisterDto>> closeCashRegister(
             @PathVariable Long cashRegisterId,
-            @RequestParam BigDecimal closingBalance) {
+            @RequestParam BigDecimal closingBalance,
+            @RequestParam(required = false) String discrepancyReason ) {
 
         User currentUser = getCurrentUser();
         CashRegisterDto cashRegister = cashRegisterService.closeCashRegister(
-                cashRegisterId, closingBalance, currentUser.getId());
+                cashRegisterId, closingBalance, discrepancyReason, currentUser.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("cash.register.closed"),
@@ -379,16 +377,32 @@ public class FinanceController {
     // =========================================================================
     // СТАТИСТИКА
     // =========================================================================
+    /**
+     * Get pending amounts split by order type (purchase vs sales)
+     */
+    @GetMapping("/statistics/pending-by-type")
+    @Operation(summary = "Get pending amounts by order type",
+            description = "Returns pending amounts for purchase orders and sales orders separately")
+    public ResponseEntity<ApiResponse<InvoiceStatisticsDto>> getPendingAmountsByType() {
+        InvoiceStatisticsDto statistics = invoiceService.getPendingAmountsByType();
 
-    @GetMapping("/statistics/pending-total")
-    @Operation(summary = "Get total pending amount")
-    public ResponseEntity<ApiResponse<BigDecimal>> getTotalPendingAmount() {
-
-        BigDecimal total = invoiceService.getTotalPendingAmount();
+        // Initialize localized fields
+        String currencySymbol = "₽";
+        statistics.setLocalizedTotalPending(messageService.get("invoice.pending.total",
+                formatBalance(statistics.getTotalPending()), currencySymbol));
+        statistics.setLocalizedPurchasePending(messageService.get("invoice.pending.purchase",
+                formatBalance(statistics.getPurchasePendingTotal()), currencySymbol));
+        statistics.setLocalizedSalesPending(messageService.get("invoice.pending.sales",
+                formatBalance(statistics.getSalesPendingTotal()), currencySymbol));
 
         return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("invoice.statistics.pending.total"),
-                total));
+                messageService.get("invoice.statistics.pending.by.type"),
+                statistics));
+    }
+
+    private String formatBalance(BigDecimal balance) {
+        if (balance == null) return "0.00";
+        return String.format("%,.2f", balance);
     }
 
     @GetMapping("/statistics/paid-period")

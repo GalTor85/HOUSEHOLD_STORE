@@ -79,9 +79,26 @@ public class CashTransactionConverter {
             return null;
         }
 
-        return buildBasicDto(transaction)
-                .balanceBefore(balanceBefore)
-                .balanceAfter(balanceAfter)
+        var type = transaction.getTransactionType();
+
+        return   CashTransactionDto.builder()
+                .id(transaction.getId())
+                .cashRegisterId(transaction.getCashRegister().getId())
+                .transactionType(type)
+                .localizedTransactionType(type != null ? type.getLocalizedName(messageService) : null)
+                .amount(transaction.getAmount())
+                .currency(transaction.getCurrency() != null ? transaction.getCurrency() : "RUB")
+                .paymentMethod(transaction.getPaymentMethod())
+                .localizedPaymentMethod(transaction.getPaymentMethod() != null ?
+                        transaction.getPaymentMethod().getLocalizedName(messageService) : null)
+                .description(transaction.getDescription())
+                .notes(transaction.getNotes())
+                .createdAt(transaction.getCreatedAt())
+                .balanceBefore(balanceBefore)   // ✅ use saved value
+                .balanceAfter(balanceAfter)     // ✅ use saved value
+                .sign(type != null ? type.getSign() : null)
+                .color(type != null ? type.getColor() : null)
+                .icon(type != null ? type.getIcon() : null)
                 .build();
     }
 

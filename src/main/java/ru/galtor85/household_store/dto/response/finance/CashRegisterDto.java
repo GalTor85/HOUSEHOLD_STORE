@@ -59,6 +59,9 @@ public class CashRegisterDto {
     @Schema(description = "Current balance (for active cash registers)", example = "12500.00")
     private BigDecimal currentBalance;
 
+    @Schema(description = "Discrepancy", example = "100.00")
+    private BigDecimal discrepancy;
+
     // =========================================================================
     // КАССИР
     // =========================================================================
@@ -128,6 +131,12 @@ public class CashRegisterDto {
 
     @Schema(description = "Localized created at", example = "Создана: 25.03.2024 08:00")
     private String localizedCreatedAt;
+
+    @Schema(description = "Localized discrepancy", example = "Излишек: 100.00 ₽")
+    private String localizedDiscrepancy;
+
+    @Schema(description = "Localized discrepancy reason", example = "Ошибка кассира при подсчёте")
+    private String localizedDiscrepancyReason;
 
     // =========================================================================
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
@@ -202,6 +211,17 @@ public class CashRegisterDto {
         if (createdAt != null) {
             localizedCreatedAt = messageService.get("cash.register.created.at",
                     createdAt.format(dateFormatter));
+        }
+        if (discrepancy != null) {
+            if (discrepancy.compareTo(BigDecimal.ZERO) == 0) {
+                localizedDiscrepancy = messageService.get("cash.register.discrepancy.none");
+            } else if (discrepancy.compareTo(BigDecimal.ZERO) > 0) {
+                localizedDiscrepancy = messageService.get("cash.register.discrepancy.excess",
+                        formatBalance(discrepancy), currencySymbol);
+            } else {
+                localizedDiscrepancy = messageService.get("cash.register.discrepancy.shortage",
+                        formatBalance(discrepancy.abs()), currencySymbol);
+            }
         }
     }
 
