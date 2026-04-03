@@ -10,14 +10,35 @@ import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
+import java.util.Optional;
+
+/**
+ * Validator for warehouse operations
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class WarehouseValidator {
 
+    // =========================================================================
+    // DEPENDENCIES
+    // =========================================================================
+
     private final WarehouseRepository warehouseRepository;
     private final MessageService messageService;
 
+    // =========================================================================
+    // WAREHOUSE EXISTENCE VALIDATION
+    // =========================================================================
+
+    /**
+     * Validates that a warehouse exists by ID
+     *
+     * @param warehouseId warehouse identifier
+     * @return warehouse entity
+     * @throws IllegalArgumentException if warehouseId is null
+     * @throws WarehouseNotFoundException if warehouse not found
+     */
     public Warehouse validateWarehouseExists(Long warehouseId) {
         if (warehouseId == null) {
             log.error(messageService.get("receive.validation.warehouse.id.null"));
@@ -33,6 +54,11 @@ public class WarehouseValidator {
                 });
     }
 
+    /**
+     * Validates that at least one warehouse exists in the system
+     *
+     * @throws WarehouseNotFoundException if no warehouses exist
+     */
     public void validateAnyWarehouseExists() {
         if (warehouseRepository.count() == 0) {
             log.error(messageService.get("warehouse.error.no.warehouses"));
@@ -40,6 +66,16 @@ public class WarehouseValidator {
         }
     }
 
+    // =========================================================================
+    // UNIQUENESS VALIDATION
+    // =========================================================================
+
+    /**
+     * Validates that warehouse code is unique
+     *
+     * @param code warehouse code
+     * @throws WarehouseAlreadyExistsException if code already exists
+     */
     public void validateWarehouseCodeUnique(String code) {
         if (warehouseRepository.existsByCode(code)) {
             log.warn(messageService.get("warehouse.log.code.exists", code));
@@ -47,6 +83,12 @@ public class WarehouseValidator {
         }
     }
 
+    /**
+     * Validates that warehouse barcode is unique
+     *
+     * @param barcode warehouse barcode
+     * @throws WarehouseAlreadyExistsException if barcode already exists
+     */
     public void validateWarehouseBarcodeUnique(String barcode) {
         if (warehouseRepository.existsByBarcode(barcode)) {
             log.warn(messageService.get("warehouse.log.barcode.exists", barcode));
@@ -54,6 +96,17 @@ public class WarehouseValidator {
         }
     }
 
+    // =========================================================================
+    // SEARCH VALIDATION
+    // =========================================================================
+
+    /**
+     * Validates that warehouse search returned results
+     *
+     * @param hasResults whether search has results
+     * @param search search term
+     * @throws WarehouseNotFoundException if no results found
+     */
     public void validateWarehouseSearchResult(boolean hasResults, String search) {
         if (!hasResults) {
             log.warn(messageService.get("warehouse.search.not.found", search));
@@ -61,6 +114,16 @@ public class WarehouseValidator {
         }
     }
 
+    // =========================================================================
+    // ORDER VALIDATION
+    // =========================================================================
+
+    /**
+     * Validates that a sales order has items (for warehouse resolution)
+     *
+     * @param salesOrder sales order entity
+     * @throws IllegalArgumentException if order has no items
+     */
     public void validateOrderHasItems(SalesOrder salesOrder) {
         if (salesOrder.getItems() == null || salesOrder.getItems().isEmpty()) {
             log.warn(messageService.get("warehouse.resolver.no.items", salesOrder.getId()));

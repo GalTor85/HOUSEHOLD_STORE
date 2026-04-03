@@ -725,8 +725,37 @@ public class GlobalExceptionHandler {
     }
 
     // =========================================================================
-    // БЛОК 10: ЗАКУПКИ
+    // PURCHASE ORDER EXCEPTIONS
     // =========================================================================
+
+    /**
+     * Handler for purchase order cancellation exceptions
+     * Returns 409 Conflict with localized message
+     */
+    @ExceptionHandler(PurchaseOrderCancellationException.class)
+    public ResponseEntity<ApiResponse<Void>> handlePurchaseOrderCancellationException(
+            PurchaseOrderCancellationException e) {
+
+        String message = e.getMessage();
+
+        log.warn("Purchase order cancellation failed: {}", message);
+
+        Map<String, Object> details = new HashMap<>();
+        if (e.getOrderId() != null) {
+            details.put("orderId", e.getOrderId());
+        }
+        if (e.getCurrentStatus() != null) {
+            details.put("currentStatus", e.getCurrentStatus().name());
+            details.put("localizedStatus", messageService.get("order.status." + e.getCurrentStatus().name()));
+        }
+        if (e.getReason() != null) {
+            details.put("reason", e.getReason());
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message, details));
+    }
 
     @ExceptionHandler(ProductNotFromSupplierException.class)
     public ResponseEntity<ApiResponse<Void>> handleProductNotFromSupplier(
@@ -1177,6 +1206,76 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(message));
+    }
+
+    /**
+     * Handler for ProductStockNotFoundException
+     * Returns 404 Not Found
+     */
+    @ExceptionHandler(ProductStockNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleProductStockNotFoundException(
+            ProductStockNotFoundException e) {
+
+        String message;
+        if (e.getProductId() != null && e.getWarehouseId() != null) {
+            message = messageService.get("stock.not.found.with.details",
+                    e.getProductId(), e.getWarehouseId());
+        } else if (e.getMessage() != null) {
+            message = e.getMessage();
+        } else {
+            message = messageService.get("stock.not.found");
+        }
+
+        log.error("ProductStockNotFoundException: {}", message);
+
+        Map<String, Object> details = new HashMap<>();
+        if (e.getProductId() != null) {
+            details.put("productId", e.getProductId());
+        }
+        if (e.getWarehouseId() != null) {
+            details.put("warehouseId", e.getWarehouseId());
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(message, details));
+    }
+
+    // =========================================================================
+    // PURCHASE ORDER REVERSE EXCEPTIONS
+    // =========================================================================
+
+    /**
+     * Handler for PurchaseOrderReverseException
+     * Returns 409 Conflict
+     */
+    @ExceptionHandler(PurchaseOrderReverseException.class)
+    public ResponseEntity<ApiResponse<Void>> handlePurchaseOrderReverseException(
+            PurchaseOrderReverseException e) {
+
+        String message;
+        if (e.getOrderId() != null && e.getReason() != null) {
+            message = messageService.get("purchase.order.cannot.reverse.with.reason",
+                    e.getOrderId(), e.getReason());
+        } else if (e.getMessage() != null) {
+            message = e.getMessage();
+        } else {
+            message = messageService.get("purchase.order.cannot.reverse.default");
+        }
+
+        log.warn("Purchase order reverse failed: {}", message);
+
+        Map<String, Object> details = new HashMap<>();
+        if (e.getOrderId() != null) {
+            details.put("orderId", e.getOrderId());
+        }
+        if (e.getReason() != null) {
+            details.put("reason", e.getReason());
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message, details));
     }
 
     // =========================================================================

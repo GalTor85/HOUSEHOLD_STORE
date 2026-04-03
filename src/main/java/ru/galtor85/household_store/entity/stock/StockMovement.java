@@ -9,6 +9,9 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
+/**
+ * Entity representing stock movement (receipt, shipment, transfer, write-off, return)
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -16,6 +19,10 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "stock_movements", schema = "household_schema")
 public class StockMovement {
+
+    // =========================================================================
+    // IDENTIFIERS
+    // =========================================================================
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,11 +34,19 @@ public class StockMovement {
     @Column(name = "warehouse_id")
     private Long warehouseId;
 
+    // =========================================================================
+    // CELL REFERENCES
+    // =========================================================================
+
     @Column(name = "from_cell_id")
     private Long fromCellId;
 
     @Column(name = "to_cell_id")
     private Long toCellId;
+
+    // =========================================================================
+    // MOVEMENT DETAILS
+    // =========================================================================
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
@@ -40,11 +55,22 @@ public class StockMovement {
     @Enumerated(EnumType.STRING)
     private MovementType movementType;
 
+    // =========================================================================
+    // REFERENCE INFORMATION
+    // =========================================================================
+
     @Column(name = "reference_number")
     private String referenceNumber;
 
     @Column(name = "reference_type")
     private String referenceType; // ORDER, PURCHASE, WRITEOFF, INVENTORY
+
+    @Column(name = "reference_id")
+    private Long referenceId;
+
+    // =========================================================================
+    // TRACKING INFORMATION
+    // =========================================================================
 
     @Column(name = "batch_number")
     private String batchNumber;
@@ -52,8 +78,9 @@ public class StockMovement {
     @Column(name = "document_number")
     private String documentNumber;
 
-    @Column(name = "reference_id")
-    private Long referenceId;
+    // =========================================================================
+    // AUDIT FIELDS
+    // =========================================================================
 
     @Column(name = "performed_by")
     private Long performedBy;
@@ -64,4 +91,14 @@ public class StockMovement {
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    // =========================================================================
+    // RETURN INFORMATION
+    // =========================================================================
+
+    @Column(name = "original_movement_id")
+    private Long originalMovementId;
+
+    @Column(name = "returned_quantity")
+    private Integer returnedQuantity;
 }

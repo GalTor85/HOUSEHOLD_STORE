@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import ru.galtor85.household_store.entity.finance.Invoice;
-import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,6 +23,10 @@ import java.util.List;
 @Table(name = "purchase_orders", schema = "household_schema")
 public class PurchaseOrder {
 
+    // =========================================================================
+    // IDENTIFIERS
+    // =========================================================================
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -34,6 +37,10 @@ public class PurchaseOrder {
     @Column(name = "supplier_id", nullable = false)
     private Long supplierId;
 
+    // =========================================================================
+    // ORDER TYPE AND STATUS
+    // =========================================================================
+
     @Enumerated(EnumType.STRING)
     @Column(name = "order_type", nullable = false)
     @Builder.Default
@@ -43,6 +50,10 @@ public class PurchaseOrder {
     @Column(nullable = false)
     private OrderStatus status;
 
+    // =========================================================================
+    // ORDER ITEMS
+    // =========================================================================
+
     @OneToMany(mappedBy = "purchaseOrder", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<PurchaseOrderItem> items = new ArrayList<>();
@@ -51,7 +62,10 @@ public class PurchaseOrder {
     @Builder.Default
     private List<Invoice> invoices = new ArrayList<>();
 
-    // Поля для закупки
+    // =========================================================================
+    // DELIVERY INFORMATION
+    // =========================================================================
+
     @Column(name = "expected_delivery")
     private LocalDate expectedDelivery;
 
@@ -67,6 +81,10 @@ public class PurchaseOrder {
     @Column(name = "quality_check")
     private Boolean qualityCheck;
 
+    // =========================================================================
+    // PAYMENT INFORMATION
+    // =========================================================================
+
     @Column(name = "invoice_number")
     private String invoiceNumber;
 
@@ -76,26 +94,39 @@ public class PurchaseOrder {
     @Column(name = "payment_status")
     private String paymentStatus;
 
-    // Финансовые поля
+    // =========================================================================
+    // FINANCIAL FIELDS
+    // =========================================================================
+
     @Column(precision = 10, scale = 2)
     private BigDecimal subtotal;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
-    // Административные поля
+    // =========================================================================
+    // ADMINISTRATIVE FIELDS
+    // =========================================================================
+
     @Column(name = "created_by")
     private Long createdBy;
 
-    @Column(length = 1000)
+    @Column(length = 3000)
     private String notes;
 
-    // ✅ ДОБАВЛЕННЫЕ ПОЛЯ ДЛЯ ОТМЕНЫ
+    // =========================================================================
+    // CANCELLATION FIELDS
+    // =========================================================================
+
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
-    @Column(name = "cancellation_reason", length = 500)
+    @Column(name = "cancellation_reason", length = 1000)
     private String cancellationReason;
+
+    // =========================================================================
+    // TIMESTAMPS
+    // =========================================================================
 
     @CreationTimestamp
     @Column(name = "created_at")
@@ -106,49 +137,16 @@ public class PurchaseOrder {
     private LocalDateTime updatedAt;
 
     // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // HELPER METHODS
     // =========================================================================
 
-    public void addItem(PurchaseOrderItem item) {
-        items.add(item);
-        item.setPurchaseOrder(this);
-        recalculateTotals();
-    }
-
-    public void removeItem(PurchaseOrderItem item) {
-        items.remove(item);
-        item.setPurchaseOrder(null);
-        recalculateTotals();
-    }
-
-    public void recalculateTotals() {
-        this.subtotal = items.stream()
-                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        this.totalAmount = this.subtotal;
-    }
-
+    /**
+     * Adds an invoice to this purchase order
+     *
+     * @param invoice the invoice to add
+     */
     public void addInvoice(Invoice invoice) {
         invoices.add(invoice);
         invoice.setPurchaseOrder(this);
-    }
-
-    public BigDecimal getTotalPaidAmount() {
-        return invoices.stream()
-                .filter(i -> i.getStatus() == InvoiceStatus.PAID)
-                .map(Invoice::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    public BigDecimal getRemainingAmount() {
-        return getTotalAmount().subtract(getTotalPaidAmount());
-    }
-
-    public boolean isFullyPaid() {
-        return getRemainingAmount().compareTo(BigDecimal.ZERO) <= 0;
-    }
-
-    public boolean isFullyReceived() {
-        return items.stream().allMatch(PurchaseOrderItem::isFullyReceived);
     }
 }
