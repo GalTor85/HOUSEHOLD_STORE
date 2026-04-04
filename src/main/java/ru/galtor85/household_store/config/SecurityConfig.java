@@ -3,6 +3,7 @@ package ru.galtor85.household_store.config;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,6 +30,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Arrays;
 
+import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+
+/**
+ * Security configuration for the application.
+ *
+ * <p>This configuration sets up:</p>
+ * <ul>
+ *   <li>JWT-based authentication</li>
+ *   <li>Stateless session management</li>
+ *   <li>CORS configuration for frontend integration</li>
+ *   <li>Role-based authorization for endpoints</li>
+ *   <li>Password encoding with BCrypt</li>
+ * </ul>
+ */
 @Slf4j
 @Configuration
 @EnableWebSecurity
@@ -40,16 +55,33 @@ public class SecurityConfig {
     private final MessageService messageService;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Creates a filter that cleans up JWT tokens from ThreadLocal after request completion.
+     *
+     * @return JwtTokenCleanupFilter instance
+     */
     @Bean
     public JwtTokenCleanupFilter jwtTokenCleanupFilter() {
         return new JwtTokenCleanupFilter(messageService);
     }
 
+    /**
+     * Creates a password encoder using BCrypt hashing algorithm.
+     *
+     * @return BCryptPasswordEncoder instance
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Creates the authentication manager for handling authentication requests.
+     *
+     * @param authConfig the authentication configuration
+     * @return AuthenticationManager instance
+     * @throws AuthenticationManagerException if authentication manager creation fails
+     */
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration authConfig) {
@@ -63,69 +95,87 @@ public class SecurityConfig {
         }
     }
 
+    /**
+     * Configures the security filter chain for HTTP requests.
+     *
+     * <p>This method defines:</p>
+     * <ul>
+     *   <li>CSRF protection (disabled for stateless REST API)</li>
+     *   <li>CORS configuration</li>
+     *   <li>Stateless session policy</li>
+     *   <li>Public endpoints that don't require authentication</li>
+     *   <li>Role-protected endpoints for admin and manager</li>
+     *   <li>JWT filter integration</li>
+     *   <li>Authentication and access denied handlers</li>
+     * </ul>
+     *
+     * @param http the HttpSecurity to configure
+     * @return SecurityFilterChain instance
+     * @throws Exception if configuration fails
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // Настройка CORS
+                // CORS configuration
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // Настройка сессий (stateless для REST)
+                // Stateless session management for REST API
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
-                // Настройка авторизации запросов
+                // Request authorization rules
                 .authorizeHttpRequests(auth -> auth
-                        // Публичные эндпоинты
+                        // Public endpoints (no authentication required)
                         .requestMatchers(
-                                "/api/v1/auth/register",
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/refresh",
-                                "/api/v1/",
-                                "/api/v1/media/**",
-                                "/api/v1/health",
-                                "/api/v1/info",
-                                "/api/v1/ping",
+                                API_BASE + "/auth/register",
+                                API_BASE + "/auth/login",
+                                API_BASE + "/auth/refresh",
+                                API_BASE + "/",
+                                API_BASE + "/media/**",
+                                API_BASE + "/health",
+                                API_BASE + "/info",
+                                API_BASE + "/ping",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/api-docs/**",
                                 "/actuator/**",
                                 "/error",
-                                "/api/v1/debug/**"
+                                API_BASE + "/debug/**"
                         ).permitAll()
 
-                        // Админские эндпоинты
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // Admin-only endpoints
+                        .requestMatchers(API_BASE + "/admin/**").hasRole("ADMIN")
 
-                        // Менеджерские эндпоинты
-                        .requestMatchers("/api/v1/manager/**").hasAnyRole("ADMIN", "MANAGER")
+                        // Admin and Manager endpoint
+                        .requestMatchers(API_BASE + "/manager/**").hasAnyRole("ADMIN", "MANAGER")
 
-                        // Аутентифицированные пользователи
+                        // Authenticated user endpoints
                         .requestMatchers(
-                                "/api/v1/**"
+                                API_BASE + "/**"
                         ).authenticated()
 
-                        // Все остальные запросы
+                        // All other requests
                         .anyRequest().permitAll()
                 )
 
-                // Добавляем JWT фильтр перед стандартным фильтром аутентификации
+                // Add JWT filter before standard authentication filte
                 .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtTokenCleanupFilter(), JwtAuthenticationFilter.class)
 
-                // Настройка исключений
+                // Exception handling configuration
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, authException) -> {
                             log.warn(messageService.get("security-config.log.error.authentication.failed",
                                     request.getRequestURI(), authException.getMessage()));
 
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType("application/json;charset=UTF-8");  // ИЗМЕНЕНО
-                            response.setCharacterEncoding("UTF-8");  // ДОБАВЛЕНО
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.setCharacterEncoding("UTF-8");
 
                             ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
                                     .success(false)
@@ -133,7 +183,6 @@ public class SecurityConfig {
                                     .path(request.getRequestURI())
                                     .build();
 
-                            // Используем существующий ObjectMapper с поддержкой JavaTime
                             response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
@@ -141,8 +190,8 @@ public class SecurityConfig {
                                     request.getRequestURI(), accessDeniedException.getMessage()));
 
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            response.setContentType("application/json;charset=UTF-8");  // ИЗМЕНЕНО
-                            response.setCharacterEncoding("UTF-8");  // ДОБАВЛЕНО
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.setCharacterEncoding("UTF-8");
 
                             ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
                                     .success(false)
@@ -159,24 +208,39 @@ public class SecurityConfig {
     }
 
     /**
-     * Настройка CORS для разрешения запросов с фронтенда
+     * Configures CORS (Cross-Origin Resource Sharing) settings.
+     *
+     * <p>This allows the frontend application running on different origins
+     * to make requests to this API.</p>
+     *
+     * <p>Configuration includes:</p>
+     * <ul>
+     *   <li>Allowed origins (localhost:3000, localhost:8080)</li>
+     *   <li>Allowed HTTP methods (GET, POST, PUT, PATCH, DELETE, OPTIONS)</li>
+     *   <li>Allowed headers (Authorization, Content-Type, etc.)</li>
+     *   <li>Credentials support for cookies and authorization headers</li>
+     *   <li>Preflight request cache duration (1 hour)</li>
+     *   <li>Exposed headers for client access</li>
+     * </ul>
+     *
+     * @return CorsConfigurationSource with CORS settings applied to all endpoints
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Разрешаем определенные источники
+        // Allow specific origins
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:8080"
         ));
 
-        // Разрешаем методы
+        // Allow specific HTTP methods
         configuration.setAllowedMethods(Arrays.asList(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
 
-        // Разрешаем заголовки
+        // Allow specific headers
         configuration.setAllowedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type",
@@ -187,13 +251,13 @@ public class SecurityConfig {
                 "Access-Control-Request-Headers"
         ));
 
-        // Разрешаем credentials (куки, авторизация)
+        // Allow credentials (cookies, authorization headers)
         configuration.setAllowCredentials(true);
 
-        // Время кеширования preflight запросов
+        // Preflight request cache duration (seconds)
         configuration.setMaxAge(3600L);
 
-        // Разрешаем заголовки в ответе
+        // Headers exposed to the client
         configuration.setExposedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Disposition"

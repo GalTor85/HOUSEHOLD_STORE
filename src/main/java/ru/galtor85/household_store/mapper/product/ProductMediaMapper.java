@@ -11,6 +11,8 @@ import ru.galtor85.household_store.entity.product.ProductMedia;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -28,7 +30,7 @@ public class ProductMediaMapper {
                 .id(media.getId())
                 .mediaType(media.getMediaType())
                 .fileName(media.getFileName())
-                .fileUrl("/api/v1/media/" + media.getId())
+                .fileUrl(API_BASE+"/media/" + media.getId())
                 .fileSize(media.getFileSize())
                 .mimeType(media.getMimeType())
                 .altText(media.getAltText())

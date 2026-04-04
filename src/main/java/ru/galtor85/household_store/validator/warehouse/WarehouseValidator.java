@@ -12,6 +12,8 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.util.Optional;
 
+import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+
 /**
  * Validator for warehouse operations
  */
@@ -61,7 +63,7 @@ public class WarehouseValidator {
      */
     public void validateAnyWarehouseExists() {
         if (warehouseRepository.count() == 0) {
-            log.error(messageService.get("warehouse.error.no.warehouses"));
+            log.error(messageService.get("warehouse.error.no.warehouses"),API_BASE);
             throw new WarehouseNotFoundException();
         }
     }

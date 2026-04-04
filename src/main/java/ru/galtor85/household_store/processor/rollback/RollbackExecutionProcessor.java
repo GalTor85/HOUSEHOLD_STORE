@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.rollback.RollbackExecutionException;
 import ru.galtor85.household_store.entity.order.SalesOrder;
-import ru.galtor85.household_store.service.manager.ManagerSalesOrderService;
+import ru.galtor85.household_store.service.order.SalesOrderService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 @Slf4j
@@ -14,7 +14,7 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 @RequiredArgsConstructor
 public class RollbackExecutionProcessor {
 
-    private final ManagerSalesOrderService orderService;
+    private final SalesOrderService orderService;
     private final MessageService messageService;
 
     @Transactional

@@ -32,10 +32,26 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.manager.ManagerPurchaseService;
 import ru.galtor85.household_store.service.user.UserSearchService;
 
+import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+
+/**
+ * REST controller for manager purchase operations.
+ *
+ * <p>This controller provides endpoints for:</p>
+ * <ul>
+ *   <li>Purchase order management (create, receive, cancel)</li>
+ *   <li>Receiving goods with or without warehouse cell assignment</li>
+ *   <li>Returning received goods to suppliers (reverse receipt)</li>
+ *   <li>Supplier management (create, update, list)</li>
+ *   <li>Supplier product catalog management</li>
+ * </ul>
+ *
+ * <p>All endpoints require ADMIN or MANAGER role for access.</p>
+ */
 @SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/manager/purchases")
+@RequestMapping(API_BASE + "/manager/purchases")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 @Tag(name = "Manager Purchase Operations", description = "Endpoints for managing purchase orders and suppliers")
@@ -44,6 +60,10 @@ public class ManagerPurchaseController {
     private final ManagerPurchaseService managerPurchaseService;
     private final UserSearchService userSearchService;
     private final MessageService messageService;
+
+    // =========================================================================
+    // HELPER METHODS
+    // =========================================================================
 
     private SecurityUser getCurrentSecurityUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -63,6 +83,12 @@ public class ManagerPurchaseController {
     // PURCHASE ORDER MANAGEMENT
     // =========================================================================
 
+    /**
+     * Creates a new purchase order from a supplier.
+     *
+     * @param request purchase order creation request with items and supplier
+     * @return created purchase order DTO
+     */
     @PostMapping
     @Operation(summary = "Create purchase order from supplier",
             description = "Creates a new purchase order with items from the specified supplier")
@@ -78,6 +104,14 @@ public class ManagerPurchaseController {
                         purchaseOrder));
     }
 
+    /**
+     * Cancels a purchase order.
+     *
+     * @param orderId  purchase order ID
+     * @param reason   cancellation reason
+     * @param comments additional comments (optional)
+     * @return cancelled purchase order DTO
+     */
     @PutMapping("/{orderId}/cancel")
     @Operation(summary = "Cancel purchase order",
             description = "Cancels a purchase order that is not yet delivered or completed")
@@ -105,6 +139,12 @@ public class ManagerPurchaseController {
                 cancelledOrder));
     }
 
+    /**
+     * Reverses a purchase order receipt (returns goods to supplier).
+     *
+     * @param request reversal request with order ID, reason, and optional items
+     * @return updated purchase order DTO
+     */
     @PostMapping("/reverse-receipt")
     @Operation(summary = "Reverse purchase order receipt",
             description = "Returns received goods to supplier. Can reverse all items or specific items.")
@@ -120,6 +160,17 @@ public class ManagerPurchaseController {
                 updatedOrder));
     }
 
+    /**
+     * Retrieves a paginated list of purchase orders with optional filters.
+     *
+     * @param supplierId filter by supplier ID
+     * @param status     filter by order status
+     * @param startDate  filter by start date
+     * @param endDate    filter by end date
+     * @param page       page number
+     * @param size       page size
+     * @return page of purchase order DTOs
+     */
     @GetMapping
     @Operation(summary = "Get purchase orders",
             description = "Retrieves a paginated list of purchase orders with optional filters")
@@ -127,8 +178,7 @@ public class ManagerPurchaseController {
             @Parameter(description = "Supplier ID filter", example = "1")
             @RequestParam(required = false) Long supplierId,
             @Parameter(description = "Order status filter", schema = @Schema(allowableValues =
-                    {"PENDING", "PAID", "PROCESSING", "SHIPPED",
-                            "DELIVERED", "COMPLETED", "CANCELLED", "PARTIALLY_RECEIVED"}))
+                    {"PENDING", "PAID", "PROCESSING", "SHIPPED", "DELIVERED", "COMPLETED", "CANCELLED", "PARTIALLY_RECEIVED"}))
             @RequestParam(required = false) String status,
             @Parameter(description = "Start date (ISO format)", example = "2024-01-01T00:00:00")
             @RequestParam(required = false) String startDate,
@@ -147,8 +197,15 @@ public class ManagerPurchaseController {
                 orders));
     }
 
+    /**
+     * Retrieves a purchase order by its ID.
+     *
+     * @param orderId purchase order ID
+     * @return purchase order DTO
+     */
     @GetMapping("/{orderId}")
-    @Operation(summary = "Get purchase order by ID")
+    @Operation(summary = "Get purchase order by ID",
+            description = "Retrieves detailed information about a specific purchase order")
     public ResponseEntity<ApiResponse<PurchaseOrderDto>> getPurchaseOrder(
             @Parameter(description = "Purchase order ID", example = "1", required = true)
             @PathVariable Long orderId) {
@@ -160,6 +217,13 @@ public class ManagerPurchaseController {
                 order));
     }
 
+    /**
+     * Receives a purchase order (basic receipt without cell placement).
+     *
+     * @param orderId purchase order ID
+     * @param request receiving request with warehouse and items
+     * @return updated purchase order DTO
+     */
     @PutMapping("/{orderId}/receive")
     @Operation(summary = "Receive purchase order",
             description = "Marks purchase order as received and updates inventory")
@@ -176,6 +240,13 @@ public class ManagerPurchaseController {
                 order));
     }
 
+    /**
+     * Receives a purchase order with automatic placement into warehouse cells.
+     *
+     * @param orderId purchase order ID
+     * @param request receiving request with cell assignments
+     * @return updated purchase order DTO
+     */
     @PutMapping("/{orderId}/receive-with-stock")
     @Operation(summary = "Receive purchase order and place items in warehouse cells",
             description = "Receives purchase order and automatically assigns items to warehouse cells")
@@ -197,6 +268,12 @@ public class ManagerPurchaseController {
     // SUPPLIER MANAGEMENT
     // =========================================================================
 
+    /**
+     * Creates a new supplier.
+     *
+     * @param request supplier creation request with company details
+     * @return created supplier DTO
+     */
     @PostMapping("/suppliers")
     @Operation(summary = "Create new supplier",
             description = "Adds a new supplier to the system")
@@ -212,6 +289,13 @@ public class ManagerPurchaseController {
                         supplier));
     }
 
+    /**
+     * Updates an existing supplier.
+     *
+     * @param supplierId supplier ID
+     * @param request    supplier update request
+     * @return updated supplier DTO
+     */
     @PutMapping("/suppliers/{supplierId}")
     @Operation(summary = "Update supplier information",
             description = "Updates an existing supplier's details")
@@ -227,6 +311,15 @@ public class ManagerPurchaseController {
                 supplier));
     }
 
+    /**
+     * Retrieves a paginated list of suppliers with optional filters.
+     *
+     * @param name   filter by supplier name
+     * @param status filter by supplier status
+     * @param page   page number
+     * @param size   page size
+     * @return page of supplier DTOs
+     */
     @GetMapping("/suppliers")
     @Operation(summary = "Get list of suppliers",
             description = "Retrieves a paginated list of suppliers with optional filters")
@@ -247,6 +340,14 @@ public class ManagerPurchaseController {
                 suppliers));
     }
 
+    /**
+     * Adds a product to a supplier's catalog.
+     *
+     * @param supplierId supplier ID
+     * @param productId  product ID
+     * @param request    supplier product request with price and SKU
+     * @return created supplier product DTO
+     */
     @PostMapping("/suppliers/{supplierId}/products/{productId}")
     @Operation(summary = "Add product to supplier catalog",
             description = "Associates a product with a supplier, setting supplier-specific pricing and SKU")

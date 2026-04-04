@@ -135,14 +135,14 @@ public class SalesOrderProcessor {
 
         log.info(messageService.get("sales.order.processor.create.start", userId));
 
-        // 1. Валидация запроса
+        // Валидация запроса
         validator.validateCreateRequest(request);
         validator.validateProducts(request.getItems());
 
-        // 2. Создаем заказ через билдер
+        // Создаем заказ через билдер
         SalesOrder order = builder.buildOrder(request, userId);
 
-        // 3. Создаем позиции через билдер
+        // Создаем позиции через билдер
         List<SalesOrderItem> items = builder.buildOrderItems(
                 order,
                 request.getItems(),
@@ -150,19 +150,31 @@ public class SalesOrderProcessor {
                 prices
         );
 
-        // 4. Рассчитываем сумму
-        BigDecimal totalAmount = builder.calculateTotalAmount(items);
+        // Рассчитываем сумму
+        BigDecimal subtotal = builder.calculateTotalAmount(items);
 
-        // 5. Устанавливаем позиции и суммы
-        order.setItems(items);
-        order.setSubtotal(totalAmount);
+        // Рассчитываем итоговую сумму с учетом скидки, доставки и налогов
+        BigDecimal discountAmount = request.getEffectiveDiscountAmount();
+        BigDecimal shippingAmount = request.getEffectiveShippingAmount();
+        BigDecimal taxAmount = request.getEffectiveTaxAmount();
+
+        BigDecimal totalAmount = subtotal
+                .add(shippingAmount)
+                .add(taxAmount)
+                .subtract(discountAmount);
+
+        // Устанавливаем позиции и суммы
+        order.setItems(items);order.setSubtotal(subtotal);
+        order.setDiscountAmount(discountAmount);
+        order.setShippingAmount(shippingAmount);
+        order.setTaxAmount(taxAmount);
         order.setTotalAmount(totalAmount);
         order.setStatus(OrderStatus.PENDING);
 
-        // 6. Сохраняем заказ
+        // Сохраняем заказ
         SalesOrder savedOrder = salesOrderRepository.save(order);
 
-        // 7. ✅ АВТОМАТИЧЕСКОЕ СОЗДАНИЕ СЧЕТА (через процессор)
+        // АВТОМАТИЧЕСКОЕ СОЗДАНИЕ СЧЕТА (через процессор)
         Invoice invoice = invoiceAutoCreationProcessor.createInvoiceForOrder(order, userId);
         if (invoice != null) {
             savedOrder.addInvoice(invoice);
@@ -173,6 +185,52 @@ public class SalesOrderProcessor {
 
         log.info(messageService.get("sales.order.processor.create.complete",
                 savedOrder.getOrderNumber(), userId, items.size(), totalAmount));
+
+        return savedOrder;
+    }
+
+    @Transactional
+    public SalesOrder createOrderFromCartWithPromo(Cart cart, String shippingAddress,
+                                                   String promoCode, Long userId) {
+        log.info(messageService.get("sales.order.processor.create.from.cart.promo.start", userId, promoCode));
+
+        validator.validateCartNotEmpty(cart);
+        validator.validateCartItems(cart);
+
+        List<CartItemDto> items = convertCartItemsToDto(cart.getItems());
+
+        PriceCalculationRequest priceRequest = PriceCalculationRequest.builder()
+                .userId(userId)
+                .items(items)
+                .promoCode(promoCode)
+                .shippingAddress(shippingAddress)
+                .applyUserTypeDiscounts(true)
+                .applyPromoCode(true)
+                .applyPriceRules(true)
+                .build();
+
+        PriceCalculationResult priceResult = priceCalculationService.calculatePrice(priceRequest);
+
+        SalesOrderCreateRequest createRequest = SalesOrderCreateRequest.builder()
+                .userId(userId)
+                .orderType(determineOrderType(userId))
+                .shippingAddress(shippingAddress)
+                .build();
+
+        SalesOrder order = builder.buildOrder(createRequest, userId);
+        order.setStatus(OrderStatus.PENDING);
+        order.setSubtotal(priceResult.getOriginalTotal());
+        order.setDiscountAmount(priceResult.getTotalDiscount());
+        order.setTotalAmount(priceResult.getFinalTotal());
+
+        addOrderItems(order, cart.getItems());
+        SalesOrder savedOrder = salesOrderRepository.save(order);
+
+        Invoice invoice = invoiceAutoCreationProcessor.createInvoiceForOrder(order, userId);
+        if (invoice != null) {
+            savedOrder.addInvoice(invoice);
+            salesOrderRepository.save(savedOrder);
+        }
 
         return savedOrder;
     }

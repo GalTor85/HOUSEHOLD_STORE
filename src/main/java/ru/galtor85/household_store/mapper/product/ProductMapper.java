@@ -16,6 +16,8 @@ import ru.galtor85.household_store.repository.product.ProductMediaRepository;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -97,7 +99,7 @@ public class ProductMapper {
         String mainImageUrl = mediaList.stream()
                 .filter(m -> Boolean.TRUE.equals(m.getIsMain()))
                 .findFirst()
-                .map(m -> "/api/v1/media/" + m.getId())
+                .map(m -> API_BASE+"/media/" + m.getId())
                 .orElse(product.getImageUrl());
 
         List<ProductAttributeDto> attributeDtos = product.getAttributes().stream()

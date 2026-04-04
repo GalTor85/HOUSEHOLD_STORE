@@ -18,6 +18,23 @@ public class CartProcessor {
     private final CartRepository cartRepository;
     private final MessageService messageService;
 
+    @Transactional
+    public Cart createNewCart(Long userId) {
+        Cart cart = Cart.builder()
+                .userId(userId)
+                .status(CartStatus.ACTIVE)
+                .build();
+        Cart saved = cartRepository.save(cart);
+        log.debug(messageService.get("cart.processor.created", userId, saved.getId()));
+        return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public Cart findCartOrCreate(Long userId) {
+        return cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
+                .orElseGet(() -> createNewCart(userId));
+    }
+
     @Transactional(readOnly = true)
     public Cart findActiveCart(Long userId) {
         return cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
@@ -33,4 +50,12 @@ public class CartProcessor {
         cartRepository.save(cart);
         log.debug(messageService.get("order.log.cart.completed", cart.getId()));
     }
+
+    @Transactional
+    public void expireCart(Cart cart) {
+        cart.setStatus(CartStatus.EXPIRED);
+        cartRepository.save(cart);
+        log.debug(messageService.get("cart.processor.expired", cart.getId()));
+    }
+
 }

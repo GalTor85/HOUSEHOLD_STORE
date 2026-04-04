@@ -1,4 +1,4 @@
-package ru.galtor85.household_store.service.manager;
+package ru.galtor85.household_store.service.order;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +25,7 @@ import ru.galtor85.household_store.processor.sales.SalesOrderProcessor;
 import ru.galtor85.household_store.repository.cart.CartRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
+import ru.galtor85.household_store.service.cart.CartService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.order.SalesOrderValidator;
 import ru.galtor85.household_store.validator.order.SalesOrderValidationHelper;
@@ -33,48 +34,61 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Service for managing sales orders.
+ *
+ * <p>This service provides comprehensive order management functionality including:</p>
+ * <ul>
+ *   <li>Order creation from cart or direct creation</li>
+ *   <li>Order retrieval with filtering and pagination</li>
+ *   <li>Order status updates (processing, shipping, delivery, cancellation)</li>
+ *   <li>Order item management (price updates, quantity changes, item removal)</li>
+ *   <li>Order notes and rollback functionality</li>
+ *   <li>Order statistics for reporting</li>
+ * </ul>
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ManagerSalesOrderService {
+public class SalesOrderService {
 
-    // Репозитории
+    // =========================================================================
+    // DEPENDENCIES
+    // =========================================================================
+
     private final SalesOrderRepository salesOrderRepository;
     private final ProductRepository productRepository;
     private final CartRepository cartRepository;
-
-    // Валидаторы
+    private final CartService cartService;
     private final SalesOrderValidator salesOrderValidator;
     private final SalesOrderValidationHelper validationHelper;
-
-    // Процессоры
-    private final SalesOrderProcessor salesOrderProcessor;  // ← ДОБАВЛЕНО
-
-    // Конвертеры
+    private final SalesOrderProcessor salesOrderProcessor;
     private final SalesOrderConverter salesOrderConverter;
-
-    // Утилиты
     private final MessageService messageService;
 
     // =========================================================================
-    // СОЗДАНИЕ ЗАКАЗА
+    // ORDER CREATION
     // =========================================================================
 
     /**
-     * Создает новый заказ на продажу
+     * Creates a new sales order directly (without cart).
+     *
+     * @param request the order creation request containing items and customer info
+     * @param userId the ID of the customer placing the order
+     * @return the created order as a DTO
      */
     @Transactional
     public SalesOrderDto createSalesOrder(SalesOrderCreateRequest request, Long userId) {
 
         log.info(messageService.get("sales.order.create.start", userId));
 
-        // 1. Валидация
+        // Validate request
         salesOrderValidator.validateNotEmpty(request);
         salesOrderValidator.validateUserExists(userId);
         SalesOrderValidator.ProductValidationResult validationResult =
                 salesOrderValidator.validateProducts(request.getItems());
 
-        // 2. Создаем заказ через процессор
+        // Create order via processor
         SalesOrder order = salesOrderProcessor.createSalesOrder(
                 request,
                 validationResult.getProducts(),
@@ -82,7 +96,9 @@ public class ManagerSalesOrderService {
                 userId
         );
 
-        // 3. Конвертация в DTO
+        // Add creation note
+        addOrderNote(order.getId(), messageService.get("order.sales.creation.manger.from.user",userId,request.getUserId()),userId);
+
         SalesOrderDto result = salesOrderConverter.toDto(order);
 
         log.info(messageService.get("sales.order.created.log",
@@ -92,21 +108,26 @@ public class ManagerSalesOrderService {
     }
 
     /**
-     * Создает заказ из корзины
+     * Creates an order from the user's active cart.
+     *
+     * @param userId the ID of the customer
+     * @param shippingAddress the shipping address for the order
+     * @return the created order as a DTO
+     * @throws CartNotFoundException if no active cart exists for the user
      */
     @Transactional
-    public SalesOrderDto createOrderFromCart(Long userId, String shippingAddress, String promoCode) {
+    public SalesOrderDto createOrderFromCart(Long userId, String shippingAddress) {
 
         log.info(messageService.get("sales.order.create.from.cart.start", userId));
 
-        // Получаем корзину пользователя
+        // Get user's active cart
         Cart cart = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
                 .orElseThrow(() -> new CartNotFoundException(userId));
 
-        // Создаем заказ через процессор
+        // Create order via processor
         SalesOrder order = salesOrderProcessor.createOrderFromCart(cart, shippingAddress, userId);
 
-        // Очищаем корзину
+        // Mark cart as completed
         cart.setStatus(CartStatus.COMPLETED);
         cartRepository.save(cart);
 
@@ -116,12 +137,45 @@ public class ManagerSalesOrderService {
         return salesOrderConverter.toDto(order);
     }
 
+    /**
+     * Creates an order from cart with a promo code discount.
+     *
+     * @param userId the ID of the customer
+     * @param shippingAddress the shipping address for the order
+     * @param promoCode the promo code to apply
+     * @return the created order as a DTO
+     */
+    @Transactional
+    public SalesOrderDto createOrderFromCartWithPromo(Long userId, String shippingAddress, String promoCode) {
+        log.info(messageService.get("sales.order.create.from.cart.promo.start", userId, promoCode));
+
+        Cart cart = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
+                .orElseThrow(() -> new CartNotFoundException(userId));
+
+        SalesOrder order = salesOrderProcessor.createOrderFromCartWithPromo(cart, shippingAddress, promoCode, userId);
+
+        cartService.completeCart(userId);
+
+        log.info(messageService.get("sales.order.create.from.cart.promo.complete",
+                order.getOrderNumber(), userId));
+
+        return salesOrderConverter.toDto(order);
+    }
+
     // =========================================================================
-    // ПОЛУЧЕНИЕ ЗАКАЗОВ
+    // ORDER RETRIEVAL
     // =========================================================================
 
     /**
-     * Получает заказы клиента с фильтрацией
+     * Retrieves paginated orders for a customer with optional filtering.
+     *
+     * @param userId the customer ID (optional)
+     * @param status order status filter (optional)
+     * @param startDate start date for filtering (optional)
+     * @param endDate end date for filtering (optional)
+     * @param page page number (0-indexed)
+     * @param size page size
+     * @return page of order DTOs
      */
     @Transactional(readOnly = true)
     public Page<SalesOrderDto> getCustomerOrders(Long userId,
@@ -131,17 +185,17 @@ public class ManagerSalesOrderService {
                                                  int page,
                                                  int size) {
 
-        // Парсим параметры
+        // Parse the parameters
         OrderStatus orderStatus = validationHelper.parseOrderStatus(status);
         LocalDateTime start = validationHelper.parseDate(startDate);
         LocalDateTime end = validationHelper.parseDate(endDate);
 
-        // Валидируем диапазон дат
+        // Validate the date range
         validationHelper.validateDateRange(start, end);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        // Поиск заказов через репозиторий
+        // Search for orders through the repository
         Page<SalesOrder> orders = salesOrderRepository.search(userId, orderStatus, start, end, pageable);
 
         log.debug(messageService.get("manager.orders.fetched.log", orders.getTotalElements()));
@@ -150,7 +204,10 @@ public class ManagerSalesOrderService {
     }
 
     /**
-     * Получает заказ по ID
+     * Retrieves an order by its ID.
+     *
+     * @param orderId the order ID
+     * @return the order as a DTO
      */
     @Transactional(readOnly = true)
     public SalesOrderDto getSalesOrderById(Long orderId) {
@@ -158,12 +215,32 @@ public class ManagerSalesOrderService {
         return salesOrderConverter.toDto(order);
     }
 
+    /**
+     * Retrieves an order by its order number.
+     *
+     * @param orderNumber the unique order number
+     * @return the order as a DTO
+     */
+    @Transactional(readOnly = true)
+    public SalesOrderDto getSalesOrderByNumber(String orderNumber) {
+        SalesOrder order = salesOrderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ru.galtor85.household_store.advice.exception.order.OrderNotFoundException());
+        return salesOrderConverter.toDto(order);
+    }
+
     // =========================================================================
-    // ОБНОВЛЕНИЕ СТАТУСА
+    // ORDER STATUS MANAGEMENT
     // =========================================================================
 
     /**
-     * Обновляет статус заказа
+     * Updates the status of an existing order.
+     *
+     * @param orderId the order ID
+     * @param status the new status
+     * @param trackingNumber tracking number for shipped orders (optional)
+     * @param reason reason for cancellation or refund (optional)
+     * @param managerId ID of the manager performing the update
+     * @return the updated order as a DTO
      */
     @Transactional
     public SalesOrderDto updateOrderStatus(Long orderId,
@@ -176,10 +253,10 @@ public class ManagerSalesOrderService {
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
         OrderStatus oldStatus = order.getStatus();
 
-        // Проверяем возможность перехода
+        // Checking the possibility of transition
         validationHelper.validateStatusTransitionForSale(order.getStatus(), newStatus);
 
-        // Обновляем статус
+        // Update the status
         order.setStatus(newStatus);
 
         if (trackingNumber != null) {
@@ -193,7 +270,6 @@ public class ManagerSalesOrderService {
         if (newStatus == OrderStatus.CANCELLED) {
             order.setCancelledAt(LocalDateTime.now());
             order.setCancellationReason(reason);
-            // Возвращаем товары на склад
             restoreStockForCancelledOrder(order);
         }
 
@@ -206,7 +282,12 @@ public class ManagerSalesOrderService {
     }
 
     /**
-     * Отменяет заказ
+     * Cancels an existing order.
+     *
+     * @param orderId the order ID
+     * @param reason the cancellation reason
+     * @param managerId ID of the manager cancelling the order
+     * @return the cancelled order as a DTO
      */
     @Transactional
     public SalesOrderDto cancelOrder(Long orderId, String reason, Long managerId) {
@@ -214,11 +295,18 @@ public class ManagerSalesOrderService {
     }
 
     // =========================================================================
-    // ОБНОВЛЕНИЕ ПОЗИЦИЙ
+    // ORDER ITEM MANAGEMENT
     // =========================================================================
 
     /**
-     * Обновляет цену позиции заказа
+     * Updates the price of an order item.
+     *
+     * @param orderId the order ID
+     * @param itemId the order item ID
+     * @param newPrice the new price
+     * @param reason the reason for the price change
+     * @param managerId ID of the manager making the change
+     * @return the updated order as a DTO
      */
     @Transactional
     public SalesOrderDto updateOrderItemPrice(Long orderId,
@@ -248,7 +336,14 @@ public class ManagerSalesOrderService {
     }
 
     /**
-     * Обновляет количество позиции заказа
+     * Updates the quantity of an order item.
+     *
+     * @param orderId the order ID
+     * @param itemId the order item ID
+     * @param newQuantity the new quantity
+     * @param reason the reason for the quantity change
+     * @param managerId ID of the manager making the change
+     * @return the updated order as a DTO
      */
     @Transactional
     public SalesOrderDto updateOrderItemQuantity(Long orderId,
@@ -289,7 +384,14 @@ public class ManagerSalesOrderService {
     }
 
     /**
-     * Добавляет товар в заказ
+     * Adds a new item to an existing order.
+     *
+     * @param orderId the order ID
+     * @param productId the product ID to add
+     * @param quantity the quantity to add
+     * @param customPrice optional custom price (overrides product price)
+     * @param managerId ID of the manager making the change
+     * @return the updated order as a DTO
      */
     @Transactional
     public SalesOrderDto addItemToOrder(Long orderId,
@@ -331,7 +433,12 @@ public class ManagerSalesOrderService {
     }
 
     /**
-     * Удаляет товар из заказа
+     * Removes an item from an existing order.
+     *
+     * @param orderId the order ID
+     * @param itemId the order item ID
+     * @param managerId ID of the manager making the change
+     * @return the updated order as a DTO
      */
     @Transactional
     public SalesOrderDto removeItemFromOrder(Long orderId, Long itemId, Long managerId) {
@@ -353,11 +460,17 @@ public class ManagerSalesOrderService {
     }
 
     // =========================================================================
-    // ОТКАТ СТАТУСА
+    // ROLLBACK OPERATIONS
     // =========================================================================
 
     /**
-     * Откатывает статус заказа
+     * Rolls back the status of an order.
+     *
+     * @param orderId the order ID
+     * @param reason the reason for rollback
+     * @param managerId ID of the manager performing the rollback
+     * @return the updated order as a DTO
+     * @throws RollbackNotAllowedException if rollback is not allowed for the current status
      */
     @Transactional
     public SalesOrderDto rollbackOrderStatus(Long orderId, String reason, Long managerId) {
@@ -367,7 +480,6 @@ public class ManagerSalesOrderService {
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
         OrderStatus currentStatus = order.getStatus();
 
-        // Проверяем возможность отката
         if (!currentStatus.isRollbackAllowedForSale()) {
             throw new RollbackNotAllowedException(currentStatus);
         }
@@ -375,7 +487,6 @@ public class ManagerSalesOrderService {
         OrderStatus targetStatus = currentStatus.getRollbackTargetForSale();
         OrderStatus oldStatus = order.getStatus();
 
-        // Выполняем откат
         performRollbackActions(order, oldStatus, targetStatus, reason, managerId);
         order.setStatus(targetStatus);
         addRollbackNote(order, oldStatus, targetStatus, reason, managerId);
@@ -389,11 +500,16 @@ public class ManagerSalesOrderService {
     }
 
     // =========================================================================
-    // ЗАМЕТКИ
+    // ORDER NOTES
     // =========================================================================
 
     /**
-     * Добавляет заметку к заказу
+     * Adds a note to an existing order.
+     *
+     * @param orderId the order ID
+     * @param note the note text
+     * @param managerId ID of the manager adding the note
+     * @return the updated order as a DTO
      */
     @Transactional
     public SalesOrderDto addOrderNote(Long orderId, String note, Long managerId) {
@@ -401,12 +517,12 @@ public class ManagerSalesOrderService {
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        String newNote = String.format("[%s] Manager %s: %s", timestamp, managerId, note);
+        String newNote = String.format("[%s] Manager ID - %s: %s", timestamp, managerId, note);
 
         if (order.getNotes() == null || order.getNotes().isEmpty()) {
             order.setNotes(newNote);
         } else {
-            order.setNotes(order.getNotes() + "\n" + newNote);
+            order.setNotes(order.getNotes() + " --- " + newNote);
         }
 
         SalesOrder updatedOrder = salesOrderRepository.save(order);
@@ -417,11 +533,13 @@ public class ManagerSalesOrderService {
     }
 
     // =========================================================================
-    // СТАТИСТИКА
+    // STATISTICS
     // =========================================================================
 
     /**
-     * Получает статистику заказов
+     * Retrieves order statistics for dashboard reporting.
+     *
+     * @return statistics DTO with totals for today, week, and month
      */
     @Transactional(readOnly = true)
     public SalesOrderStatisticsDto getOrderStatistics() {
@@ -440,12 +558,25 @@ public class ManagerSalesOrderService {
                 .build();
     }
 
+    /**
+     * Calculates the total amount spent by a user across all completed orders.
+     *
+     * @param userId the user ID
+     * @return total amount spent
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal getUserTotalSpent(Long userId) {
+        return salesOrderRepository.getTotalSpentByUser(userId);
+    }
+
     // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // HELPER METHODS
     // =========================================================================
 
     /**
-     * Возвращает товары на склад при отмене заказа
+     * Restores stock quantities when an order is cancelled.
+     *
+     * @param order the cancelled order
      */
     private void restoreStockForCancelledOrder(SalesOrder order) {
         for (SalesOrderItem item : order.getItems()) {
@@ -461,7 +592,13 @@ public class ManagerSalesOrderService {
     }
 
     /**
-     * Выполняет действия при откате статуса
+     * Performs specific actions based on the status being rolled back.
+     *
+     * @param order the order being rolled back
+     * @param oldStatus the original status
+     * @param newStatus the target status
+     * @param reason the rollback reason
+     * @param managerId ID of the manager performing the rollback
      */
     private void performRollbackActions(SalesOrder order,
                                         OrderStatus oldStatus,
@@ -486,7 +623,13 @@ public class ManagerSalesOrderService {
     }
 
     /**
-     * Добавляет заметку об откате
+     * Adds a rollback note to the order.
+     *
+     * @param order the order
+     * @param oldStatus the original status
+     * @param newStatus the target status
+     * @param reason the rollback reason
+     * @param managerId ID of the manager performing the rollback
      */
     private void addRollbackNote(SalesOrder order,
                                  OrderStatus oldStatus,

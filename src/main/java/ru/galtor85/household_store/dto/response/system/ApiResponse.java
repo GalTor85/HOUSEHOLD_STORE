@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -37,7 +39,7 @@ public class ApiResponse<T> {
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
 
-    @Schema(description = "Request path", example = "/api/v1/users")
+    @Schema(description = "Request path", example = API_BASE+"/users")
     private String path;
 
     public static <T> ApiResponse<T> success(String message, T data) {
