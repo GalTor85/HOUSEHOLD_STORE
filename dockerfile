@@ -1,53 +1,37 @@
-# Multi-stage build для минимального образа
+# Stage 1: Build
 FROM maven:3.9-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /build
 
-# Копируем pom.xml для кэширования зависимостей
+# Copy pom.xml and download dependencies
 COPY pom.xml .
-
-# Скачиваем все зависимости (используем кэш)
 RUN mvn dependency:go-offline -B
 
-# Копируем исходный код
+# Copy source code (включая миграции в src/main/resources/db/)
 COPY src ./src
 
-# Собираем приложение (JAR файл)
-RUN mvn clean package -DskipTests
+# Build JAR (миграции упакуются в JAR)
+RUN mvn clean package -DskipTests -B
 
-# Финальный образ
+# Stage 2: Runtime
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-# Создаем непривилегированного пользователя
+# Create non-root user
 RUN addgroup -S spring && adduser -S spring -G spring
 
-# Устанавливаем необходимые утилиты для работы с SSL
-RUN apk add --no-cache openssl curl netcat-openbsd
-
-# Копируем JAR файл из builder
+# Copy JAR from builder (миграции уже внутри JAR)
 COPY --from=builder --chown=spring:spring /build/target/*.jar app.jar
 
-# Создаем директорию для SSL сертификата и логов
-RUN mkdir -p /app/keystore && chown spring:spring /app/keystore
-RUN mkdir -p /app/logs && chown spring:spring /app/logs
+# Create directories
+RUN mkdir -p /app/logs /app/uploads && chown spring:spring /app/logs /app/uploads
 
-# Копируем SSL-сертификат
-COPY --chown=spring:spring keystore.p12 /app/keystore/keystore.p12
-RUN chmod 400 /app/keystore/keystore.p12
-
-# Переключаемся на непривилегированного пользователя
+# Switch to non-root user
 USER spring:spring
 
-# Порт для HTTPS
+# Expose port
 EXPOSE 8443
 
-# Переменные окружения по умолчанию
-ENV SPRING_PROFILES_ACTIVE=docker \
-    SERVER_PORT=8443 \
-    SSL_KEYSTORE_PASSWORD=changeit \
-    SSL_KEYSTORE_PATH=file:/app/keystore/keystore.p12
-
-# Запускаем приложение
+# Run application (Liquibase выполнится при старте)
 ENTRYPOINT ["java", "-jar", "app.jar"]

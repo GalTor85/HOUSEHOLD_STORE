@@ -8,10 +8,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.finance.PaymentMethod;
+import ru.galtor85.household_store.service.currency.CurrencyService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
+/**
+ * Invoice Data Transfer Object
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -27,7 +32,7 @@ public class InvoiceDto {
     @Schema(description = "Unique invoice identifier", example = "1", accessMode = Schema.AccessMode.READ_ONLY)
     private Long id;
 
-    @Schema(description = "Unique invoice number", example = "INV-20240330-001", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Unique invoice number", example = "INV-20240330-001")
     private String invoiceNumber;
 
     // =========================================================================
@@ -46,15 +51,14 @@ public class InvoiceDto {
     @Schema(description = "Sales order number", example = "SO-20240330-001")
     private String salesOrderNumber;
 
-    @Schema(description = "Localized order type description", example = "Purchase",
-            allowableValues = {"Purchase", "Sales"})
+    @Schema(description = "Order type", example = "PURCHASE", allowableValues = {"PURCHASE", "SALES"})
     private String orderTypeDescription;
 
     // =========================================================================
     // FINANCIAL FIELDS
     // =========================================================================
 
-    @Schema(description = "Invoice amount", example = "8500.00", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Invoice amount", example = "8500.00")
     private BigDecimal amount;
 
     @Schema(description = "Currency code (ISO 4217)", example = "RUB", defaultValue = "RUB")
@@ -76,8 +80,7 @@ public class InvoiceDto {
     // STATUS
     // =========================================================================
 
-    @Schema(description = "Invoice status", example = "PARTIALLY_PAID",
-            allowableValues = {"PENDING", "PAID", "PARTIALLY_PAID", "CANCELLED", "REFUNDED"})
+    @Schema(description = "Invoice status", example = "PARTIALLY_PAID")
     private InvoiceStatus status;
 
     @Schema(description = "Localized status name", example = "Partially Paid")
@@ -87,8 +90,7 @@ public class InvoiceDto {
     // PAYMENT METHOD
     // =========================================================================
 
-    @Schema(description = "Payment method", example = "BANK_TRANSFER",
-            allowableValues = {"CASH", "CARD", "BANK_TRANSFER", "ONLINE", "CREDIT"})
+    @Schema(description = "Payment method", example = "BANK_TRANSFER")
     private PaymentMethod paymentMethod;
 
     @Schema(description = "Localized payment method name", example = "Bank Transfer")
@@ -235,16 +237,14 @@ public class InvoiceDto {
                     String.format("%.2f", paymentPercent));
         }
 
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+
         if (dueDate != null) {
-            java.time.format.DateTimeFormatter formatter =
-                    java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
             localizedDueDate = messageService.get("invoice.due.date",
                     dueDate.format(formatter));
         }
 
         if (issueDate != null) {
-            java.time.format.DateTimeFormatter formatter =
-                    java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
             localizedIssueDate = messageService.get("invoice.issue.date",
                     issueDate.format(formatter));
         }
@@ -256,5 +256,23 @@ public class InvoiceDto {
     private String formatBalance(BigDecimal balance) {
         if (balance == null) return "0.00";
         return String.format("%,.2f", balance);
+    }
+
+    /**
+     * Gets invoice amount formatted in target currency
+     *
+     * @param targetCurrency   target currency code
+     * @param currencyService  currency service for conversion
+     * @param currencySymbol   currency symbol for display
+     * @return formatted amount string
+     */
+    public String getFormattedAmountInCurrency(String targetCurrency,
+                                               CurrencyService currencyService,
+                                               String currencySymbol) {
+        BigDecimal convertedAmount = amount;
+        if (amount != null && !currency.equals(targetCurrency)) {
+            convertedAmount = currencyService.convert(amount, currency, targetCurrency);
+        }
+        return String.format("%,.2f %s", convertedAmount, currencySymbol);
     }
 }

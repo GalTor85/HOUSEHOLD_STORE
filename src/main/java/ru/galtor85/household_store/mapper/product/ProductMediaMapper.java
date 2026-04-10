@@ -11,7 +11,7 @@ import ru.galtor85.household_store.entity.product.ProductMedia;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.ApiConstants.API_BASE;
 
 @Slf4j
 @Component

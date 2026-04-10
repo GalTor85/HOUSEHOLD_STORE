@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.cell;
 
+import lombok.Getter;
+
+@Getter
 public class CellAlreadyOccupiedException extends RuntimeException {
     private final Long cellId;
     private final String cellCode;
@@ -19,15 +22,4 @@ public class CellAlreadyOccupiedException extends RuntimeException {
         this.cellId = null;
     }
 
-    public Long getCellId() {
-        return cellId;
-    }
-
-    public String getCellCode() {
-        return cellCode;
-    }
-
-    public Long getCurrentProductId() {
-        return currentProductId;
-    }
 }

@@ -1,9 +1,11 @@
 package ru.galtor85.household_store.dto.request.price;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,6 +14,12 @@ import ru.galtor85.household_store.dto.response.cart.CartItemDto;
 
 import java.util.List;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_PROMO_CODE_LENGTH;
+import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_ADDRESS_LENGTH;
+
+/**
+ * Request DTO for price calculation.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -20,24 +28,26 @@ import java.util.List;
 public class PriceCalculationRequest {
 
     @NotNull(message = "{price.validation.user.id.empty}")
-    @Schema(description = "User ID", example = "1", required = true)
+    @Schema(description = "User ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long userId;
 
     @NotEmpty(message = "{price.validation.items.empty}")
     @Valid
-    @Schema(description = "List of items in cart", required = true)
+    @Schema(description = "List of items in cart", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<CartItemDto> items;
 
+    @Size(max = MAX_PROMO_CODE_LENGTH, message = "{price.validation.promo.code.max}")
     @Schema(description = "Promo code", example = "WELCOME10")
     private String promoCode;
 
     @Schema(description = "User type ID (overrides user's current type)", example = "1")
     private Long userTypeId;
 
+    @Size(max = MAX_ADDRESS_LENGTH, message = "{price.validation.shipping.address.max}")
     @Schema(description = "Shipping address for delivery cost calculation", example = "123 Main St, Moscow")
     private String shippingAddress;
 
-    @Schema(description = "Currency code", example = "RUB", defaultValue = "RUB")
+    @Schema(description = "Currency code", example = "RUB")
     private String currency;
 
     @Schema(description = "Apply user type discounts", example = "true", defaultValue = "true")
@@ -51,4 +61,74 @@ public class PriceCalculationRequest {
     @Schema(description = "Apply price rules", example = "true", defaultValue = "true")
     @Builder.Default
     private boolean applyPriceRules = true;
+
+    // =========================================================================
+    // HELPER METHODS - hidden from Swagger
+    // =========================================================================
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasPromoCode() {
+        return promoCode != null && !promoCode.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasUserTypeId() {
+        return userTypeId != null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasShippingAddress() {
+        return shippingAddress != null && !shippingAddress.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasCurrency() {
+        return currency != null && !currency.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasItems() {
+        return items != null && !items.isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public int getTotalItems() {
+        return items != null ? items.size() : 0;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public String getNormalizedPromoCode() {
+        return promoCode != null ? promoCode.trim().toUpperCase() : null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public String getNormalizedCurrency() {
+        return currency != null ? currency.trim().toUpperCase() : null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean shouldApplyUserTypeDiscounts() {
+        return applyUserTypeDiscounts;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean shouldApplyPromoCode() {
+        return applyPromoCode && hasPromoCode();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean shouldApplyPriceRules() {
+        return applyPriceRules;
+    }
 }

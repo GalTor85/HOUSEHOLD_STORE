@@ -7,6 +7,7 @@ import ru.galtor85.household_store.dto.request.auth.UserCreateRequest;
 import ru.galtor85.household_store.dto.request.user.UserEditRequest;
 import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.validator.auth.UserValidator;
 
 import java.time.LocalDate;
 
@@ -16,6 +17,7 @@ import java.time.LocalDate;
 public class UserToEntity {
 
     private final MessageService messageService;
+    private final UserValidator userValidator;
 
     public User build(UserCreateRequest request, String creator) {
         if (request == null) {
@@ -23,9 +25,15 @@ public class UserToEntity {
             return null;
         }
 
+        userValidator.validateFirstName(request.getFirstName());
+        userValidator.validateLastName(request.getLastName());
+        userValidator.validateSurnameLength(request.getSurname());
+        userValidator.validateEmailLength(request.getEmail());
+        userValidator.validatePhoneNumberLength(request.getMobileNumber());
+        userValidator.validateAddressLength(request.getAddress());
+
         log.debug(messageService.get("user-to-entity.log.mapper.converting.user", request.getEmail()));
 
-        // В User больше нет role, active и password!
         return User.builder()
                 .email(request.getEmail())
                 .mobileNumber(request.getMobileNumber())
@@ -62,21 +70,27 @@ public class UserToEntity {
         log.debug(messageService.get("user-to-entity.log.mapper.updating.user", user.getId()));
 
         if (request.getEmail() != null) {
+            userValidator.validateEmailLength(request.getEmail());
             user.setEmail(request.getEmail());
         }
         if (request.getMobileNumber() != null) {
+            userValidator.validatePhoneNumberLength(request.getMobileNumber());
             user.setMobileNumber(request.getMobileNumber());
         }
         if (request.getFirstName() != null) {
+            userValidator.validateFirstName(request.getFirstName());
             user.setFirstName(request.getFirstName());
         }
         if (request.getLastName() != null) {
+            userValidator.validateLastName(request.getLastName());
             user.setLastName(request.getLastName());
         }
         if (request.getSurname() != null) {
+            userValidator.validateSurnameLength(request.getSurname());
             user.setSurname(request.getSurname());
         }
         if (request.getAddress() != null) {
+            userValidator.validateAddressLength(request.getAddress());
             user.setAddress(request.getAddress());
         }
         if (request.getBirthDate() != null) {

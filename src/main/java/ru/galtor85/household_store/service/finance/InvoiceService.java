@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.cash.InvoiceNotFoundException;
 import ru.galtor85.household_store.advice.exception.order.PurchaseOrderNotFoundException;
 import ru.galtor85.household_store.advice.exception.order.SalesOrderNotFoundException;
+import ru.galtor85.household_store.config.FinancialConfig;
 import ru.galtor85.household_store.converter.InvoiceConverter;
 import ru.galtor85.household_store.dto.request.finance.InvoiceCreateRequest;
 import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
@@ -21,6 +22,7 @@ import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
+import ru.galtor85.household_store.service.currency.CurrencyConversionService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.util.generator.NumberGenerator;
 import ru.galtor85.household_store.validator.finance.InvoiceValidator;
@@ -31,6 +33,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static ru.galtor85.household_store.constants.PaginationConstants.DESC_SORT_DIRECTION;
 
 /**
  * Service for managing invoices
@@ -50,6 +54,8 @@ public class InvoiceService {
     private final MessageService messageService;
     private final InvoicePaymentProcessor paymentProcessor;
     private final CashTransactionRepository cashTransactionRepository;
+    private final CurrencyConversionService currencyConversionService;
+    private final FinancialConfig financialConfig;  // ← ДОБАВИТЬ
 
     // =========================================================================
     // INVOICE CREATION
@@ -70,6 +76,10 @@ public class InvoiceService {
         // Validate request
         invoiceValidator.validateCreateRequest(request);
 
+        // Get amount in base currency for consistent storage
+        BigDecimal amountInBaseCurrency = currencyConversionService.convertToBaseCurrency(
+                request.getAmount(), request.getNormalizedCurrency());
+
         // Validate order existence
         if (request.getPurchaseOrderId() != null) {
             validatePurchaseOrder(request.getPurchaseOrderId());
@@ -77,17 +87,23 @@ public class InvoiceService {
             validateSalesOrder(request.getSalesOrderId());
         }
 
+        // Calculate due date based on order type
+        LocalDateTime dueDate = request.getDueDate();
+        if (dueDate == null) {
+            dueDate = calculateDueDate(request);
+        }
+
         // Build invoice entity
         Invoice invoice = Invoice.builder()
                 .invoiceNumber(numberGenerator.generateInvoiceNumber())
                 .purchaseOrderId(request.getPurchaseOrderId())
                 .salesOrderId(request.getSalesOrderId())
-                .amount(request.getAmount())
-                .currency(request.getCurrency() != null ? request.getCurrency() : "RUB")
+                .amount(amountInBaseCurrency)
+                .currency(request.getNormalizedCurrency())
                 .status(InvoiceStatus.PENDING)
                 .paymentMethod(request.getPaymentMethod())
                 .issueDate(LocalDateTime.now())
-                .dueDate(request.getDueDate())
+                .dueDate(dueDate)
                 .description(request.getDescription())
                 .notes(request.getNotes())
                 .createdBy(createdBy)
@@ -99,6 +115,28 @@ public class InvoiceService {
 
         // New invoice has zero payments
         return invoiceConverter.toDto(saved, BigDecimal.ZERO);
+    }
+
+    /**
+     * Calculates due date based on order type and configuration.
+     *
+     * @param request the invoice creation request
+     * @return calculated due date
+     */
+    private LocalDateTime calculateDueDate(InvoiceCreateRequest request) {
+        if (request.getPurchaseOrderId() != null) {
+            // Purchase order invoice
+            Integer days = financialConfig.getInvoice().getPurchaseDueDays();
+            int dueDays = days != null ? days : 30;
+            return LocalDateTime.now().plusDays(dueDays);
+        } else {
+            // Sales order invoice - determine retail vs wholesale
+            // Note: This requires additional logic to check order type
+            // For now, use retail days as default
+            Integer days = financialConfig.getInvoice().getRetailDueDays();
+            int dueDays = days != null ? days : 7;
+            return LocalDateTime.now().plusDays(dueDays);
+        }
     }
 
     // =========================================================================
@@ -143,7 +181,7 @@ public class InvoiceService {
      */
     @Transactional(readOnly = true)
     public Page<InvoiceDto> getAllInvoices(int page, int size, String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("desc") ?
+        Sort sort = sortDir.equalsIgnoreCase(DESC_SORT_DIRECTION) ?
                 Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -224,7 +262,7 @@ public class InvoiceService {
     // =========================================================================
 
     /**
-     * Marks invoice as fully paid
+     * Marks invoice as fully paid (legacy method using cash register)
      *
      * @param invoiceId      invoice identifier
      * @param cashRegisterId cash register used for payment
@@ -233,7 +271,6 @@ public class InvoiceService {
      */
     @Transactional
     public InvoiceDto markAsPaid(Long invoiceId, Long cashRegisterId, Long cashierId) {
-
         InvoicePaymentProcessor.InvoicePaymentResult result = paymentProcessor.processPayment(
                 invoiceId,
                 getInvoiceAmount(invoiceId),
@@ -249,7 +286,7 @@ public class InvoiceService {
     }
 
     /**
-     * Marks invoice as partially paid
+     * Marks invoice as partially paid (legacy method using cash register)
      *
      * @param invoiceId      invoice identifier
      * @param paidAmount     amount being paid
@@ -264,7 +301,7 @@ public class InvoiceService {
         );
 
         log.info(messageService.get("invoice.partially.paid",
-                result.getInvoice().getInvoiceNumber(), paidAmount, result.getInvoice().getCashTransactions().stream().toArray()));
+                result.getInvoice().getInvoiceNumber(), paidAmount));
 
         BigDecimal totalPaid = calculateTotalPaid(result.getInvoice());
         return invoiceConverter.toDto(result.getInvoice(), totalPaid);
@@ -405,7 +442,6 @@ public class InvoiceService {
         return amount != null ? amount : BigDecimal.ZERO;
     }
 
-
     // =========================================================================
     // OVERDUE INVOICES
     // =========================================================================
@@ -431,7 +467,7 @@ public class InvoiceService {
     /**
      * Gets invoices due in the next N days
      *
-     * @param days number of days to look ahead
+     * @param days number of days to look ahead (from configuration or request)
      * @return list of upcoming invoice DTOs
      */
     @Transactional(readOnly = true)
@@ -448,6 +484,18 @@ public class InvoiceService {
                     return invoiceConverter.toDto(invoice, totalPaid != null ? totalPaid : BigDecimal.ZERO);
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Gets default upcoming invoices based on configuration
+     *
+     * @return list of upcoming invoice DTOs using default days from config
+     */
+    @Transactional(readOnly = true)
+    public List<InvoiceDto> getDefaultUpcomingInvoices() {
+        Integer defaultDays = financialConfig.getInvoice().getRetailDueDays();
+        int days = defaultDays != null ? defaultDays : 7;
+        return getUpcomingInvoices(days);
     }
 
     // =========================================================================

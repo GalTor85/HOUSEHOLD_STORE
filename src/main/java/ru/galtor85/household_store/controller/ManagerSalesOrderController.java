@@ -12,25 +12,20 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import ru.galtor85.household_store.advice.exception.auth.CustomAuthenticationException;
 import ru.galtor85.household_store.dto.request.order.SalesOrderCreateRequest;
 import ru.galtor85.household_store.dto.response.order.RollbackApprovalDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
 import ru.galtor85.household_store.dto.request.order.RollbackRequest;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.entity.user.User;
-import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.order.SalesOrderService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.rollback.RollbackService;
-import ru.galtor85.household_store.service.user.UserSearchService;
 
 import java.math.BigDecimal;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_MANAGER_ORDERS;
 
 /**
  * REST controller for manager sales order operations.
@@ -50,34 +45,15 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
 @SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
 @RestController
-@RequestMapping(API_BASE + "/manager/orders")
+@RequestMapping(CONTROL_MANAGER_ORDERS)
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 @Tag(name = "Manager Sales Operations", description = "Endpoints for managing customer orders")
-public class ManagerSalesOrderController {
+public class ManagerSalesOrderController extends BaseController {
 
     private final SalesOrderService salesOrderService;
-    private final UserSearchService userSearchService;
     private final MessageService messageService;
     private final RollbackService rollbackService;
-
-    // =========================================================================
-    // HELPER METHODS
-    // =========================================================================
-
-    private SecurityUser getCurrentSecurityUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new CustomAuthenticationException(
-                    messageService.get("manager.error.not.authenticated"));
-        }
-        return (SecurityUser) auth.getPrincipal();
-    }
-
-    private User getCurrentManager() {
-        SecurityUser securityUser = getCurrentSecurityUser();
-        return userSearchService.getUserById(securityUser.getUserId());
-    }
 
     // =========================================================================
     // CUSTOMER ORDER MANAGEMENT
@@ -108,12 +84,15 @@ public class ManagerSalesOrderController {
             @Parameter(description = "End date (ISO format)", example = "2024-12-31T23:59:59")
             @RequestParam(required = false) String endDate,
             @Parameter(description = "Page number (0-indexed)", example = "0")
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer page,
             @Parameter(description = "Page size", example = "20")
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
+
+        int effectivePage = getPage(page);
+        int effectiveSize = getSize(size);
 
         Page<SalesOrderDto> orders = salesOrderService.getCustomerOrders(
-                customerId, status, startDate, endDate, page, size);
+                customerId, status, startDate, endDate, effectivePage, effectiveSize);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.orders.fetched"),
@@ -153,7 +132,7 @@ public class ManagerSalesOrderController {
     public ResponseEntity<ApiResponse<SalesOrderDto>> createCustomerOrder(
             @Valid @RequestBody SalesOrderCreateRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         log.info(messageService.get("manager.order.create.start", manager.getEmail(), request.getUserId()));
 
         SalesOrderDto order = salesOrderService.createSalesOrder(request, manager.getId());
@@ -194,7 +173,7 @@ public class ManagerSalesOrderController {
             @Parameter(description = "Reason (for CANCELLED or REFUNDED status)", example = "Customer request")
             @RequestParam(required = false) String reason) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         SalesOrderDto order = salesOrderService.updateOrderStatus(
                 orderId, status, trackingNumber, reason, manager.getId());
 
@@ -219,7 +198,7 @@ public class ManagerSalesOrderController {
             @Parameter(description = "Cancellation reason", example = "Out of stock", required = true)
             @RequestParam String reason) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         SalesOrderDto order = salesOrderService.cancelOrder(orderId, reason, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -249,7 +228,7 @@ public class ManagerSalesOrderController {
             @Parameter(description = "Reason for price change", example = "Manager discount", required = true)
             @RequestParam String reason) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         SalesOrderDto order = salesOrderService.updateOrderItemPrice(
                 orderId, itemId, newPrice, reason, manager.getId());
 
@@ -273,7 +252,7 @@ public class ManagerSalesOrderController {
             @PathVariable Long orderId,
             @Valid @RequestBody RollbackRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         request.setOrderId(orderId);
         RollbackApprovalDto approval = rollbackService.requestRollback(
                 request, manager.getId());
@@ -299,7 +278,7 @@ public class ManagerSalesOrderController {
             @Parameter(description = "Note text", example = "Customer requested gift wrapping", required = true)
             @RequestParam String note) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         SalesOrderDto order = salesOrderService.addOrderNote(orderId, note, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(

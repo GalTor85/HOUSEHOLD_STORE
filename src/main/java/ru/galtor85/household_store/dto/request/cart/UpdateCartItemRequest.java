@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.MIN_QUANTITY;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,7 +16,7 @@ import lombok.NoArgsConstructor;
 public class UpdateCartItemRequest {
 
     @NotNull(message = "{cart.validation.quantity.empty}")
-    @Min(value = 0, message = "{cart.validation.quantity.min}")
+    @Min(value = MIN_QUANTITY, message = "{cart.validation.quantity.min}")
     @Schema(description = "New quantity (0 to remove)", example = "3")
     private Integer quantity;
 }

@@ -22,6 +22,7 @@ import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.supplier.SupplierRepository;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.validator.product.ProductValidator;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ public class PurchaseOrderValidator {
     private final ProductRepository productRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final MessageService messageService;
+    private final ProductValidator productValidator;
 
     // =========================================================================
     // CREATE REQUEST VALIDATION
@@ -176,11 +178,7 @@ public class PurchaseOrderValidator {
      * @throws ProductNotFoundException if product not found
      */
     public Product validateProductExists(Long productId) {
-        return productRepository.findById(productId)
-                .orElseThrow(() -> {
-                    log.error(messageService.get("manager.product.error.not.found", productId));
-                    return new ProductNotFoundException(productId);
-                });
+        return productValidator.validateProductExists(productId);
     }
 
     /**

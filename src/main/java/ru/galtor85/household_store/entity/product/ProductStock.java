@@ -33,22 +33,22 @@ public class ProductStock {
     private Integer quantity;
 
     @Column(name = "reserved_quantity")
-    private Integer reservedQuantity; // Зарезервировано для заказов
+    private Integer reservedQuantity; // Reserved for orders
 
     @Column(name = "available_quantity")
-    private Integer availableQuantity; // Доступно для продажи
+    private Integer availableQuantity; // Available for sale
 
     @Column(name = "min_stock_level")
-    private Integer minStockLevel; // Минимальный уровень запаса
+    private Integer minStockLevel; // Minimum stock level
 
     @Column(name = "max_stock_level")
-    private Integer maxStockLevel; // Максимальный уровень запаса
+    private Integer maxStockLevel; // Maximum stock level
 
     @Column(name = "reorder_point")
-    private Integer reorderPoint; // Точка заказа
+    private Integer reorderPoint; // Reorder point
 
     @Column(name = "location_in_warehouse")
-    private String locationInWarehouse; // Местоположение на складе (ряд/стеллаж/полка)
+    private String locationInWarehouse; // Location in warehouse (row/rack/shelf)
 
     @CreationTimestamp
     @Column(name = "created_at")

@@ -16,7 +16,7 @@ import ru.galtor85.household_store.validator.media.MediaValidator;
 
 import java.util.List;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.ApiConstants.API_BASE;
 
 @Slf4j
 @Component

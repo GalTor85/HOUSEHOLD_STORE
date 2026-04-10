@@ -27,10 +27,10 @@ import ru.galtor85.household_store.security.JwtTokenCleanupFilter;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-
 import java.util.Arrays;
+import java.util.List;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.EndpointConstants.*;
 
 /**
  * Security configuration for the application.
@@ -43,6 +43,9 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
  *   <li>Role-based authorization for endpoints</li>
  *   <li>Password encoding with BCrypt</li>
  * </ul>
+ *
+ * @author G@LTor85
+ * @since 1.0
  */
 @Slf4j
 @Configuration
@@ -52,18 +55,38 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtTokenCleanupFilter jwtTokenCleanupFilter;
     private final MessageService messageService;
     private final ObjectMapper objectMapper;
 
-    /**
-     * Creates a filter that cleans up JWT tokens from ThreadLocal after request completion.
-     *
-     * @return JwtTokenCleanupFilter instance
-     */
-    @Bean
-    public JwtTokenCleanupFilter jwtTokenCleanupFilter() {
-        return new JwtTokenCleanupFilter(messageService);
-    }
+    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:8080}")
+    private String[] allowedOrigins;
+
+    @Value("${app.cors.max-age:3600}")
+    private long corsMaxAge;
+
+    private static final List<String> ALLOWED_METHODS = Arrays.asList(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+    );
+
+    private static final List<String> ALLOWED_HEADERS = Arrays.asList(
+            "Authorization",
+            "Content-Type",
+            "X-Requested-With",
+            "Accept",
+            "Origin",
+            "Access-Control-Request-Method",
+            "Access-Control-Request-Headers"
+    );
+
+    private static final List<String> EXPOSED_HEADERS = Arrays.asList(
+            "Authorization",
+            "Content-Disposition"
+    );
+
+    // =========================================================================
+    // BEAN DEFINITIONS
+    // =========================================================================
 
     /**
      * Creates a password encoder using BCrypt hashing algorithm.
@@ -83,8 +106,7 @@ public class SecurityConfig {
      * @throws AuthenticationManagerException if authentication manager creation fails
      */
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authConfig) {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) {
         try {
             log.debug(messageService.get("security-config.log.creating.authentication.manager"));
             return authConfig.getAuthenticationManager();
@@ -98,17 +120,6 @@ public class SecurityConfig {
     /**
      * Configures the security filter chain for HTTP requests.
      *
-     * <p>This method defines:</p>
-     * <ul>
-     *   <li>CSRF protection (disabled for stateless REST API)</li>
-     *   <li>CORS configuration</li>
-     *   <li>Stateless session policy</li>
-     *   <li>Public endpoints that don't require authentication</li>
-     *   <li>Role-protected endpoints for admin and manager</li>
-     *   <li>JWT filter integration</li>
-     *   <li>Authentication and access denied handlers</li>
-     * </ul>
-     *
      * @param http the HttpSecurity to configure
      * @return SecurityFilterChain instance
      * @throws Exception if configuration fails
@@ -117,57 +128,19 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // CORS configuration
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-                // Stateless session management for REST API
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-
-                // Request authorization rules
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints (no authentication required)
-                        .requestMatchers(
-                                API_BASE + "/auth/register",
-                                API_BASE + "/auth/login",
-                                API_BASE + "/auth/refresh",
-                                API_BASE + "/",
-                                API_BASE + "/media/**",
-                                API_BASE + "/health",
-                                API_BASE + "/info",
-                                API_BASE + "/ping",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/api-docs/**",
-                                "/actuator/**",
-                                "/error",
-                                API_BASE + "/debug/**"
-                        ).permitAll()
-
-                        // Admin-only endpoints
-                        .requestMatchers(API_BASE + "/admin/**").hasRole("ADMIN")
-
-                        // Admin and Manager endpoint
-                        .requestMatchers(API_BASE + "/manager/**").hasAnyRole("ADMIN", "MANAGER")
-
-                        // Authenticated user endpoints
-                        .requestMatchers(
-                                API_BASE + "/**"
-                        ).authenticated()
-
-                        // All other requests
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers(ADMIN_ROOT).hasRole("ADMIN")
+                        .requestMatchers(MANAGER_ROOT).hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers(USER_ROOT).authenticated()
                         .anyRequest().permitAll()
                 )
-
-                // Add JWT filter before standard authentication filte
-                .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(jwtTokenCleanupFilter(), JwtAuthenticationFilter.class)
-
-                // Exception handling configuration
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(jwtTokenCleanupFilter, JwtAuthenticationFilter.class)
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, authException) -> {
                             log.warn(messageService.get("security-config.log.error.authentication.failed",
@@ -210,58 +183,18 @@ public class SecurityConfig {
     /**
      * Configures CORS (Cross-Origin Resource Sharing) settings.
      *
-     * <p>This allows the frontend application running on different origins
-     * to make requests to this API.</p>
-     *
-     * <p>Configuration includes:</p>
-     * <ul>
-     *   <li>Allowed origins (localhost:3000, localhost:8080)</li>
-     *   <li>Allowed HTTP methods (GET, POST, PUT, PATCH, DELETE, OPTIONS)</li>
-     *   <li>Allowed headers (Authorization, Content-Type, etc.)</li>
-     *   <li>Credentials support for cookies and authorization headers</li>
-     *   <li>Preflight request cache duration (1 hour)</li>
-     *   <li>Exposed headers for client access</li>
-     * </ul>
-     *
      * @return CorsConfigurationSource with CORS settings applied to all endpoints
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow specific origins
-        configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000",
-                "http://localhost:8080"
-        ));
-
-        // Allow specific HTTP methods
-        configuration.setAllowedMethods(Arrays.asList(
-                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
-        ));
-
-        // Allow specific headers
-        configuration.setAllowedHeaders(Arrays.asList(
-                "Authorization",
-                "Content-Type",
-                "X-Requested-With",
-                "Accept",
-                "Origin",
-                "Access-Control-Request-Method",
-                "Access-Control-Request-Headers"
-        ));
-
-        // Allow credentials (cookies, authorization headers)
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
+        configuration.setAllowedMethods(ALLOWED_METHODS);
+        configuration.setAllowedHeaders(ALLOWED_HEADERS);
         configuration.setAllowCredentials(true);
-
-        // Preflight request cache duration (seconds)
-        configuration.setMaxAge(3600L);
-
-        // Headers exposed to the client
-        configuration.setExposedHeaders(Arrays.asList(
-                "Authorization",
-                "Content-Disposition"
-        ));
+        configuration.setMaxAge(corsMaxAge);
+        configuration.setExposedHeaders(EXPOSED_HEADERS);
 
         log.debug(messageService.get("security-config.log.cors.allowed.headers", configuration.getAllowedHeaders()));
         log.debug(messageService.get("security-config.log.cors.allowed.methods", configuration.getAllowedMethods()));

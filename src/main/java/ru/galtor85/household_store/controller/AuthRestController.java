@@ -18,7 +18,7 @@ import ru.galtor85.household_store.dto.response.user.UserResponse;
 import ru.galtor85.household_store.service.auth.AuthService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_AUTH;
 
 /**
  * REST controller for authentication operations.
@@ -36,7 +36,7 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
  */
 @Slf4j
 @RestController
-@RequestMapping(API_BASE+"/auth")
+@RequestMapping(CONTROL_AUTH)
 @RequiredArgsConstructor
 @Tag(name = "Authentication", description = "API for registration, login, and session management")
 public class AuthRestController {

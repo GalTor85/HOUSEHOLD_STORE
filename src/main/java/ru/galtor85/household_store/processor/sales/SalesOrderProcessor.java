@@ -23,7 +23,6 @@ import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.price.PriceCalculationService;
 import ru.galtor85.household_store.validator.order.SalesOrderValidator;
-import ru.galtor85.household_store.validator.order.SalesOrderValidationHelper;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -50,7 +49,7 @@ public class SalesOrderProcessor {
 
     // Валидаторы
     private final SalesOrderValidator validator;
-    private final SalesOrderValidationHelper validationHelper;
+
 
     // =========================================================================
     // СОЗДАНИЕ ЗАКАЗА ИЗ КОРЗИНЫ

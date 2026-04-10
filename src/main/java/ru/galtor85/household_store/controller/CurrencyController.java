@@ -10,22 +10,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import ru.galtor85.household_store.advice.exception.auth.CustomAuthenticationException;
 import ru.galtor85.household_store.dto.response.finance.CurrencyDto;
 import ru.galtor85.household_store.dto.request.finance.CurrencyCreateRequest;
 import ru.galtor85.household_store.dto.request.finance.CurrencyUpdateRequest;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
-import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.currency.CurrencyService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_CURRENCIES;
 
 /**
  * REST controller for currency management operations.
@@ -46,14 +42,17 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
  *
  * <p>All endpoints require authentication. Administrative endpoints
  * require ADMIN role.</p>
+ *
+ * @author Household Store Team
+ * @since 1.0
  */
 @Slf4j
 @RestController
-@RequestMapping(API_BASE+"/currencies")
+@RequestMapping(CONTROL_CURRENCIES)
 @RequiredArgsConstructor
 @SecurityRequirement(name = "Bearer Authentication")
 @Tag(name = "Currency Management", description = "Endpoints for managing currencies")
-public class CurrencyController {
+public class CurrencyController extends BaseController {
 
     private final CurrencyService currencyService;
     private final MessageService messageService;
@@ -110,6 +109,7 @@ public class CurrencyController {
 
     /**
      * Retrieves a list of active currencies only.
+     *
      * <p>Inactive currencies cannot be used in transactions.</p>
      *
      * @return list of active currency DTOs
@@ -147,6 +147,7 @@ public class CurrencyController {
 
     /**
      * Retrieves the base currency of the system.
+     *
      * <p>The base currency is used as the reference for exchange rates
      * and for financial calculations.</p>
      *
@@ -174,7 +175,7 @@ public class CurrencyController {
      * Allows updating name, symbol, exchange rate, decimal places,
      * and active status of a currency.</p>
      *
-     * @param code the currency code to update
+     * @param code    the currency code to update
      * @param request update request with fields to change
      * @return updated currency DTO
      */
@@ -253,7 +254,7 @@ public class CurrencyController {
      * <p>This endpoint is only accessible to users with ADMIN role.
      * Inactive currencies cannot be used in new transactions.</p>
      *
-     * @param code the currency code
+     * @param code   the currency code
      * @param active true to activate, false to deactivate
      * @return updated currency DTO
      */
@@ -286,8 +287,8 @@ public class CurrencyController {
      * Both currencies must be active for conversion to work.</p>
      *
      * @param amount the amount to convert
-     * @param from the source currency code
-     * @param to the target currency code
+     * @param from   the source currency code
+     * @param to     the target currency code
      * @return converted amount
      */
     @GetMapping("/convert")
@@ -314,7 +315,7 @@ public class CurrencyController {
      * <p>Returns a string like "1,000.00 ₽" for RUB or
      * "$1,000.00" for USD, respecting the currency's decimal places.</p>
      *
-     * @param amount the amount to format
+     * @param amount   the amount to format
      * @param currency the currency code
      * @return formatted amount string with currency symbol
      */
@@ -332,35 +333,5 @@ public class CurrencyController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("currency.formatted"),
                 formatted));
-    }
-
-    // =========================================================================
-    // HELPER METHODS
-    // =========================================================================
-
-    /**
-     * Retrieves the ID of the currently authenticated user.
-     *
-     * <p>TODO: Implement proper retrieval from SecurityContext.
-     * Currently returns a placeholder value (1L).</p>
-     *
-     * @return current user ID
-     */
-    private Long getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new CustomAuthenticationException(
-                    messageService.get("currency.error.not.authenticated")
-            );
-        }
-
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof SecurityUser) {
-            return ((SecurityUser) principal).getUserId();
-        }
-
-        throw new CustomAuthenticationException(
-                messageService.get("currency.error.invalid.principal")
-        );
     }
 }

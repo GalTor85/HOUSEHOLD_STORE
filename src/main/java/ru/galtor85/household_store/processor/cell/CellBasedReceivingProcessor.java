@@ -4,10 +4,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.advice.exception.cell.CellAlreadyOccupiedException;
 import ru.galtor85.household_store.advice.exception.cell.CellNotFoundException;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.builder.stock.StockMovementBuilder;
 import ru.galtor85.household_store.dto.common.ReceiveStockItem;
+import ru.galtor85.household_store.entity.order.OrderType;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.order.PurchaseOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
@@ -47,7 +49,13 @@ public class CellBasedReceivingProcessor {
     // =========================================================================
 
     /**
-     * Обрабатывает приемку заказа с размещением товаров по ячейкам
+     * Processes receiving of a purchase order with automatic placement into warehouse cells.
+     *
+     * @param order       purchase order to receive
+     * @param items       list of received items with quantities and cell preferences
+     * @param warehouseId warehouse where items should be stored
+     * @param managerId   ID of the manager processing the receipt
+     * @return receiving result with movements, placements, and any failures
      */
     @Transactional
     public CellBasedReceivingResult processReceivingWithCells(PurchaseOrder order,
@@ -61,27 +69,30 @@ public class CellBasedReceivingProcessor {
         List<StockMovement> movements = new ArrayList<>();
         List<CellPlacementInfo> placements = new ArrayList<>();
         List<Long> failedItems = new ArrayList<>();
+        List<String> errorMessages = new ArrayList<>();
 
         for (ReceiveStockItem item : items) {
             try {
-                // 1. Находим позицию в заказе
+                // 1. Find order item
                 PurchaseOrderItem orderItem = order.getItems().stream()
                         .filter(oi -> oi.getProductId().equals(item.getProductId()))
                         .findFirst()
                         .orElse(null);
 
                 if (orderItem == null) {
-                    log.warn(messageService.get("cell.receiving.processor.product.not.found",
-                            item.getProductId(), order.getId()));
+                    String error = messageService.get("cell.receiving.processor.product.not.found",
+                            item.getProductId(), order.getId());
+                    log.warn(error);
                     failedItems.add(item.getProductId());
+                    errorMessages.add(error);
                     continue;
                 }
 
-                // 2. Получаем товар
+                // 2. Get product
                 Product product = productRepository.findById(orderItem.getProductId())
                         .orElseThrow(() -> new ProductNotFoundException(orderItem.getProductId()));
 
-                // 3. Получаем уже принятое количество
+                // 3. Calculate already received and remaining quantities
                 int alreadyReceived = orderItem.getReceivedQuantity() != null ?
                         orderItem.getReceivedQuantity() : 0;
                 int orderedQuantity = orderItem.getQuantity();
@@ -89,7 +100,7 @@ public class CellBasedReceivingProcessor {
 
                 int receivingQuantity = item.getQuantity();
 
-                // 4. Проверяем, не превышает ли принимаемое количество остаток
+                // 4. Check if receiving quantity exceeds remaining
                 if (receivingQuantity > remainingToReceive) {
                     log.warn(messageService.get("cell.receiving.processor.quantity.exceeds.remaining",
                             product.getSku(), receivingQuantity, remainingToReceive));
@@ -102,16 +113,16 @@ public class CellBasedReceivingProcessor {
                     continue;
                 }
 
-                // 5. Определяем ячейку для размещения
+                // 5. Determine target cell
                 StorageCell cell = determineCell(item, product, warehouseId, receivingQuantity);
 
-                // 6. Размещаем товар в ячейке
+                // 6. Assign product to cell
                 StorageCell updatedCell = assignProductToCell(cell, product, receivingQuantity, managerId);
 
-                // 7. Обновляем количество принятого в позиции заказа
+                // 7. Update order item received quantity
                 orderItem.setReceivedQuantity(alreadyReceived + receivingQuantity);
 
-                // 8. Обновляем остаток в Product
+                // 8. Update product stock quantity
                 int oldQuantity = product.getQuantityInStock();
                 int newQuantity = oldQuantity + receivingQuantity;
                 product.setQuantityInStock(newQuantity);
@@ -120,17 +131,17 @@ public class CellBasedReceivingProcessor {
                 log.debug(messageService.get("cell.receiving.processor.stock.updated",
                         product.getSku(), oldQuantity, newQuantity));
 
-                // 9. Обновляем product_stocks
+                // 9. Update product_stocks table
                 updateProductStock(product, receivingQuantity, warehouseId);
 
-                // 10. Создаем движение товара
+                // 10. Create stock movement record
                 StockMovement movement = createStockMovementWithCell(
                         product, orderItem, order, updatedCell, warehouseId,
                         managerId, item.getBatchNumber(), receivingQuantity
                 );
                 movements.add(stockMovementRepository.save(movement));
 
-                // 11. Сохраняем информацию о размещении
+                // 11. Save placement info
                 placements.add(new CellPlacementInfo(
                         product.getId(),
                         product.getSku(),
@@ -142,10 +153,26 @@ public class CellBasedReceivingProcessor {
                 log.debug(messageService.get("cell.receiving.processor.item.placed",
                         product.getSku(), receivingQuantity, updatedCell.getCode()));
 
-            } catch (Exception e) {
-                log.error(messageService.get("cell.receiving.processor.item.failed",
-                        item.getProductId(), e.getMessage()), e);
+            } catch (CellNotFoundException e) {
+                String error = messageService.get("cell.receiving.processor.cell.not.found",
+                        item.getProductId(), e.getMessage());
+                log.error(error);
                 failedItems.add(item.getProductId());
+                errorMessages.add(error);
+
+            } catch (CellAlreadyOccupiedException e) {
+                String error = messageService.get("cell.receiving.processor.cell.already.occupied",
+                        item.getProductId(), e.getCellId(), e.getCurrentProductId());
+                log.error(error);
+                failedItems.add(item.getProductId());
+                errorMessages.add(error);
+
+            } catch (Exception e) {
+                String error = messageService.get("cell.receiving.processor.item.failed",
+                        item.getProductId(), e.getMessage());
+                log.error(error, e);
+                failedItems.add(item.getProductId());
+                errorMessages.add(error);
             }
         }
 
@@ -160,6 +187,7 @@ public class CellBasedReceivingProcessor {
                 .movements(movements)
                 .placements(placements)
                 .failedItems(failedItems)
+                .errorMessages(errorMessages)
                 .allSuccess(allSuccess)
                 .isFullyReceived(isFullyReceived)
                 .build();
@@ -192,23 +220,42 @@ public class CellBasedReceivingProcessor {
     }
 
     /**
-     * Размещает товар в ячейке
+     * Assigns a product to a storage cell or increases quantity if the same product.
+     * Validates cell occupancy, activity, type compatibility, weight and volume limits.
+     *
+     * @param cell        target storage cell
+     * @param product     product to place
+     * @param quantity    quantity to add
+     * @param assignedBy  ID of user performing the assignment
+     * @return updated storage cell
+     * @throws CellAlreadyOccupiedException if cell contains a different product
+     * @throws CellInactiveException if cell is inactive
+     * @throws IncompatibleCellTypeException if cell type is not compatible
+     * @throws CellWeightLimitExceededException if weight limit would be exceeded
+     * @throws CellVolumeLimitExceededException if volume limit would be exceeded
      */
     private StorageCell assignProductToCell(StorageCell cell, Product product,
                                             int quantity, Long assignedBy) {
 
-        // Проверки
+        // Validate cell can accept this product
+        cellValidationHelper.validateCellNotOccupied(cell, product);
         cellValidationHelper.validateCellActive(cell);
-        cellValidationHelper.validateCellNotOccupied(cell);
         cellValidationHelper.validateCellTypeCompatibility(cell, product);
         cellValidationHelper.validateWeightLimit(cell, product, quantity);
         cellValidationHelper.validateVolumeLimit(cell, product, quantity);
 
-        // Назначение товара
+        // Calculate new quantity
+        int currentQty = cell.getCurrentQuantity() != null ? cell.getCurrentQuantity() : 0;
+        int newQty = currentQty + quantity;
+
+        // Update cell
         cell.setCurrentProductId(product.getId());
-        cell.setCurrentQuantity(quantity);
+        cell.setCurrentQuantity(newQty);
         cell.setIsOccupied(true);
         cell.setLastInventoryDate(LocalDateTime.now());
+
+        log.info(messageService.get("cell.assignment.updated.log",
+                cell.getCode(), currentQty, newQty, product.getId()));
 
         return storageCellRepository.save(cell);
     }
@@ -275,7 +322,7 @@ public class CellBasedReceivingProcessor {
                 warehouseId,
                 quantity,
                 MovementType.RECEIPT,
-                "PURCHASE",
+                OrderType.PURCHASE.name(),
                 order.getId(),
                 order.getOrderNumber(),
                 performedBy,
@@ -308,6 +355,7 @@ public class CellBasedReceivingProcessor {
         List<StockMovement> movements;
         List<CellPlacementInfo> placements;
         List<Long> failedItems;
+        List<String> errorMessages;
         boolean allSuccess;
         boolean isFullyReceived;
     }

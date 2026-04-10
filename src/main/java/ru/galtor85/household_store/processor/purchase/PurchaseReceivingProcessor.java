@@ -10,6 +10,7 @@ import ru.galtor85.household_store.dto.request.order.ReceiveAndStockRequest;
 import ru.galtor85.household_store.dto.common.ReceiveStockItem;
 import ru.galtor85.household_store.dto.request.order.ReverseReceiptItem;
 import ru.galtor85.household_store.dto.request.order.ReverseReceiptRequest;
+import ru.galtor85.household_store.entity.order.OrderType;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.order.PurchaseOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
@@ -175,7 +176,7 @@ public class PurchaseReceivingProcessor {
 
         return movementBuilder.buildFullMovement(
                 product.getId(), null, null, warehouseId, quantity,
-                MovementType.RECEIPT, "PURCHASE", order.getId(), order.getOrderNumber(),
+                MovementType.RECEIPT, OrderType.PURCHASE.name(), order.getId(), order.getOrderNumber(),
                 performedBy, notes, batchNumber, order.getOrderNumber()
         );
     }

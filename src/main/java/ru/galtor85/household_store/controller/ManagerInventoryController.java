@@ -12,11 +12,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import ru.galtor85.household_store.advice.exception.auth.CustomAuthenticationException;
 import ru.galtor85.household_store.dto.response.product.ProductDto;
 import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
 import ru.galtor85.household_store.dto.response.product.ProductStockDistributionDto;
@@ -35,12 +32,10 @@ import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.entity.warehouse.CellType;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.mapper.warehouse.WarehouseMapper;
-import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.manager.ManagerProductService;
 import ru.galtor85.household_store.service.manager.ManagerPurchaseService;
 import ru.galtor85.household_store.service.stock.StockService;
-import ru.galtor85.household_store.service.user.UserSearchService;
 import ru.galtor85.household_store.service.warehouse.WarehouseService;
 
 import java.math.BigDecimal;
@@ -48,7 +43,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_MANAGER;
+import static ru.galtor85.household_store.constants.PaginationConstants.DEFAULT_SORT_DIRECTION;
+import static ru.galtor85.household_store.constants.PaginationConstants.DEFAULT_SORT_FIELD;
 
 /**
  * REST controller for manager operations on products, inventory, warehouse, and stock.
@@ -67,41 +64,22 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
 @SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
 @RestController
-@RequestMapping(API_BASE+"/manager")
+@RequestMapping(CONTROL_MANAGER)
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 @Tag(name = "Manager Operations", description = "Endpoints for products, inventory, warehouse and stock management")
-public class ManagerInventoryController {
+public class ManagerInventoryController extends BaseController {
 
     // =========================================================================
     // DEPENDENCIES
     // =========================================================================
 
     private final ManagerProductService managerProductService;
-    private final UserSearchService userSearchService;
     private final MessageService messageService;
     private final WarehouseService warehouseService;
     private final StockService stockService;
     private final WarehouseMapper warehouseMapper;
     private final ManagerPurchaseService managerPurchaseService;
-
-    // =========================================================================
-    // HELPER METHODS
-    // =========================================================================
-
-    private SecurityUser getCurrentSecurityUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new CustomAuthenticationException(
-                    messageService.get("manager.error.not.authenticated"));
-        }
-        return (SecurityUser) auth.getPrincipal();
-    }
-
-    private User getCurrentManager() {
-        SecurityUser securityUser = getCurrentSecurityUser();
-        return userSearchService.getUserById(securityUser.getUserId());
-    }
 
     // =========================================================================
     // PRODUCT MANAGEMENT
@@ -119,7 +97,7 @@ public class ManagerInventoryController {
     public ResponseEntity<ApiResponse<ProductDto>> createProduct(
             @Valid @RequestBody ProductCreateRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         ProductDto product = managerProductService.createProduct(request, manager.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -195,16 +173,19 @@ public class ManagerInventoryController {
             @Parameter(description = "Active status filter", example = "true")
             @RequestParam(required = false) Boolean active,
             @Parameter(description = "Page number (0-indexed)", example = "0")
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer page,
             @Parameter(description = "Page size", example = "20")
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Integer size,
             @Parameter(description = "Sort field", example = "id")
-            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = DEFAULT_SORT_FIELD) String sortBy,
             @Parameter(description = "Sort direction (asc/desc)", example = "asc")
-            @RequestParam(defaultValue = "asc") String sortDir) {
+            @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDir) {
+
+        int effectivePage = getPage(page);
+        int effectiveSize = getSize(size);
 
         Page<ProductDto> products = managerProductService.getProducts(
-                name, category, brand, active, page, size, sortBy, sortDir);
+                name, category, brand, active, effectivePage, effectiveSize, sortBy, sortDir);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.products.fetched"),
@@ -306,7 +287,7 @@ public class ManagerInventoryController {
             @Parameter(description = "JSON metadata for files")
             @RequestParam(required = false) String metadata) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         List<MultipartFile> fileList = Arrays.asList(files);
         List<ProductMediaDto> media = managerProductService.uploadMedia(
                 productId, fileList, metadata, manager.getId());
@@ -329,7 +310,7 @@ public class ManagerInventoryController {
             @Parameter(description = "Media ID", example = "1", required = true)
             @PathVariable Long mediaId) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         managerProductService.deleteMedia(mediaId, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -350,7 +331,7 @@ public class ManagerInventoryController {
             @Parameter(description = "Media ID", example = "1", required = true)
             @PathVariable Long mediaId) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         managerProductService.setMainMedia(mediaId, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -369,9 +350,11 @@ public class ManagerInventoryController {
             description = "Retrieves products with quantity below the specified threshold")
     public ResponseEntity<ApiResponse<List<ProductDto>>> getLowStockProducts(
             @Parameter(description = "Stock threshold", example = "10")
-            @RequestParam(defaultValue = "10") int threshold) {
+            @RequestParam(required = false) Integer threshold) {
 
-        List<ProductDto> products = managerProductService.getLowStockProducts(threshold);
+        int effectiveThreshold = getLowStockThreshold(threshold);
+
+        List<ProductDto> products = managerProductService.getLowStockProducts(effectiveThreshold);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.inventory.low.stock"),
@@ -390,7 +373,7 @@ public class ManagerInventoryController {
     public ResponseEntity<ApiResponse<Void>> writeOffStock(
             @Valid @RequestBody StockWriteOffRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         managerPurchaseService.writeOffStock(request, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -414,7 +397,7 @@ public class ManagerInventoryController {
     public ResponseEntity<ApiResponse<WarehouseDto>> createWarehouse(
             @Valid @RequestBody WarehouseCreateRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         WarehouseDto warehouse = warehouseService.createWarehouse(
                 request, manager.getId());
 
@@ -439,11 +422,14 @@ public class ManagerInventoryController {
             @Parameter(description = "Search term (name, code, or barcode)", example = "Main")
             @RequestParam(required = false) String search,
             @Parameter(description = "Page number (0-indexed)", example = "0")
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer page,
             @Parameter(description = "Page size", example = "20")
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
 
-        Page<WarehouseDto> warehouses = warehouseService.getWarehouses(search, page, size);
+        int effectivePage = getPage(page);
+        int effectiveSize = getSize(size);
+
+        Page<WarehouseDto> warehouses = warehouseService.getWarehouses(search, effectivePage, effectiveSize);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.warehouses.fetched"),
@@ -489,7 +475,7 @@ public class ManagerInventoryController {
             @PathVariable Long warehouseId,
             @Valid @RequestBody StorageCellCreateRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         StorageCellDto cell = warehouseService.addCell(
                 warehouseId, request, manager.getId());
 
@@ -585,9 +571,8 @@ public class ManagerInventoryController {
             @Parameter(description = "Quantity", example = "10", required = true)
             @RequestParam int quantity) {
 
-        User manager = getCurrentManager();
         StorageCellDto cell = warehouseService.assignProductToCell(
-                cellId, productId, quantity, manager.getId());
+                cellId, productId, quantity);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.cell.product.assigned"),
@@ -607,7 +592,7 @@ public class ManagerInventoryController {
             @Parameter(description = "Cell ID", example = "1", required = true)
             @PathVariable Long cellId) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         StorageCellDto cell = warehouseService.clearCell(cellId, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -680,16 +665,19 @@ public class ManagerInventoryController {
             @Parameter(description = "Warehouse ID", example = "1", required = true)
             @PathVariable Long warehouseId,
             @Parameter(description = "Page number (0-indexed)", example = "0")
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer page,
             @Parameter(description = "Page size", example = "20")
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Integer size,
             @Parameter(description = "Sort field", example = "productName")
             @RequestParam(defaultValue = "productName") String sortBy,
             @Parameter(description = "Sort direction (asc/desc)", example = "asc")
             @RequestParam(defaultValue = "asc") String sortDir) {
 
+        int effectivePage = getPage(page);
+        int effectiveSize = getSize(size);
+
         Page<ProductStockDto> stocks = stockService.getStockByWarehouse(
-                warehouseId, page, size, sortBy, sortDir);
+                warehouseId, effectivePage, effectiveSize, sortBy, sortDir);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.warehouse.stock.fetched"),
@@ -794,12 +782,15 @@ public class ManagerInventoryController {
             @Parameter(description = "Search term (product name or SKU)", example = "iPhone", required = true)
             @RequestParam String query,
             @Parameter(description = "Page number (0-indexed)", example = "0")
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer page,
             @Parameter(description = "Page size", example = "20")
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
+
+        int effectivePage = getPage(page);
+        int effectiveSize = getSize(size);
 
         Page<ProductStockDto> stocks = stockService.searchStockOnWarehouse(
-                warehouseId, query, page, size);
+                warehouseId, query, effectivePage, effectiveSize);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.warehouse.stock.search"),
@@ -881,15 +872,18 @@ public class ManagerInventoryController {
     @GetMapping("/stock/movements/product/{productId}")
     @Operation(summary = "Get stock movements for a product",
             description = "Retrieves paginated stock movements for a product")
-    public ResponseEntity<ApiResponse<Page<StockMovementDto>>> getProductMovements(
+    public ResponseEntity<ApiResponse<Page<StockMovementDto>>> getProductMovementsPaginated(
             @Parameter(description = "Product ID", example = "1", required = true)
             @PathVariable Long productId,
             @Parameter(description = "Page number (0-indexed)", example = "0")
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer page,
             @Parameter(description = "Page size", example = "20")
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
 
-        Page<StockMovementDto> movements = stockService.getProductMovements(productId, page, size);
+        int effectivePage = getPage(page);
+        int effectiveSize = getSize(size);
+
+        Page<StockMovementDto> movements = stockService.getProductMovements(productId, effectivePage, effectiveSize);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("stock.movements.fetched"),
@@ -911,11 +905,14 @@ public class ManagerInventoryController {
             @Parameter(description = "Warehouse ID", example = "1", required = true)
             @PathVariable Long warehouseId,
             @Parameter(description = "Page number (0-indexed)", example = "0")
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer page,
             @Parameter(description = "Page size", example = "20")
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
 
-        Page<StockMovementDto> movements = stockService.getWarehouseMovements(warehouseId, page, size);
+        int effectivePage = getPage(page);
+        int effectiveSize = getSize(size);
+
+        Page<StockMovementDto> movements = stockService.getWarehouseMovements(warehouseId, effectivePage, effectiveSize);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("stock.movements.fetched"),
@@ -981,7 +978,7 @@ public class ManagerInventoryController {
         List<String> batches = stockService.getProductBatches(productId);
 
         return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("stock.product.batches.fetched"),
+                messageService.get("stock.product.batches.fetched", productId),
                 batches));
     }
 }

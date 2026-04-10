@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Создание схемы -->
+    <changeSet id="0" author="household">
+        <sql>
+            CREATE SCHEMA IF NOT EXISTS household_schema;
+        </sql>
+    </changeSet>
+
+    <!-- 1. Создание таблиц -->
+    <changeSet id="1" author="household">
+        <sqlFile path="db/changelog/01-initial-schema.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="true"
+                 stripComments="true"/>
+    </changeSet>
+
+    <!-- 2. Базовые данные -->
+    <changeSet id="2" author="household">
+        <sqlFile path="db/changelog/02-default-data.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="true"
+                 stripComments="true"/>
+    </changeSet>
+
+    <!-- 3. Индексы для производительности -->
+    <changeSet id="3" author="household">
+        <sqlFile path="db/changelog/03-indexes.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="true"
+                 stripComments="true"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,12 +1,23 @@
 package ru.galtor85.household_store.dto.request.warehouse;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.galtor85.household_store.entity.warehouse.CellType;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_NOTES_LENGTH;
+import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_POSITION_LENGTH;
+import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_RACK_LENGTH;
+import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_SECTION_LENGTH;
+import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_SHELF_LENGTH;
+
+/**
+ * Request DTO for updating a storage cell.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -16,15 +27,19 @@ public class StorageCellUpdateRequest {
     @Schema(description = "Cell type", example = "STANDARD")
     private CellType cellType;
 
+    @Size(max = MAX_SECTION_LENGTH, message = "{cell.validation.section.max}")
     @Schema(description = "Section (A, B, C...)", example = "A")
     private String section;
 
+    @Size(max = MAX_RACK_LENGTH, message = "{cell.validation.rack.max}")
     @Schema(description = "Rack number", example = "01")
     private String rack;
 
+    @Size(max = MAX_SHELF_LENGTH, message = "{cell.validation.shelf.max}")
     @Schema(description = "Shelf number", example = "01")
     private String shelf;
 
+    @Size(max = MAX_POSITION_LENGTH, message = "{cell.validation.position.max}")
     @Schema(description = "Position on shelf", example = "01")
     private String position;
 
@@ -39,6 +54,115 @@ public class StorageCellUpdateRequest {
     @Schema(description = "Cell is active", example = "true")
     private Boolean isActive;
 
+    @Size(max = MAX_NOTES_LENGTH, message = "{cell.validation.notes.max}")
     @Schema(description = "Notes about the cell", example = "Near the entrance")
     private String notes;
+
+    // =========================================================================
+    // HELPER METHODS - hidden from Swagger
+    // =========================================================================
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasCellType() {
+        return cellType != null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasSection() {
+        return section != null && !section.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasRack() {
+        return rack != null && !rack.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasShelf() {
+        return shelf != null && !shelf.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasPosition() {
+        return position != null && !position.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasMaxWeightKg() {
+        return maxWeightKg != null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasMaxVolumeM3() {
+        return maxVolumeM3 != null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasIsActive() {
+        return isActive != null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasNotes() {
+        return notes != null && !notes.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean isActiveTrue() {
+        return Boolean.TRUE.equals(isActive);
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public String getNormalizedSection() {
+        return section != null ? section.trim().toUpperCase() : null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public String getNormalizedRack() {
+        return rack != null ? rack.trim() : null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public String getNormalizedShelf() {
+        return shelf != null ? shelf.trim() : null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public String getNormalizedPosition() {
+        return position != null ? position.trim() : null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public String getNormalizedNotes() {
+        return notes != null ? notes.trim() : null;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasAnyUpdate() {
+        return cellType != null ||
+                hasSection() ||
+                hasRack() ||
+                hasShelf() ||
+                hasPosition() ||
+                hasMaxWeightKg() ||
+                hasMaxVolumeM3() ||
+                hasIsActive() ||
+                hasNotes();
+    }
 }

@@ -134,4 +134,12 @@ public class MessageService {
 
         return result;
     }
+
+    public String getLn(String code, Object... args) {
+        return get(code, args) + System.lineSeparator();
+    }
+
+    public String getLn(String code) {
+        return get(code) + System.lineSeparator();
+    }
 }

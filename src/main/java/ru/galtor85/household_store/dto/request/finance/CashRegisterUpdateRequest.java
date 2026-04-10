@@ -15,10 +15,10 @@ import java.math.BigDecimal;
 @Schema(description = "Cash register update request")
 public class CashRegisterUpdateRequest {
 
-    @Schema(description = "Cash register name", example = "Основная касса")
+    @Schema(description = "Cash register name", example = "Main Cash Register")
     private String name;
 
-    @Schema(description = "Location", example = "Главный зал")
+    @Schema(description = "Location", example = "Main hall, counter #1")
     private String location;
 
     @Schema(description = "Opening balance", example = "10000.00")

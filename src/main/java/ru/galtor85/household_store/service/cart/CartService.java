@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.cart.CartEmptyException;
 import ru.galtor85.household_store.advice.exception.cart.CartNotFoundException;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
+import ru.galtor85.household_store.config.BusinessConfig;
 import ru.galtor85.household_store.dto.request.cart.AddToCartRequest;
 import ru.galtor85.household_store.dto.request.cart.UpdateCartItemRequest;
 import ru.galtor85.household_store.dto.response.cart.CartDto;
@@ -46,8 +47,7 @@ public class CartService {
     private final CartValidator cartValidator;
     private final CartProcessor cartProcessor;
     private final MessageService messageService;
-
-    private static final int CART_EXPIRY_DAYS = 30;
+    private final BusinessConfig businessConfig;
 
     // =========================================================================
     // CART RETRIEVAL
@@ -100,11 +100,16 @@ public class CartService {
         cartValidator.validateProductActive(product);
         cartValidator.validateStockAvailability(product, request.getQuantity());
 
+        cartValidator.validateMaxQuantityPerItem(request.getQuantity());
+
         Cart cart = getOrCreateActiveCart(userId);
+
+        cartValidator.validateCartMaxItems(cart);
         CartItem existingItem = findCartItem(cart.getId(), request.getProductId());
 
         if (existingItem != null) {
             int newQuantity = existingItem.getQuantity() + request.getQuantity();
+            cartValidator.validateMaxQuantityPerItem(newQuantity);
             existingItem.setQuantity(newQuantity);
             cartItemRepository.save(existingItem);
             log.debug(messageService.get("cart.service.item.updated", request.getProductId(), newQuantity));
@@ -221,7 +226,8 @@ public class CartService {
         cartValidator.validateCartNotEmpty(cart);
 
         cart.setStatus(CartStatus.CHECKOUT);
-        cart.setExpiresAt(LocalDateTime.now().plusDays(CART_EXPIRY_DAYS));
+        int expiryDays = businessConfig.getCart().getExpiryDays();
+        cart.setExpiresAt(LocalDateTime.now().plusDays(expiryDays));
         Cart savedCart = cartRepository.save(cart);
 
         log.info(messageService.get("cart.service.checkout.complete", userId, savedCart.getId()));
@@ -312,12 +318,13 @@ public class CartService {
      * @return newly created cart entity
      */
     private Cart createNewCart(Long userId) {
+        int expiryDays = businessConfig.getCart().getExpiryDays();
         Cart cart = Cart.builder()
                 .userId(userId)
                 .status(CartStatus.ACTIVE)
                 .totalAmount(BigDecimal.ZERO)
                 .itemsCount(0)
-                .expiresAt(LocalDateTime.now().plusDays(CART_EXPIRY_DAYS))
+                .expiresAt(LocalDateTime.now().plusDays(expiryDays))
                 .build();
         return cartRepository.save(cart);
     }

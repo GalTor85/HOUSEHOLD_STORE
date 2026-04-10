@@ -10,9 +10,7 @@ import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
-import java.util.Optional;
-
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.ApiConstants.API_BASE;
 
 /**
  * Validator for warehouse operations

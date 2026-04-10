@@ -92,4 +92,10 @@ public class PurchaseOrderDto {
 
     @Schema(description = "Total received amount", example = "42500.00")
     private BigDecimal totalReceivedAmount;
+
+    @Schema(description = "Failed product IDs during receiving")
+    private List<Long> failedItems;
+
+    @Schema(description = "Error messages for failed placements")
+    private List<String> errorMessages;
 }

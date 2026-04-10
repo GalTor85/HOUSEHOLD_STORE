@@ -1,9 +1,11 @@
 package ru.galtor85.household_store.dto.request.order;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +15,8 @@ import ru.galtor85.household_store.entity.order.SalesOrderType;
 
 import java.math.BigDecimal;
 import java.util.List;
+
+import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 @Data
 @Builder
@@ -31,84 +35,107 @@ public class SalesOrderCreateRequest {
     private List<SalesOrderItemCreateDto> items;
 
     @NotNull(message = "{sales.validation.order.type.empty}")
-    @Schema(description = "Order type", example = "RETAIL", required = true)
+    @Schema(description = "Order type", example = "RETAIL", requiredMode = Schema.RequiredMode.REQUIRED)
     private SalesOrderType orderType;
 
+    @Size(max = MAX_ADDRESS_LENGTH, message = "{sales.validation.shipping.address.max}")
     @Schema(description = "Shipping address", example = "123 Main St, Moscow")
     private String shippingAddress;
 
+    @Size(max = MAX_ADDRESS_LENGTH, message = "{sales.validation.billing.address.max}")
     @Schema(description = "Billing address", example = "123 Main St, Moscow")
     private String billingAddress;
 
+    @Size(max = MAX_PAYMENT_METHOD_LENGTH, message = "{sales.validation.payment.method.max}")
     @Schema(description = "Payment method", example = "CREDIT_CARD")
     private String paymentMethod;
 
     @Schema(description = "Discount amount to apply to the order", example = "100.00")
-    @Builder.Default
-    private BigDecimal discountAmount = BigDecimal.ZERO;
+    private BigDecimal discountAmount;
 
     @Schema(description = "Shipping cost", example = "50.00")
-    @Builder.Default
-    private BigDecimal shippingAmount = BigDecimal.ZERO;
+    private BigDecimal shippingAmount;
 
     @Schema(description = "Tax amount", example = "0.00")
-    @Builder.Default
-    private BigDecimal taxAmount = BigDecimal.ZERO;
+    private BigDecimal taxAmount;
 
+    @Size(max = MAX_NOTES_LENGTH, message = "{sales.validation.notes.max}")
     @Schema(description = "Notes")
     private String notes;
 
-    /**
-     * Checks if the order has a discount applied.
-     *
-     * @return true if discount amount is positive
-     */
+    // =========================================================================
+    // HELPER METHODS - hidden from Swagger
+    // =========================================================================
+
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean hasDiscount() {
         return discountAmount != null && discountAmount.compareTo(BigDecimal.ZERO) > 0;
     }
 
-    /**
-     * Checks if the order has shipping cost.
-     *
-     * @return true if shipping amount is positive
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean hasShipping() {
         return shippingAmount != null && shippingAmount.compareTo(BigDecimal.ZERO) > 0;
     }
 
-    /**
-     * Checks if the order has tax.
-     *
-     * @return true if tax amount is positive
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean hasTax() {
         return taxAmount != null && taxAmount.compareTo(BigDecimal.ZERO) > 0;
     }
 
-    /**
-     * Gets effective discount amount (never null).
-     *
-     * @return discount amount or zero
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public BigDecimal getEffectiveDiscountAmount() {
         return discountAmount != null ? discountAmount : BigDecimal.ZERO;
     }
 
-    /**
-     * Gets effective shipping amount (never null).
-     *
-     * @return shipping amount or zero
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public BigDecimal getEffectiveShippingAmount() {
         return shippingAmount != null ? shippingAmount : BigDecimal.ZERO;
     }
 
-    /**
-     * Gets effective tax amount (never null).
-     *
-     * @return tax amount or zero
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public BigDecimal getEffectiveTaxAmount() {
         return taxAmount != null ? taxAmount : BigDecimal.ZERO;
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasShippingAddress() {
+        return shippingAddress != null && !shippingAddress.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasBillingAddress() {
+        return billingAddress != null && !billingAddress.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasPaymentMethod() {
+        return paymentMethod != null && !paymentMethod.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasNotes() {
+        return notes != null && !notes.trim().isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public boolean hasItems() {
+        return items != null && !items.isEmpty();
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    public int getTotalItems() {
+        return items != null ? items.size() : 0;
     }
 }

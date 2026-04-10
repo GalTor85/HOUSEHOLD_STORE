@@ -12,27 +12,25 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import ru.galtor85.household_store.advice.exception.auth.CustomAuthenticationException;
-import ru.galtor85.household_store.dto.request.order.ReverseReceiptRequest;
-import ru.galtor85.household_store.dto.response.order.PurchaseOrderDto;
 import ru.galtor85.household_store.dto.request.order.PurchaseOrderCreateRequest;
 import ru.galtor85.household_store.dto.request.order.ReceiveAndStockRequest;
+import ru.galtor85.household_store.dto.request.order.ReverseReceiptRequest;
 import ru.galtor85.household_store.dto.request.supplier.SupplierCreateRequest;
 import ru.galtor85.household_store.dto.request.supplier.SupplierProductRequest;
 import ru.galtor85.household_store.dto.request.supplier.SupplierUpdateRequest;
-import ru.galtor85.household_store.dto.response.system.ApiResponse;
+import ru.galtor85.household_store.dto.response.order.PurchaseOrderDto;
 import ru.galtor85.household_store.dto.response.supplier.SupplierDto;
 import ru.galtor85.household_store.dto.response.supplier.SupplierProductDto;
+import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.entity.user.User;
-import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.manager.ManagerPurchaseService;
-import ru.galtor85.household_store.service.user.UserSearchService;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import java.util.HashMap;
+import java.util.Map;
+
+import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_MANAGER_PURCHASES;
 
 /**
  * REST controller for manager purchase operations.
@@ -51,33 +49,14 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
 @SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
 @RestController
-@RequestMapping(API_BASE + "/manager/purchases")
+@RequestMapping(CONTROL_MANAGER_PURCHASES)
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 @Tag(name = "Manager Purchase Operations", description = "Endpoints for managing purchase orders and suppliers")
-public class ManagerPurchaseController {
+public class ManagerPurchaseController extends BaseController {
 
     private final ManagerPurchaseService managerPurchaseService;
-    private final UserSearchService userSearchService;
     private final MessageService messageService;
-
-    // =========================================================================
-    // HELPER METHODS
-    // =========================================================================
-
-    private SecurityUser getCurrentSecurityUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new CustomAuthenticationException(
-                    messageService.get("manager.error.not.authenticated"));
-        }
-        return (SecurityUser) auth.getPrincipal();
-    }
-
-    private User getCurrentManager() {
-        SecurityUser securityUser = getCurrentSecurityUser();
-        return userSearchService.getUserById(securityUser.getUserId());
-    }
 
     // =========================================================================
     // PURCHASE ORDER MANAGEMENT
@@ -95,7 +74,7 @@ public class ManagerPurchaseController {
     public ResponseEntity<ApiResponse<PurchaseOrderDto>> createPurchaseOrder(
             @Valid @RequestBody PurchaseOrderCreateRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         PurchaseOrderDto purchaseOrder = managerPurchaseService.createPurchaseOrder(request, manager.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -123,7 +102,7 @@ public class ManagerPurchaseController {
             @Parameter(description = "Additional comments", example = "Product discontinued")
             @RequestParam(required = false) String comments) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
 
         // Combine reason and comments if provided
         String fullReason = reason;
@@ -151,7 +130,7 @@ public class ManagerPurchaseController {
     public ResponseEntity<ApiResponse<PurchaseOrderDto>> reverseReceipt(
             @Valid @RequestBody ReverseReceiptRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
 
         PurchaseOrderDto updatedOrder = managerPurchaseService.reverseReceipt(request, manager.getId());
 
@@ -185,12 +164,15 @@ public class ManagerPurchaseController {
             @Parameter(description = "End date (ISO format)", example = "2024-12-31T23:59:59")
             @RequestParam(required = false) String endDate,
             @Parameter(description = "Page number (0-indexed)", example = "0")
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer page,
             @Parameter(description = "Page size", example = "20")
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
+
+        int effectivePage = getPage(page);
+        int effectiveSize = getSize(size);
 
         Page<PurchaseOrderDto> orders = managerPurchaseService.getPurchaseOrders(
-                supplierId, status, startDate, endDate, page, size);
+                supplierId, status, startDate, endDate, effectivePage, effectiveSize);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.purchases.fetched"),
@@ -232,7 +214,7 @@ public class ManagerPurchaseController {
             @PathVariable Long orderId,
             @Valid @RequestBody ReceiveAndStockRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         PurchaseOrderDto order = managerPurchaseService.receivePurchaseOrder(orderId, request, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -255,9 +237,21 @@ public class ManagerPurchaseController {
             @PathVariable Long orderId,
             @Valid @RequestBody ReceiveAndStockRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         PurchaseOrderDto order = managerPurchaseService.receivePurchaseOrderWithStock(
                 orderId, request, manager.getId());
+
+        if (order.getFailedItems() != null && !order.getFailedItems().isEmpty()) {
+            Map<String, Object> details = new HashMap<>();
+            details.put("failedItems", order.getFailedItems());
+            details.put("errorMessages", order.getErrorMessages());
+            details.put("order", order);
+
+            return ResponseEntity.status(HttpStatus.MULTI_STATUS)
+                    .body(ApiResponse.error(
+                            messageService.get("manager.purchase.received.with.stock.partial"),
+                            details));
+        }
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.purchase.received.with.stock"),
@@ -280,7 +274,7 @@ public class ManagerPurchaseController {
     public ResponseEntity<ApiResponse<SupplierDto>> createSupplier(
             @Valid @RequestBody SupplierCreateRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         SupplierDto supplier = managerPurchaseService.createSupplier(request, manager.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -329,11 +323,14 @@ public class ManagerPurchaseController {
             @Parameter(description = "Supplier status filter", schema = @Schema(allowableValues = {"PENDING", "ACTIVE", "INACTIVE", "BLOCKED", "VERIFIED"}))
             @RequestParam(required = false) String status,
             @Parameter(description = "Page number (0-indexed)", example = "0")
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer page,
             @Parameter(description = "Page size", example = "20")
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
 
-        Page<SupplierDto> suppliers = managerPurchaseService.getSuppliers(name, status, page, size);
+        int effectivePage = getPage(page);
+        int effectiveSize = getSize(size);
+
+        Page<SupplierDto> suppliers = managerPurchaseService.getSuppliers(name, status, effectivePage, effectiveSize);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.suppliers.fetched"),
@@ -358,7 +355,7 @@ public class ManagerPurchaseController {
             @PathVariable Long productId,
             @Valid @RequestBody SupplierProductRequest request) {
 
-        User manager = getCurrentManager();
+        User manager = getCurrentUser();
         SupplierProductDto supplierProduct = managerPurchaseService.addProductToSupplier(
                 supplierId, productId, request, manager.getId());
 

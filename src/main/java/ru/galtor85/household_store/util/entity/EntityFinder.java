@@ -25,6 +25,7 @@ import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.supplier.SupplierProductRepository;
 import ru.galtor85.household_store.repository.supplier.SupplierRepository;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.validator.product.ProductValidator;
 
 @Slf4j
 @Component
@@ -37,6 +38,7 @@ public class EntityFinder {
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final SupplierProductRepository supplierProductRepository;
     private final MessageService messageService;
+    private final ProductValidator productValidator;
 
     public Supplier findSupplierById(Long id) {
         return supplierRepository.findById(id)
@@ -56,11 +58,7 @@ public class EntityFinder {
     }
 
     public Product findProductById(Long id) {
-        return productRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.error(messageService.get("manager.product.log.not.found", id));
-                    return new ProductNotFoundException(id);
-                });
+        return productValidator.validateProductExists(id);
     }
 
     public SalesOrder findOrderById(Long id) {

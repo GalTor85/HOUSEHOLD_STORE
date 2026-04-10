@@ -3,13 +3,16 @@ package ru.galtor85.household_store.service.price;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.galtor85.household_store.config.FinancialConfig;
 import ru.galtor85.household_store.dto.response.cart.CartItemDto;
 import ru.galtor85.household_store.dto.request.price.PriceCalculationRequest;
 import ru.galtor85.household_store.dto.response.finance.PriceCalculationResult;
 import ru.galtor85.household_store.processor.price.PriceCalculationProcessor;
+import ru.galtor85.household_store.service.currency.CurrencyService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
+import java.util.Currency;
 import java.util.List;
 
 @Slf4j
@@ -19,12 +22,21 @@ public class PriceCalculationService {
 
     private final PriceCalculationProcessor priceCalculationProcessor;
     private final MessageService messageService;
+    private final FinancialConfig financialConfig;
+    private final CurrencyService currencyService;
 
     /**
      * Рассчитывает итоговую цену
      */
     public PriceCalculationResult calculatePrice(PriceCalculationRequest request) {
         log.debug(messageService.get("price.calculation.service.start"));
+
+        String currency = request.getCurrency();
+        if (currency == null || currency.isBlank()) {
+            currency = financialConfig.getDefaultCurrency();
+        }
+
+        currencyService.getCurrencyByCode(currency);
         return priceCalculationProcessor.calculatePrice(request);
     }
 

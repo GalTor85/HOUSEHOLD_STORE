@@ -52,16 +52,16 @@ public class StorageCell {
     private CellType cellType; // STANDARD, PALLET, FRIDGE, DANGEROUS и т.д.
 
     @Column(name = "max_weight_kg")
-    private Double maxWeightKg; // Максимальный вес в кг
+    private Double maxWeightKg;
 
     @Column(name = "max_volume_m3")
-    private Double maxVolumeM3; // Максимальный объем в м³
+    private Double maxVolumeM3;
 
     @Column(name = "current_product_id")
-    private Long currentProductId; // ID товара в ячейке
+    private Long currentProductId;
 
     @Column(name = "current_quantity")
-    private Integer currentQuantity; // Текущее количество
+    private Integer currentQuantity;
 
     @Column(name = "is_occupied")
     private Boolean isOccupied;

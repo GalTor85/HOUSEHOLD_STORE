@@ -11,8 +11,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import ru.galtor85.household_store.dto.response.order.RollbackApprovalDto;
 import ru.galtor85.household_store.dto.request.user.UpdateRoleRequest;
@@ -24,7 +22,6 @@ import ru.galtor85.household_store.dto.response.user.UserStatistics;
 import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.mapper.user.UserMapper;
 import ru.galtor85.household_store.mapper.user.UserToEntity;
-import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.auth.AdminUserCreationService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.rollback.RollbackService;
@@ -38,7 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_ADMIN;
+import static ru.galtor85.household_store.constants.PaginationConstants.DEFAULT_SORT_FIELD;
 
 /**
  * REST controller for administrative user management operations.
@@ -58,11 +56,11 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
 @SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
 @RestController
-@RequestMapping(API_BASE+"/admin/users")
+@RequestMapping(CONTROL_ADMIN)
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 @Tag(name = "Admin Users", description = "API for managing users as an admin")
-public class AdminRestController {
+public class AdminRestController extends BaseController {
 
     // =========================================================================
     // DEPENDENCIES
@@ -78,22 +76,7 @@ public class AdminRestController {
     private final MessageService messageService;
     private final RollbackService rollbackService;
 
-    // =========================================================================
-    // HELPER METHODS
-    // =========================================================================
 
-    private SecurityUser getCurrentSecurityUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        assert auth != null;
-        return (SecurityUser) auth.getPrincipal();
-    }
-
-    private User getCurrentAdmin() {
-        SecurityUser securityUser = getCurrentSecurityUser();
-        log.debug(messageService.get("admin-rest-controller.log.getting.current.admin",
-                securityUser.getUsername()));
-        return userSearchService.getUserById(securityUser.getUserId());
-    }
     private boolean hasSearchCriteria(String mobileNumber, String email,
                                       String firstName, String lastName) {
         return (mobileNumber != null && !mobileNumber.trim().isEmpty()) ||
@@ -108,13 +91,6 @@ public class AdminRestController {
 
     /**
      * Retrieves a list of all users with optional filtering and sorting.
-     *
-     * @param mobileNumber filter by mobile number (optional)
-     * @param email filter by email (optional)
-     * @param firstName filter by first name (optional)
-     * @param lastName filter by last name (optional)
-     * @param sort sort field (optional)
-     * @return list of user DTOs
      */
     @GetMapping
     @Operation(summary = "Get users list",
@@ -129,21 +105,21 @@ public class AdminRestController {
             @Parameter(description = "Filter by last name", example = "Pain")
             @RequestParam(required = false) String lastName,
             @Parameter(description = "Sort field", example = "id")
-            @RequestParam(required = false) String sort) {
+            @RequestParam(defaultValue = DEFAULT_SORT_FIELD) String sortBy) {
 
-        User currentAdmin = getCurrentAdmin();
+        User currentAdmin = getCurrentUser();
         log.info(messageService.get("admin-rest-controller.log.admin.fetching.users",
                 currentAdmin.getEmail(), currentAdmin.getId()));
 
         List<User> users;
 
         if (hasSearchCriteria(mobileNumber, email, firstName, lastName)) {
-            users = userSearchService.searchUsersByCriteria(mobileNumber, email, firstName, lastName, sort);
+            users = userSearchService.searchUsersByCriteria(mobileNumber, email, firstName, lastName, sortBy);
             log.debug(messageService.get("admin-rest-controller.log.searching.users.with.criteria",
                     email, mobileNumber, firstName, lastName));
         } else {
-            users = userSearchService.getAllUsers(sort);
-            log.debug(messageService.get("admin-rest-controller.log.getting.all.users", sort));
+            users = userSearchService.getAllUsers(sortBy);
+            log.debug(messageService.get("admin-rest-controller.log.getting.all.users", sortBy));
         }
 
         List<UserResponse> userResponses = users.stream()
@@ -159,10 +135,6 @@ public class AdminRestController {
 
     /**
      * Searches for users by email or mobile number.
-     *
-     * @param identify email or mobile number to search for
-     * @param sort sort field (optional)
-     * @return list of matching user DTOs
      */
     @GetMapping("/search")
     @Operation(summary = "Search users",
@@ -171,9 +143,9 @@ public class AdminRestController {
             @Parameter(description = "Email or mobile number to search", example = "user@example.com", required = true)
             @RequestParam String identify,
             @Parameter(description = "Sort field", example = "id")
-            @RequestParam(required = false) String sort) {
+            @RequestParam(defaultValue = DEFAULT_SORT_FIELD) String sort) {
 
-        User currentAdmin = getCurrentAdmin();
+        User currentAdmin = getCurrentUser();
         log.info(messageService.get("admin-rest-controller.log.admin.searching.users",
                 currentAdmin.getEmail(), identify));
 
@@ -190,9 +162,6 @@ public class AdminRestController {
 
     /**
      * Retrieves detailed information about a specific user by ID.
-     *
-     * @param userId the user ID
-     * @return user DTO
      */
     @GetMapping("/{userId}")
     @Operation(summary = "Get user by ID",
@@ -210,16 +179,12 @@ public class AdminRestController {
                 userMapper.build(user)));
     }
 
-
     // =========================================================================
     // USER CREATION
     // =========================================================================
 
     /**
      * Creates a new user account.
-     *
-     * @param request user creation request with email, password, role, etc.
-     * @return created user DTO
      */
     @PostMapping
     @Operation(summary = "Create user",
@@ -227,7 +192,7 @@ public class AdminRestController {
     public ResponseEntity<ApiResponse<UserResponse>> createUser(
             @Valid @RequestBody UserCreateRequest request) {
 
-        User currentAdmin = getCurrentAdmin();
+        User currentAdmin = getCurrentUser();
         log.info(messageService.get("admin-rest-controller.log.admin.creating.user",
                 currentAdmin.getEmail(), request.getEmail()));
 
@@ -251,10 +216,6 @@ public class AdminRestController {
 
     /**
      * Updates the role of an existing user.
-     *
-     * @param userId the user ID
-     * @param request role update request with new role
-     * @return updated user DTO
      */
     @PatchMapping("/{userId}/role")
     @Operation(summary = "Update user role",
@@ -264,7 +225,7 @@ public class AdminRestController {
             @PathVariable Long userId,
             @Valid @RequestBody UpdateRoleRequest request) {
 
-        User currentAdmin = getCurrentAdmin();
+        User currentAdmin = getCurrentUser();
         log.info(messageService.get("admin-rest-controller.log.admin.changing.role",
                 currentAdmin.getEmail(), userId, request.getNewRole()));
 
@@ -281,10 +242,6 @@ public class AdminRestController {
 
     /**
      * Activates or deactivates a user account.
-     *
-     * @param userId the user ID
-     * @param request status update request with active flag
-     * @return updated user DTO
      */
     @PatchMapping("/{userId}/status")
     @Operation(summary = "Update user status",
@@ -294,7 +251,7 @@ public class AdminRestController {
             @PathVariable Long userId,
             @Valid @RequestBody UpdateStatusRequest request) {
 
-        User currentAdmin = getCurrentAdmin();
+        User currentAdmin = getCurrentUser();
         String statusText = request.isActive() ?
                 messageService.get("admin-rest-controller.user.status.active") :
                 messageService.get("admin-rest-controller.user.status.inactive");
@@ -315,9 +272,6 @@ public class AdminRestController {
 
     /**
      * Permanently deletes a user account.
-     *
-     * @param userId the user ID to delete
-     * @return success response
      */
     @DeleteMapping("/{userId}")
     @Operation(summary = "Delete user",
@@ -326,7 +280,7 @@ public class AdminRestController {
             @Parameter(description = "User ID", example = "1", required = true)
             @PathVariable Long userId) {
 
-        User currentAdmin = getCurrentAdmin();
+        User currentAdmin = getCurrentUser();
         log.info(messageService.get("admin-rest-controller.log.admin.deleting.user",
                 currentAdmin.getEmail(), userId));
 
@@ -345,15 +299,13 @@ public class AdminRestController {
 
     /**
      * Retrieves system user statistics.
-     *
-     * @return map containing various user statistics
      */
     @GetMapping("/stats")
     @Operation(summary = "Get statistics",
             description = "Get system usage statistics")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getStats() {
 
-        User currentAdmin = getCurrentAdmin();
+        User currentAdmin = getCurrentUser();
         log.info(messageService.get("admin-rest-controller.log.admin.getting.stats", currentAdmin.getEmail()));
 
         UserStatistics stats = userSearchService.getUserStatistics();
@@ -378,8 +330,8 @@ public class AdminRestController {
     /**
      * Retrieves paginated list of pending rollback requests.
      *
-     * @param page page number (0-indexed)
-     * @param size page size
+     * @param page page number (0-indexed) - optional, uses config default if not provided
+     * @param size page size - optional, uses config default if not provided
      * @return page of rollback approval DTOs
      */
     @GetMapping("/rollback-requests/pending")
@@ -388,11 +340,17 @@ public class AdminRestController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<RollbackApprovalDto>>> getPendingRollbacks(
             @Parameter(description = "Page number (0-indexed)", example = "0")
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer page,
             @Parameter(description = "Page size", example = "20")
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) Integer size) {
 
-        Page<RollbackApprovalDto> approvals = rollbackService.getPendingRollbacks(page, size);
+        int effectivePage = getPage(page);
+        int effectiveSize = getSize(size);
+
+        log.debug(messageService.get("admin-rest-controller.log.pagination",
+                effectivePage, effectiveSize));
+
+        Page<RollbackApprovalDto> approvals = rollbackService.getPendingRollbacks(effectivePage, effectiveSize);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("admin.rollback.pending.fetched"),
@@ -403,7 +361,7 @@ public class AdminRestController {
      * Approves a pending rollback request.
      *
      * @param approvalId the rollback approval ID
-     * @param comments admin comments for the approval
+     * @param comments   admin comments for the approval
      * @return updated rollback approval DTO
      */
     @PutMapping("/rollback-requests/{approvalId}/approve")
@@ -416,7 +374,7 @@ public class AdminRestController {
             @Parameter(description = "Admin comments for approval", example = "Approved due to customer request")
             @RequestParam String comments) {
 
-        User admin = getCurrentAdmin();
+        User admin = getCurrentUser();
         RollbackApprovalDto approval = rollbackService.approveRollback(
                 approvalId, comments, admin.getId());
 
@@ -429,7 +387,7 @@ public class AdminRestController {
      * Rejects a pending rollback request.
      *
      * @param approvalId the rollback approval ID
-     * @param comments admin comments explaining the rejection
+     * @param comments   admin comments explaining the rejection
      * @return updated rollback approval DTO
      */
     @PutMapping("/rollback-requests/{approvalId}/reject")
@@ -442,7 +400,7 @@ public class AdminRestController {
             @Parameter(description = "Admin comments explaining rejection", example = "Order already shipped")
             @RequestParam String comments) {
 
-        User admin = getCurrentAdmin();
+        User admin = getCurrentUser();
         RollbackApprovalDto approval = rollbackService.rejectRollback(
                 approvalId, comments, admin.getId());
 

@@ -16,7 +16,7 @@ import ru.galtor85.household_store.repository.product.ProductMediaRepository;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.ApiConstants.API_BASE;
 
 @Slf4j
 @Component
@@ -45,15 +45,14 @@ public class ProductMapper {
                 .active(request.getActive() != null ? request.getActive() : true)
                 .createdBy(String.valueOf(creatorId))
                 .hasVariants(request.getHasVariants() != null ? request.getHasVariants() : false)
-                // НОВЫЕ ПОЛЯ
                 .weightKg(request.getWeightKg())
                 .volumeM3(request.getVolumeM3())
-                .requiresRefrigeration(request.isRequiresRefrigeration())
-                .requiresFreezing(request.isRequiresFreezing())
-                .isHazardous(request.isHazardous())
-                .isOversize(request.isOversize())
-                .isLiquid(request.isLiquid())
-                .isPalletized(request.isPalletized())
+                .requiresRefrigeration(request.getRequiresRefrigeration())
+                .requiresFreezing(request.getRequiresFreezing())
+                .isHazardous(request.getHazardous())
+                .isOversize(request.getOversize())
+                .isLiquid(request.getLiquid())
+                .isPalletized(request.getPalletized())
                 .build();
     }
 

@@ -10,15 +10,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import ru.galtor85.household_store.dto.request.cart.AddToCartRequest;
 import ru.galtor85.household_store.dto.request.cart.UpdateCartItemRequest;
+import ru.galtor85.household_store.dto.request.payment.PaymentProcessRequest;
 import ru.galtor85.household_store.dto.request.user.UserEditRequest;
 import ru.galtor85.household_store.dto.request.user.UserUpdatePasswordRequest;
 import ru.galtor85.household_store.dto.response.cart.CartDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
+import ru.galtor85.household_store.dto.response.payment.PaymentTransactionDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.dto.response.user.UserResponse;
 import ru.galtor85.household_store.entity.user.User;
@@ -27,10 +27,11 @@ import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.cart.CartService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.order.SalesOrderService;
+import ru.galtor85.household_store.service.payment.PaymentService;
 import ru.galtor85.household_store.service.user.UserSearchService;
 import ru.galtor85.household_store.service.auth.UserService;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_USERS;
 
 /**
  * REST controller for user profile, cart, and order operations.
@@ -50,10 +51,10 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
 @SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
 @RestController
-@RequestMapping(API_BASE + "/users")
+@RequestMapping(CONTROL_USERS)
 @RequiredArgsConstructor
 @Tag(name = "Users", description = "API for Users")
-public class UserRestController {
+public class UserRestController extends BaseController{
 
     private final UserService userService;
     private final UserMapper userMapper;
@@ -61,19 +62,8 @@ public class UserRestController {
     private final UserSearchService userSearchService;
     private final CartService cartService;
     private final SalesOrderService salesOrderService;
+    private final PaymentService paymentService;
 
-    // =========================================================================
-    // HELPER METHODS
-    // =========================================================================
-
-    private SecurityUser getCurrentSecurityUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return (SecurityUser) auth.getPrincipal();
-    }
-
-    private Long getCurrentUserId() {
-        return getCurrentSecurityUser().getUserId();
-    }
 
     // =========================================================================
     // USER PROFILE OPERATIONS
@@ -87,12 +77,11 @@ public class UserRestController {
     @GetMapping("/me")
     @Operation(summary = "Get current user information",
             description = "Retrieves the profile of the currently authenticated user")
-    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser() {
+    public ResponseEntity<ApiResponse<UserResponse>> getUserInfo() {
 
         log.info(messageService.get("user-rest-controller.log.profile.fetch.start"));
 
-        SecurityUser securityUser = getCurrentSecurityUser();
-        User user = userSearchService.getUserById(securityUser.getUserId());
+        User user = getCurrentUser();
 
         log.info(messageService.get("user-rest-controller.log.profile.fetch.success", user.getId()));
 
@@ -278,7 +267,7 @@ public class UserRestController {
     }
 
     /**
-     * Prepares the cart for checkout (changes status to CHECKOUT).
+     * Prepares the cart for checkout (changes status to check out).
      *
      * @return cart DTO with CHECKOUT status
      */
@@ -441,6 +430,28 @@ public class UserRestController {
     }
 
     /**
+     * Processes payment for customer order.
+     *
+     * @param request payment request with order ID and payment method
+     * @return payment transaction details
+     */
+    @PostMapping("/payment")
+    @Operation(summary = "Process payment", description = "Process payment using selected payment method")
+    public ResponseEntity<ApiResponse<PaymentTransactionDto>> processPayment(
+            @Valid @RequestBody PaymentProcessRequest request) {
+
+        PaymentTransactionDto transaction = paymentService.customerPayOrder(
+                request.getOrderId(),
+                request.getPaymentMethodId(),
+                getCurrentUserId()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("payment.order.paid"),
+                transaction));
+    }
+
+    /**
      * Cancels an existing order that is in a cancellable state.
      *
      * @param orderId order ID
@@ -472,6 +483,8 @@ public class UserRestController {
                 messageService.get("user.order.cancelled"),
                 cancelledOrder));
     }
+
+
 
     // =========================================================================
     // STATISTICS

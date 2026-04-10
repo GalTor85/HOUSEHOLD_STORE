@@ -1,14 +1,16 @@
 package ru.galtor85.household_store.dto.request.finance;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+
+import static ru.galtor85.household_store.constants.FinancialConstants.MIN_EXCHANGE_RATE_STR;
 
 @Data
 @Builder
@@ -17,15 +19,13 @@ import java.math.BigDecimal;
 @Schema(description = "Currency update request DTO")
 public class CurrencyUpdateRequest {
 
-    @Size(min = 2, max = 100, message = "{currency.validation.name.size}")
     @Schema(description = "Currency name", example = "US Dollar")
     private String name;
 
-    @Size(min = 1, max = 5, message = "{currency.validation.symbol.size}")
     @Schema(description = "Currency symbol", example = "$")
     private String symbol;
 
-    @DecimalMin(value = "0.0001", message = "{currency.validation.exchange.rate.min}")
+    @DecimalMin(value = MIN_EXCHANGE_RATE_STR, message = "{currency.validation.exchange.rate.min}")
     @Schema(description = "Exchange rate to base currency", example = "0.0125")
     private BigDecimal exchangeRate;
 
@@ -36,69 +36,60 @@ public class CurrencyUpdateRequest {
     private Boolean isActive;
 
     // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // HELPER METHODS - hidden from Swagger
     // =========================================================================
 
-    /**
-     * Проверяет, есть ли хотя бы одно поле для обновления
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean hasUpdates() {
         return name != null || symbol != null || exchangeRate != null ||
                 decimalPlaces != null || isActive != null;
     }
 
-    /**
-     * Проверяет, обновляется ли имя
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean isNameUpdating() {
         return name != null;
     }
 
-    /**
-     * Проверяет, обновляется ли символ
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean isSymbolUpdating() {
         return symbol != null;
     }
 
-    /**
-     * Проверяет, обновляется ли курс
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean isExchangeRateUpdating() {
         return exchangeRate != null;
     }
 
-    /**
-     * Проверяет, обновляется ли количество знаков после запятой
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean isDecimalPlacesUpdating() {
         return decimalPlaces != null;
     }
 
-    /**
-     * Проверяет, обновляется ли статус активности
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean isActiveUpdating() {
         return isActive != null;
     }
 
-    /**
-     * Получает нормализованное имя (обрезает пробелы)
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public String getNormalizedName() {
         return name != null ? name.trim() : null;
     }
 
-    /**
-     * Получает нормализованный символ (обрезает пробелы)
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public String getNormalizedSymbol() {
         return symbol != null ? symbol.trim() : null;
     }
 
-    /**
-     * Получает обновленное значение активности
-     */
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean getActiveValue() {
         return Boolean.TRUE.equals(isActive);
     }

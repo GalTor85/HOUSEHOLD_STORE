@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.config.BusinessConfig;
 import ru.galtor85.household_store.dto.response.product.ProductDto;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.mapper.product.ProductMapper;
@@ -24,6 +25,7 @@ public class InventoryProcessor {
     private final ProductMapper productMapper;
     private final ProductValidator validator;
     private final MessageService messageService;
+    private final BusinessConfig businessConfig;
 
     @Transactional
     public ProductDto adjustStock(Product product, int quantity, String reason) {
@@ -84,8 +86,11 @@ public class InventoryProcessor {
         return productMapper.toDto(updatedProduct);
     }
 
-    public List<ProductDto> getLowStockProducts(int threshold) {
-        List<Product> lowStockProducts = productRepository.findByQuantityInStockLessThan(threshold);
+    public List<ProductDto> getLowStockProducts(Integer threshold) {
+        int effectiveThreshold = threshold != null && threshold > 0 ? threshold :
+                businessConfig.getStock().getLowStockThreshold();
+
+        List<Product> lowStockProducts = productRepository.findByQuantityInStockLessThan(effectiveThreshold);
 
         log.debug(messageService.get(
                 "manager.low.stock.fetched.log",

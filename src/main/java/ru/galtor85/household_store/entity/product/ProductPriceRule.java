@@ -24,6 +24,6 @@ public class ProductPriceRule {
     @Column(name = "price_rule_id", nullable = false)
     private Long priceRuleId;
 
-    @Column(name = "is_excluded")
-    private boolean excluded; // Исключение из правила
+    @Column(name = "excluded")
+    private boolean excluded; // Exclusion from rule
 }

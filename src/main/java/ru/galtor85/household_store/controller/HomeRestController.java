@@ -17,7 +17,8 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.time.LocalDateTime;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.EndpointConstants.*;
+import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_ENDPOINT_LENGTH;
 
 /**
  * REST controller for home and system information endpoints.
@@ -34,7 +35,7 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
  */
 @Slf4j
 @RestController
-@RequestMapping(API_BASE+"")
+@RequestMapping(CONTROL_HOME)
 @RequiredArgsConstructor
 @Tag(name = "Home", description = "API for getting system information")
 public class HomeRestController {
@@ -141,16 +142,35 @@ public class HomeRestController {
      * @return array of endpoint descriptions
      */
     private String[] getAvailableEndpoints() {
+        int maxLength = MAX_ENDPOINT_LENGTH;
         return new String[] {
-                "GET  "+API_BASE+"/              - " + messageService.get("home-rest-controller.endpoint.home"),
-                "GET  "+API_BASE+"/health        - " + messageService.get("home-rest-controller.endpoint.health"),
-                "GET  "+API_BASE+"/info          - " + messageService.get("home-rest-controller.endpoint.info"),
-                "GET  "+API_BASE+"/ping          - " + messageService.get("home-rest-controller.endpoint.ping"),
-                "POST "+API_BASE+"/auth/login    - " + messageService.get("home-rest-controller.endpoint.login"),
-                "POST "+API_BASE+"/auth/register - " + messageService.get("home-rest-controller.endpoint.register"),
-                "GET  "+API_BASE+"/admin/users   - " + messageService.get("home-rest-controller.endpoint.admin.users"),
-                "GET  "+API_BASE+"/products      - " + messageService.get("home-rest-controller.endpoint.products"),
-                "GET  "+API_BASE+"/orders        - " + messageService.get("home-rest-controller.endpoint.orders")
+                formatEndpoint("GET", HOME, maxLength, "home-rest-controller.endpoint.home"),
+                formatEndpoint("GET", HEALTH, maxLength, "home-rest-controller.endpoint.health"),
+                formatEndpoint("GET", INFO, maxLength, "home-rest-controller.endpoint.info"),
+                formatEndpoint("GET", PING, maxLength, "home-rest-controller.endpoint.ping"),
+                formatEndpoint("POST", AUTH_LOGIN, maxLength, "home-rest-controller.endpoint.login"),
+                formatEndpoint("POST", AUTH_REGISTER, maxLength, "home-rest-controller.endpoint.register"),
+                formatEndpoint("GET", ADMIN_USERS, maxLength, "home-rest-controller.endpoint.admin.users"),
+                formatEndpoint("GET", MANAGER_PRODUCTS, maxLength, "home-rest-controller.endpoint.products"),
+                formatEndpoint("GET", MANAGER_ORDERS, maxLength, "home-rest-controller.endpoint.orders"),
+                formatEndpoint("GET", USER_ME, maxLength, "home-rest-controller.endpoint.user.me"),
+                formatEndpoint("GET", USER_CART, maxLength, "home-rest-controller.endpoint.user.cart"),
+                formatEndpoint("POST", USER_ORDER_FROM_CART, maxLength, "home-rest-controller.endpoint.user.order.from.cart"),
+                formatEndpoint("GET", FINANCE_INVOICES, maxLength, "home-rest-controller.endpoint.finance.invoices"),
+                formatEndpoint("GET", CURRENCIES, maxLength, "home-rest-controller.endpoint.currencies"),
+                formatEndpoint("GET", BANK_ACCOUNTS, maxLength, "home-rest-controller.endpoint.bank.accounts"),
+                formatEndpoint("GET", MANAGER_PURCHASE_ROOT, maxLength, "home-rest-controller.endpoint.manager.purchases"),
+                formatEndpoint("POST", MANAGER_PAYMENT_SUPPLIER_BANK, maxLength, "home-rest-controller.endpoint.manager.payment.supplier.bank"),
+                formatEndpoint("POST", MANAGER_PAYMENT_CUSTOMER_CASH, maxLength, "home-rest-controller.endpoint.manager.payment.customer.cash"),
+                formatEndpoint("GET", MANAGER_STOCK_SUMMARY, maxLength, "home-rest-controller.endpoint.manager.stock.summary"),
+                formatEndpoint("GET", MANAGER_WAREHOUSES, maxLength, "home-rest-controller.endpoint.manager.warehouses"),
+                formatEndpoint("GET", MEDIA_PRODUCT, maxLength, "home-rest-controller.endpoint.media.product")
         };
+    }
+
+    private String formatEndpoint(String method, String path, int maxLength, String messageKey) {
+        int padding = maxLength - path.length() + 2;
+        String spaces = " ".repeat(Math.max(1, padding));
+        return method + "  " + path + spaces + "- " + messageService.get(messageKey);
     }
 }

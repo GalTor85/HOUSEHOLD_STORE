@@ -6,74 +6,50 @@ services:
       POSTGRES_DB: household_store
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_HOST_AUTH_METHOD: md5
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-docker.sql:/docker-entrypoint-initdb.d/init-docker.sql
+      - ./init-docker.sql:/docker-entrypoint-initdb.d/01-init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d household_store"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
       start_period: 30s
     networks:
       - household-network
     restart: unless-stopped
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     container_name: household-app
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      POSTGRES_HOST: household-postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: household_store
-      LANG: ru_RU.UTF-8
-      LANGUAGE: ru_RU.UTF-8
-      LC_ALL: ru_RU.UTF-8
-      SPRING_DATASOURCE_URL: jdbc:postgresql://household-postgres:5432/household_store?currentSchema=household_schema
-      SPRING_DATASOURCE_USERNAME: household_app
-      SPRING_DATASOURCE_PASSWORD: household123
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/household_store?currentSchema=household_schema&useUnicode=true&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_LIQUIBASE_ENABLED: "true"
+      APP_DATA_INITIALIZE: "true"
       SERVER_PORT: 8443
-      SSL_KEYSTORE_PATH: file:/app/keystore/keystore.p12
-      SSL_KEYSTORE_PASSWORD: changeit
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-      JAVA_OPTS: "-Xmx512m -Xms256m -Djava.security.egd=file:/dev/./urandom"
+      LOGGING_LEVEL_LIQUIBASE: DEBUG
     ports:
       - "8443:8443"
     volumes:
-      - ./logs:/app/logs:rw
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - ./keystore.p12:/app/keystore/keystore.p12:ro
     networks:
       - household-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-k", "-f", "https://localhost:8443/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    mem_limit: 512m
-    cpus: "0.5"
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE
 
 volumes:
   postgres_data:
-    name: household-postgres-data
 
 networks:
   household-network:
     driver: bridge
-    name: household-network

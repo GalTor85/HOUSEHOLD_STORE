@@ -35,7 +35,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_FINANCE;
 
 /**
  * REST controller for finance operations including invoices, cash registers, and transactions.
@@ -53,7 +53,7 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
 @SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
 @RestController
-@RequestMapping(API_BASE+"/finance")
+@RequestMapping(CONTROL_FINANCE)
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 @Tag(name = "Finance Operations", description = "Endpoints for managing invoices, cash registers and transactions")

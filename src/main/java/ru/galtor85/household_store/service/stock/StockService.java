@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.advice.exception.stock.InsufficientStockException;
 import ru.galtor85.household_store.advice.exception.stock.ProductStockNotFoundException;
+import ru.galtor85.household_store.config.BusinessConfig;
 import ru.galtor85.household_store.dto.response.product.ProductStockDistributionDto;
 import ru.galtor85.household_store.dto.response.product.ProductStockDto;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
@@ -50,6 +51,7 @@ public class StockService {
     private final WarehouseSummaryProcessor summaryProcessor;
     private final StockMovementProcessor movementProcessor;
     private final StockDtoEnricher dtoEnricher;
+    private final BusinessConfig businessConfig;
 
     // =========================================================================
     // STOCK VIEW BY WAREHOUSE
@@ -67,10 +69,12 @@ public class StockService {
      */
     @Transactional(readOnly = true)
     public Page<ProductStockDto> getStockByWarehouse(Long warehouseId,
-                                                     int page, int size,
+                                                     Integer page, Integer size,
                                                      String sortBy, String sortDir) {
+        int effectivePage = page != null ? page : businessConfig.getPagination().getDefaultPage();
+        int effectiveSize = size != null ? size : businessConfig.getPagination().getDefaultSize();
         validator.validateWarehouseExists(warehouseId);
-        return warehouseStockProcessor.getStockByWarehouse(warehouseId, page, size, sortBy, sortDir);
+        return warehouseStockProcessor.getStockByWarehouse(warehouseId, effectivePage, effectiveSize, sortBy, sortDir);
     }
 
     // =========================================================================
@@ -183,7 +187,10 @@ public class StockService {
     @Transactional(readOnly = true)
     public List<ProductStockDto> getLowStockItems(Long warehouseId) {
         validator.validateWarehouseExists(warehouseId);
+        int threshold = businessConfig.getStock().getLowStockThreshold();
+
         return warehouseStockProcessor.getLowStockItems(warehouseId).stream()
+                .filter(item -> item.getQuantity() < threshold)
                 .map(dtoEnricher::enrichStockDto)
                 .collect(Collectors.toList());
     }

@@ -10,6 +10,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import ru.galtor85.household_store.config.BusinessConfig;
 import ru.galtor85.household_store.dto.response.product.ProductDto;
 import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
 import ru.galtor85.household_store.dto.request.product.ProductCreateRequest;
@@ -28,6 +29,8 @@ import ru.galtor85.household_store.validator.product.ProductValidator;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static ru.galtor85.household_store.constants.PaginationConstants.DESC_SORT_DIRECTION;
 
 /**
  * Service class for managing product-related operations by managers and administrators.
@@ -67,6 +70,8 @@ public class ManagerProductService {
     private final BulkProductProcessor bulkProcessor;
     private final InventoryProcessor inventoryProcessor;
     private final ProductAttributeProcessor attributeProcessor;
+    private final BusinessConfig businessConfig;
+
 
     // =========================================================================
     // CRUD OPERATIONS
@@ -191,11 +196,15 @@ public class ManagerProductService {
      */
     @Transactional(readOnly = true)
     public Page<ProductDto> getProducts(String name, String category, String brand,
-                                        Boolean active, int page, int size,
+                                        Boolean active, Integer page, Integer size,
                                         String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("desc") ?
+
+        int effectivePage = page != null ? page : businessConfig.getPagination().getDefaultPage();
+        int effectiveSize = size != null ? size : businessConfig.getPagination().getDefaultSize();
+
+        Sort sort = sortDir.equalsIgnoreCase(DESC_SORT_DIRECTION) ?
                 Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = PageRequest.of(effectivePage, effectiveSize, sort);
 
         Page<Product> products;
 

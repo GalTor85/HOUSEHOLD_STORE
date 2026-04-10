@@ -31,16 +31,30 @@ public class CellValidationHelper {
     }
 
     /**
-     * Проверка, что ячейка не занята
+     * Validates that a cell can accept a product.
+     * Allows adding more quantity if the cell already contains the same product.
+     * Throws exception if cell contains a different product.
+     *
+     * @param cell    the storage cell to validate
+     * @param product the product to be placed
+     * @throws CellAlreadyOccupiedException if cell contains a different product
      */
-    public void validateCellNotOccupied(StorageCell cell) {
+    public void validateCellNotOccupied(StorageCell cell, Product product) {
+        // If cell is empty - OK
+        if (!cell.getIsOccupied()) {
+            return;
+        }
 
-
-        if (cell.getIsOccupied()) {
+        // If cell contains a different product - error
+        if (!cell.getCurrentProductId().equals(product.getId())) {
             log.warn(messageService.get("cell.validation.occupied.log",
                     cell.getId(), cell.getCurrentProductId()));
             throw new CellAlreadyOccupiedException(cell.getId(), cell.getCurrentProductId());
         }
+
+        // Same product - allow adding more quantity
+        log.debug(messageService.get("cell.validation.same.product.log",
+                cell.getId(), product.getId()));
     }
 
     /**

@@ -27,6 +27,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static ru.galtor85.household_store.constants.PaginationConstants.DESC_SORT_DIRECTION;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -115,7 +117,7 @@ public class CashTransactionService {
     public Page<CashTransactionDto> getTransactionsByCashRegister(Long cashRegisterId,
                                                                   int page, int size,
                                                                   String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("desc") ?
+        Sort sort = sortDir.equalsIgnoreCase(DESC_SORT_DIRECTION) ?
                 Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 

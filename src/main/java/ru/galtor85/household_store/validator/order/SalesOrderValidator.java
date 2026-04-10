@@ -5,13 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.auth.UserNotFoundException;
 import ru.galtor85.household_store.advice.exception.cart.CartEmptyException;
-import ru.galtor85.household_store.advice.exception.order.OrderItemAlreadyExistsException;
-import ru.galtor85.household_store.advice.exception.order.OrderItemNotFoundException;
-import ru.galtor85.household_store.advice.exception.order.OrderModificationNotAllowedException;
-import ru.galtor85.household_store.advice.exception.order.SalesOrderNotFoundException;
+import ru.galtor85.household_store.advice.exception.order.*;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.advice.exception.stock.InsufficientStockException;
+import ru.galtor85.household_store.advice.exception.validation.InvalidDateRangeException;
 import ru.galtor85.household_store.advice.exception.validation.InvalidPriceException;
+import ru.galtor85.household_store.advice.exception.validation.InvalidQuantityException;
 import ru.galtor85.household_store.dto.request.order.SalesOrderCreateRequest;
 import ru.galtor85.household_store.dto.common.SalesOrderItemCreateDto;
 import ru.galtor85.household_store.entity.user.User;
@@ -25,8 +24,10 @@ import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.repository.user.UserRepository;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.validator.product.ProductValidator;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,6 +40,7 @@ public class SalesOrderValidator {
     private final ProductRepository productRepository;
     private final SalesOrderRepository salesOrderRepository;
     private final MessageService messageService;
+    private final ProductValidator productValidator;
 
     // =========================================================================
     // ВАЛИДАЦИЯ КОРЗИНЫ
@@ -115,11 +117,7 @@ public class SalesOrderValidator {
     }
 
     public Product validateProductExists(Long productId) {
-        return productRepository.findById(productId)
-                .orElseThrow(() -> {
-                    log.error(messageService.get("manager.product.error.not.found", productId));
-                    return new ProductNotFoundException(productId);
-                });
+        return productValidator.validateProductExists(productId);
     }
 
     public void validateProductAvailability(Product product, int requestedQuantity) {
@@ -245,4 +243,107 @@ public class SalesOrderValidator {
         List<Product> products;
         List<BigDecimal> prices;
     }
+
+    /**
+     * Валидирует диапазон дат
+     */
+    public void validateDateRange(LocalDateTime start, LocalDateTime end) {
+        if (start != null && end != null && start.isAfter(end)) {
+            log.warn(messageService.get("sales.validation.date.range.invalid", start, end));
+            throw new InvalidDateRangeException(start, end);
+        }
+    }
+
+
+    /**
+     * Парсит строку в OrderStatus
+     */
+    public OrderStatus parseOrderStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            return OrderStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn(messageService.get("sales.validation.status.parse.failed", status));
+            return null;
+        }
+    }
+
+    /**
+     * Парсит и валидирует статус
+     */
+    public OrderStatus parseAndValidateOrderStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            return OrderStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn(messageService.get("sales.validation.status.invalid", status));
+            throw new InvalidOrderStatusException(status);
+        }
+    }
+
+    /**
+     * Проверяет, допустим ли переход статуса для заказа на продажу
+     */
+    public void validateStatusTransitionForSale(OrderStatus currentStatus, OrderStatus newStatus) {
+        if (!currentStatus.isValidTransitionForSale(newStatus)) {
+            log.warn(messageService.get("sales.validation.status.transition.invalid",
+                    currentStatus, newStatus));
+            throw new InvalidOrderStatusException(
+                    messageService.get("sales.validation.status.transition.invalid",
+                            currentStatus, newStatus)
+            );
+        }
+    }
+
+    /**
+     * Проверяет, можно ли модифицировать заказ
+     */
+    public void validateOrderModifiable(SalesOrder order, OrderStatus... allowedStatuses) {
+        for (OrderStatus allowed : allowedStatuses) {
+            if (order.getStatus() == allowed) {
+                return;
+            }
+        }
+        log.warn(messageService.get("sales.validation.order.cannot.modify", order.getStatus()));
+        throw new IllegalStateException(
+                messageService.get("sales.validation.order.cannot.modify", order.getStatus())
+        );
+    }
+
+    /**
+     * Проверяет цену
+     */
+    public void validatePrice(BigDecimal price) {
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            log.warn(messageService.get("sales.validation.price.invalid", price));
+            throw new InvalidPriceException(price);
+        }
+    }
+
+    /**
+     * Проверяет количество
+     */
+    public void validateQuantity(Integer quantity) {
+        if (quantity == null || quantity < 0) {
+            log.warn(messageService.get("sales.validation.quantity.invalid", quantity));
+            throw new InvalidQuantityException(quantity);
+        }
+    }
+
+    /**
+     * Проверяет положительное количество
+     */
+    public void validatePositiveQuantity(Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            log.warn(messageService.get("sales.validation.quantity.positive", quantity));
+            throw new InvalidQuantityException(quantity);
+        }
+    }
+
 }

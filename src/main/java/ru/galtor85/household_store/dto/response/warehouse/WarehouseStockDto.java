@@ -17,7 +17,7 @@ import java.math.BigDecimal;
 @Schema(description = "DTO for warehouse stock information", title = "Warehouse Stock")
 public class WarehouseStockDto {
 
-    @Schema(description = "Warehouse ID", example = "1", required = true)
+    @Schema(description = "Warehouse ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long warehouseId;
 
     @Schema(description = "Warehouse name", example = "Main Warehouse")

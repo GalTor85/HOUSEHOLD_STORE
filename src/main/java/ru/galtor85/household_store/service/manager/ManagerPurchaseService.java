@@ -244,14 +244,23 @@ public class ManagerPurchaseService {
         // Save order
         PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
 
+        PurchaseOrderDto orderDto = purchaseOrderConverter.toDto(savedOrder,
+                supplierRepository.findById(order.getSupplierId())
+                        .map(Supplier::getName)
+                        .orElse(null));
+        orderDto.setFailedItems(result.getFailedItems());
+        orderDto.setErrorMessages(result.getErrorMessages());
+
+        if (!result.isAllSuccess()) {
+            log.warn(messageService.get("purchase.order.partially.received.warn",
+                    orderId, result.getFailedItems().size(), result.getFailedItems()));
+        }
+
         log.info(messageService.get("manager.purchase.received.with.stock.log",
                 orderId, managerId, result.getMovements().size(),
                 result.getPlacements().size(), result.isFullyReceived()));
 
-        return purchaseOrderConverter.toDto(savedOrder,
-                supplierRepository.findById(order.getSupplierId())
-                        .map(Supplier::getName)
-                        .orElse(null));
+        return orderDto;
     }
 
     // =========================================================================
@@ -363,7 +372,7 @@ public class ManagerPurchaseService {
         if (currentNotes == null || currentNotes.isEmpty()) {
             order.setNotes(note.toString());
         } else {
-            order.setNotes(currentNotes + "---" + note.toString());
+            order.setNotes(currentNotes + " | " + note.toString());
         }
     }
 
@@ -462,33 +471,33 @@ public class ManagerPurchaseService {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         StringBuilder note = new StringBuilder();
 
-        note.append(messageService.get("purchase.receiving.note.header",
+        note.append("-- ").append(messageService.get("purchase.receiving.note.header",
                 timestamp, managerId));
 
         if (result.isFullyReceived()) {
-            note.append(messageService.get("purchase.receiving.note.fully.received"));
+            note.append("-- ").append(messageService.get("purchase.receiving.note.fully.received"));
         } else {
-            note.append(messageService.get("purchase.receiving.note.partially.received"));
-            note.append(messageService.get("purchase.receiving.note.unreceived.count",
+            note.append("-- ").append(messageService.get("purchase.receiving.note.partially.received"));
+            note.append("-- ").append(messageService.get("purchase.receiving.note.unreceived.count",
                     result.getFailedItems().size()));
         }
 
-        note.append(messageService.get("purchase.receiving.note.cells.used",
+        note.append("-- ").append(messageService.get("purchase.receiving.note.cells.used",
                 result.getPlacements().size()));
 
         if (request.getQualityCheck() != null) {
-            note.append(request.getQualityCheck() ?
+            note.append("-- ").append(request.getQualityCheck() ?
                     messageService.get("purchase.receiving.note.quality.passed") :
                     messageService.get("purchase.receiving.note.quality.failed"));
         }
 
         if (!result.getFailedItems().isEmpty()) {
-            note.append(messageService.get("purchase.receiving.note.failed.items",
+            note.append("-- ").append(messageService.get("purchase.receiving.note.failed.items",
                     result.getFailedItems().size()));
         }
 
         if (request.getNotes() != null && !request.getNotes().isEmpty()) {
-            note.append(messageService.get("purchase.receiving.note.notes",
+            note.append("-- ").append(messageService.get("purchase.receiving.note.notes",
                     request.getNotes()));
         }
 
@@ -496,7 +505,7 @@ public class ManagerPurchaseService {
         if (currentNotes == null || currentNotes.isEmpty()) {
             order.setNotes(note.toString());
         } else {
-            order.setNotes(currentNotes + "\n" + note.toString());
+            order.setNotes(currentNotes + " | " + note);
         }
     }
 

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.cash.CashRegisterClosedException;
 import ru.galtor85.household_store.advice.exception.cash.CashRegisterNotFoundException;
+import ru.galtor85.household_store.advice.exception.cash.InsufficientCashException;
 import ru.galtor85.household_store.entity.finance.CashRegister;
 import ru.galtor85.household_store.repository.cash.CashRegisterRepository;
 import ru.galtor85.household_store.service.i18n.MessageService;
@@ -121,6 +122,22 @@ public class CashRegisterValidator {
                 throw new IllegalArgumentException(
                         messageService.get("cash.register.discrepancy.reason.required"));
             }
+        }
+    }
+
+    /**
+     * Validates that cash register has sufficient funds
+     *
+     * @param cashRegister cash register entity
+     * @param amount       amount to withdraw
+     * @throws InsufficientCashException if insufficient funds
+     */
+    public void validateSufficientFunds(CashRegister cashRegister, BigDecimal amount) {
+        BigDecimal currentBalance = cashRegister.getCurrentBalance();
+        if (currentBalance.compareTo(amount) < 0) {
+            log.error(messageService.get("cash.register.insufficient.balance.with.id",
+                    cashRegister.getId(), currentBalance, amount));
+            throw new InsufficientCashException(cashRegister.getId(), currentBalance, amount);
         }
     }
 }

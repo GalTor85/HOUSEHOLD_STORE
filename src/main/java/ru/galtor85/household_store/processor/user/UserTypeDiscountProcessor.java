@@ -3,6 +3,7 @@ package ru.galtor85.household_store.processor.user;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.galtor85.household_store.config.FinancialConfig;
 import ru.galtor85.household_store.dto.response.finance.PriceCalculationResult;
 import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.entity.user.UserTypeAssignment;
@@ -20,6 +21,7 @@ public class UserTypeDiscountProcessor {
 
     private final UserTypeAssignmentRepository userTypeAssignmentRepository;
     private final MessageService messageService;
+    private final FinancialConfig financialConfig;
 
     public UserTypeDiscountResult applyUserTypeDiscount(BigDecimal currentTotal, Long userId,
                                                         List<PriceCalculationResult.AppliedDiscount> appliedDiscounts) {
@@ -59,10 +61,14 @@ public class UserTypeDiscountProcessor {
 
     private double getUserTypeDiscountPercent(UserType userType) {
         return switch (userType) {
-            case WHOLESALE -> 5.0;
-            case VIP -> 10.0;
-            case PARTNER -> 7.0;
-            case EMPLOYEE -> 15.0;
+            case WHOLESALE -> financialConfig.getDiscounts().getWholesale() != null ?
+                    financialConfig.getDiscounts().getWholesale() : 5.0;
+            case VIP -> financialConfig.getDiscounts().getVip() != null ?
+                    financialConfig.getDiscounts().getVip() : 10.0;
+            case PARTNER -> financialConfig.getDiscounts().getPartner() != null ?
+                    financialConfig.getDiscounts().getPartner() : 7.0;
+            case EMPLOYEE -> financialConfig.getDiscounts().getEmployee() != null ?
+                    financialConfig.getDiscounts().getEmployee() : 15.0;
             default -> 0.0;
         };
     }

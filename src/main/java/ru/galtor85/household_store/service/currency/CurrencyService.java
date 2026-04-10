@@ -30,11 +30,11 @@ public class CurrencyService {
     private final MessageService messageService;
 
     // =========================================================================
-    // СОЗДАНИЕ
+    // CREATION
     // =========================================================================
 
     /**
-     * Создает новую валюту
+     * Creates a new currency
      */
     @Transactional
     public CurrencyDto createCurrency(CurrencyCreateRequest request, Long createdBy) {
@@ -53,11 +53,11 @@ public class CurrencyService {
     }
 
     // =========================================================================
-    // ПОЛУЧЕНИЕ
+    // RETRIEVAL
     // =========================================================================
 
     /**
-     * Получает список всех валют
+     * Retrieves all currencies
      */
     @Transactional(readOnly = true)
     public List<CurrencyDto> getAllCurrencies() {
@@ -67,7 +67,7 @@ public class CurrencyService {
     }
 
     /**
-     * Получает список активных валют
+     * Retrieves active currencies only
      */
     @Transactional(readOnly = true)
     public List<CurrencyDto> getActiveCurrencies() {
@@ -77,7 +77,7 @@ public class CurrencyService {
     }
 
     /**
-     * Получает валюту по коду
+     * Retrieves currency by code
      */
     @Transactional(readOnly = true)
     public CurrencyDto getCurrencyByCode(String code) {
@@ -88,21 +88,23 @@ public class CurrencyService {
     }
 
     /**
-     * Получает базовую валюту
+     * Retrieves the base currency
      */
     @Transactional(readOnly = true)
     public CurrencyDto getBaseCurrency() {
-        validator.validateBaseCurrencyExists();
-        Currency currency = currencyRepository.findByIsBaseTrue().get();
+        Currency currency = currencyRepository.findByIsBaseTrue()
+                .orElseThrow(() -> new IllegalStateException(
+                        messageService.get("currency.base.not.found")
+                ));
         return converter.toDto(currency);
     }
 
     // =========================================================================
-    // ОБНОВЛЕНИЕ
+    // UPDATE
     // =========================================================================
 
     /**
-     * Обновляет валюту
+     * Updates a currency
      */
     @Transactional
     public CurrencyDto updateCurrency(String code, CurrencyUpdateRequest request) {
@@ -124,7 +126,7 @@ public class CurrencyService {
     }
 
     /**
-     * Устанавливает базовую валюту
+     * Sets a currency as the base currency
      */
     @Transactional
     public CurrencyDto setBaseCurrency(String code) {
@@ -141,7 +143,7 @@ public class CurrencyService {
     }
 
     /**
-     * Обновляет курс обмена
+     * Updates the exchange rate
      */
     @Transactional
     public CurrencyDto updateExchangeRate(String code, BigDecimal rate) {
@@ -160,7 +162,7 @@ public class CurrencyService {
     }
 
     /**
-     * Активирует/деактивирует валюту
+     * Activates/deactivates a currency
      */
     @Transactional
     public CurrencyDto toggleActive(String code, boolean active) {
@@ -178,11 +180,11 @@ public class CurrencyService {
     }
 
     // =========================================================================
-    // КОНВЕРТАЦИЯ
+    // CONVERSION
     // =========================================================================
 
     /**
-     * Конвертирует сумму из одной валюты в другую
+     * Converts an amount from one currency to another
      */
     @Transactional(readOnly = true)
     public BigDecimal convert(BigDecimal amount, String fromCode, String toCode) {
@@ -198,7 +200,28 @@ public class CurrencyService {
     }
 
     /**
-     * Форматирует сумму с валютой
+     * Converts amount to base currency for storage
+     *
+     * @param amount       amount to convert
+     * @param currencyCode source currency code
+     * @return amount in base currency
+     */
+    public BigDecimal convertToBaseCurrency(BigDecimal amount, String currencyCode) {
+        try {
+            CurrencyDto baseCurrency = getBaseCurrency();
+            if (baseCurrency.getCode().equals(currencyCode)) {
+                return amount;
+            }
+            return convert(amount, currencyCode, baseCurrency.getCode());
+        } catch (Exception e) {
+            log.warn(messageService.get("currency.conversion.to.base.failed",
+                    currencyCode, e.getMessage()));
+            return amount;
+        }
+    }
+
+    /**
+     * Formats an amount with the currency symbol
      */
     @Transactional(readOnly = true)
     public String formatAmount(BigDecimal amount, String currencyCode) {

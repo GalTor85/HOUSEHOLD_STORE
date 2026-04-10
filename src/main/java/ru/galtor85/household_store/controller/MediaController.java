@@ -15,7 +15,7 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.util.List;
 
-import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_MEDIA;
 
 /**
  * REST controller for serving media files (images, videos, documents).
@@ -33,7 +33,7 @@ import static ru.galtor85.household_store.config.ApiConstants.API_BASE;
  */
 @Slf4j
 @RestController
-@RequestMapping(API_BASE + "/media")
+@RequestMapping(CONTROL_MEDIA)
 @RequiredArgsConstructor
 @Tag(name = "Media", description = "Public endpoints for accessing media files")
 public class MediaController {

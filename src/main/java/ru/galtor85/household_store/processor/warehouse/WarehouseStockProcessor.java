@@ -19,6 +19,8 @@ import ru.galtor85.household_store.util.stock.StockDtoEnricher;
 import java.util.List;
 import java.util.Set;
 
+import static ru.galtor85.household_store.constants.PaginationConstants.DESC_SORT_DIRECTION;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -47,7 +49,7 @@ public class WarehouseStockProcessor {
             stocks = stockRepository.findByWarehouseIdWithSort(warehouseId, sortBy, sortDir, pageable);
         } else {
             // Обычная сортировка по полям ProductStock
-            Sort sort = sortDir.equalsIgnoreCase("desc") ?
+            Sort sort = sortDir.equalsIgnoreCase(DESC_SORT_DIRECTION) ?
                     Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
             pageable = PageRequest.of(page, size, sort);
             stocks = stockRepository.findByWarehouseId(warehouseId, pageable);

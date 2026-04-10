@@ -17,7 +17,7 @@ import java.util.Locale;
 public class I18nConfig implements WebMvcConfigurer {
 
     @Configuration
-    public class WebConfig implements WebMvcConfigurer {
+    public static class WebConfig implements WebMvcConfigurer {
 
         /**
          * Конвертер для Swagger, преобразует строку в Locale

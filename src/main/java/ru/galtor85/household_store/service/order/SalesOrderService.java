@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.cart.CartNotFoundException;
+import ru.galtor85.household_store.advice.exception.order.OrderNotFoundException;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.advice.exception.rollback.RollbackNotAllowedException;
 import ru.galtor85.household_store.converter.SalesOrderConverter;
@@ -27,8 +28,9 @@ import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.service.cart.CartService;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.util.date.DateParser;
 import ru.galtor85.household_store.validator.order.SalesOrderValidator;
-import ru.galtor85.household_store.validator.order.SalesOrderValidationHelper;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -61,10 +63,10 @@ public class SalesOrderService {
     private final CartRepository cartRepository;
     private final CartService cartService;
     private final SalesOrderValidator salesOrderValidator;
-    private final SalesOrderValidationHelper validationHelper;
     private final SalesOrderProcessor salesOrderProcessor;
     private final SalesOrderConverter salesOrderConverter;
     private final MessageService messageService;
+    private final DateParser dateParser;
 
     // =========================================================================
     // ORDER CREATION
@@ -186,12 +188,12 @@ public class SalesOrderService {
                                                  int size) {
 
         // Parse the parameters
-        OrderStatus orderStatus = validationHelper.parseOrderStatus(status);
-        LocalDateTime start = validationHelper.parseDate(startDate);
-        LocalDateTime end = validationHelper.parseDate(endDate);
+        OrderStatus orderStatus = salesOrderValidator.parseOrderStatus(status);
+        LocalDateTime start = dateParser.parseDate(startDate);
+        LocalDateTime end = dateParser.parseDate(endDate);
 
         // Validate the date range
-        validationHelper.validateDateRange(start, end);
+        salesOrderValidator.validateDateRange(start, end);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
@@ -224,7 +226,7 @@ public class SalesOrderService {
     @Transactional(readOnly = true)
     public SalesOrderDto getSalesOrderByNumber(String orderNumber) {
         SalesOrder order = salesOrderRepository.findByOrderNumber(orderNumber)
-                .orElseThrow(() -> new ru.galtor85.household_store.advice.exception.order.OrderNotFoundException());
+                .orElseThrow(OrderNotFoundException::new);
         return salesOrderConverter.toDto(order);
     }
 
@@ -249,12 +251,12 @@ public class SalesOrderService {
                                            String reason,
                                            Long managerId) {
 
-        OrderStatus newStatus = validationHelper.parseAndValidateOrderStatus(status);
+        OrderStatus newStatus = salesOrderValidator.parseAndValidateOrderStatus(status);
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
         OrderStatus oldStatus = order.getStatus();
 
         // Checking the possibility of transition
-        validationHelper.validateStatusTransitionForSale(order.getStatus(), newStatus);
+        salesOrderValidator.validateStatusTransitionForSale(order.getStatus(), newStatus);
 
         // Update the status
         order.setStatus(newStatus);
@@ -315,10 +317,10 @@ public class SalesOrderService {
                                               String reason,
                                               Long managerId) {
 
-        validationHelper.validatePrice(newPrice);
+        salesOrderValidator.validatePrice(newPrice);
 
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
-        validationHelper.validateOrderModifiable(order, OrderStatus.PENDING, OrderStatus.PAID);
+        salesOrderValidator.validateOrderModifiable(order, OrderStatus.PENDING, OrderStatus.PAID);
 
         SalesOrderItem item = salesOrderValidator.validateOrderItemExists(order, itemId);
         BigDecimal oldPrice = item.getPrice();
@@ -352,10 +354,10 @@ public class SalesOrderService {
                                                  String reason,
                                                  Long managerId) {
 
-        validationHelper.validateQuantity(newQuantity);
+        salesOrderValidator.validateQuantity(newQuantity);
 
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
-        validationHelper.validateOrderModifiable(order, OrderStatus.PENDING);
+        salesOrderValidator.validateOrderModifiable(order, OrderStatus.PENDING);
 
         SalesOrderItem item = salesOrderValidator.validateOrderItemExists(order, itemId);
         int oldQuantity = item.getQuantity();
@@ -364,7 +366,7 @@ public class SalesOrderService {
         if (quantityDiff > 0) {
             Product product = productRepository.findById(item.getProductId())
                     .orElseThrow(() -> new ProductNotFoundException(item.getProductId()));
-            validationHelper.validateProductAvailability(product, quantityDiff);
+            salesOrderValidator.validateProductAvailability(product, quantityDiff);
         }
 
         item.setQuantity(newQuantity);
@@ -400,15 +402,15 @@ public class SalesOrderService {
                                         BigDecimal customPrice,
                                         Long managerId) {
 
-        validationHelper.validatePositiveQuantity(quantity);
+        salesOrderValidator.validatePositiveQuantity(quantity);
 
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
-        validationHelper.validateOrderModifiable(order, OrderStatus.PENDING);
+        salesOrderValidator.validateOrderModifiable(order, OrderStatus.PENDING);
         salesOrderValidator.validateItemNotExists(order, productId);
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ProductNotFoundException(productId));
-        validationHelper.validateProductAvailability(product, quantity);
+        salesOrderValidator.validateProductAvailability(product, quantity);
 
         BigDecimal price = customPrice != null ? customPrice : product.getPrice();
 
@@ -444,7 +446,7 @@ public class SalesOrderService {
     public SalesOrderDto removeItemFromOrder(Long orderId, Long itemId, Long managerId) {
 
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
-        validationHelper.validateOrderModifiable(order, OrderStatus.PENDING);
+        salesOrderValidator.validateOrderModifiable(order, OrderStatus.PENDING);
 
         SalesOrderItem item = salesOrderValidator.validateOrderItemExists(order, itemId);
 

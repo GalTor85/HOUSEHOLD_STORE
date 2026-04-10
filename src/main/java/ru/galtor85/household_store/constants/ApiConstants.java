@@ -1,4 +1,4 @@
-package ru.galtor85.household_store.config;
+package ru.galtor85.household_store.constants;
 
 /**
  * Centralized constants for API path configurations.

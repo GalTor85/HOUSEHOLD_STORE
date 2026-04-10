@@ -68,6 +68,7 @@ public class InvoicePaymentProcessor {
                 .cashRegisterId(cashRegisterId)
                 .transactionType(transactionType)  // ← INCOME или EXPENSE
                 .amount(amount)
+                .currency(invoice.getCurrency())
                 .invoiceId(invoiceId)
                 .description(buildDescription(invoice, amount, isPartial, transactionType))
                 .build();
@@ -128,7 +129,7 @@ public class InvoicePaymentProcessor {
 
     private String buildDescription(Invoice invoice, BigDecimal amount,
                                     boolean isPartial, TransactionType type) {
-        String orderType = invoice.getPurchaseOrderId() != null ? "purchase" : "sales";
+        String orderType = invoice.getPurchaseOrderId() != null ? "PURCHASE" : "SALES";
         String paymentType = type == TransactionType.EXPENSE ? "payment" : "receipt";
 
         if (isPartial) {
