@@ -46,7 +46,7 @@ import static ru.galtor85.household_store.constants.PaginationConstants.DESC_SOR
  *
  * <p>All methods are secured with role-based access control (requires ADMIN or MANAGER role).</p>
  *
- * @author Household Store Team
+ * @author G@LTor85
  * @version 1.0
  * @since 1.0
  * @see Product

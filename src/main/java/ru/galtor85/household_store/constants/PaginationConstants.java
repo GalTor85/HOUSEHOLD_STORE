@@ -6,7 +6,7 @@ package ru.galtor85.household_store.constants;
  * <p><b>Note:</b> Business defaults (default page, default size, max size) are stored
  * in {@code application.properties} and loaded via {@link ru.galtor85.household_store.config.BusinessConfig}.</p>
  *
- * @author Household Store Team
+ * @author G@LTor85
  * @since 1.0
  */
 public final class PaginationConstants {

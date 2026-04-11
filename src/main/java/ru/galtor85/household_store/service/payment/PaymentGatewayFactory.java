@@ -14,6 +14,8 @@ import java.math.BigDecimal;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.TOKEN_TYPE;
+
 /**
  * Factory for creating universal payment gateways.
  *
@@ -24,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>The factory supports dynamic registration and reloading of gateway configurations
  * at runtime, allowing for flexible payment provider management.</p>
  *
- * @author Household Store Team
+ * @author G@LTor85
  * @see UniversalPaymentGateway
  * @see PaymentProviderConfig
  * @see PaymentConfig
@@ -107,7 +109,7 @@ public class PaymentGatewayFactory {
                 .statusUrl(cfg.getStatusUrl())
                 .apiKey(System.getenv("SBERBANK_API_KEY"))
                 .apiSecret(System.getenv("SBERBANK_API_SECRET"))
-                .authScheme("Bearer")
+                .authScheme(TOKEN_TYPE)
                 .httpMethod(HttpMethod.POST)
                 .feePercent(cfg.getFeePercent() != null ? BigDecimal.valueOf(cfg.getFeePercent()) : null)
                 .transactionPrefix(cfg.getTransactionPrefix())
@@ -178,7 +180,7 @@ public class PaymentGatewayFactory {
                 .refundUrl(cfg.getRefundUrl())
                 .statusUrl(cfg.getStatusUrl())
                 .apiKey(System.getenv("QIWI_API_KEY"))
-                .authScheme("Bearer")
+                .authScheme(TOKEN_TYPE)
                 .httpMethod(HttpMethod.PUT)
                 .feePercent(cfg.getFeePercent() != null ? BigDecimal.valueOf(cfg.getFeePercent()) : null)
                 .transactionPrefix(cfg.getTransactionPrefix())
@@ -213,7 +215,7 @@ public class PaymentGatewayFactory {
                 .statusUrl(cfg.getStatusUrl())
                 .apiKey(System.getenv("PAYPAL_CLIENT_ID"))
                 .apiSecret(System.getenv("PAYPAL_CLIENT_SECRET"))
-                .authScheme("Bearer")
+                .authScheme(TOKEN_TYPE)
                 .httpMethod(HttpMethod.POST)
                 .feePercent(cfg.getFeePercent() != null ? BigDecimal.valueOf(cfg.getFeePercent()) : null)
                 .feeFixed(cfg.getFeeFixed() != null ? BigDecimal.valueOf(cfg.getFeeFixed()) : null)
@@ -248,7 +250,7 @@ public class PaymentGatewayFactory {
                 .refundUrl(cfg.getRefundUrl())
                 .statusUrl(cfg.getStatusUrl())
                 .apiSecret(System.getenv("STRIPE_SECRET_KEY"))
-                .authScheme("Bearer")
+                .authScheme(TOKEN_TYPE)
                 .httpMethod(HttpMethod.POST)
                 .feePercent(cfg.getFeePercent() != null ? BigDecimal.valueOf(cfg.getFeePercent()) : null)
                 .feeFixed(cfg.getFeeFixed() != null ? BigDecimal.valueOf(cfg.getFeeFixed()) : null)

@@ -49,7 +49,7 @@ import static ru.galtor85.household_store.constants.PaginationConstants.CODE_DIR
  *   <li>Warehouse search and pagination</li>
  * </ul>
  *
- * @author Household Store Team
+ * @author G@LTor85
  * @since 1.0
  */
 @Slf4j

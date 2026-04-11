@@ -53,7 +53,7 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.FALLBACK_
  * PaymentResult result = gateway.processPayment(paymentMethod, amount, "RUB", "Order payment");
  * </pre>
  *
- * @author Household Store Team
+ * @author G@LTor85
  * @see PaymentGateway
  * @see PaymentProviderConfig
  * @see PaymentConfig

@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.galtor85.household_store.dto.response.user.UserResponse;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.TOKEN_TYPE;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -21,9 +23,9 @@ public class AuthResponse {
     @Schema(description = "JWT refresh token", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
     private String refreshToken;
 
-    @Schema(description = "Token type", example = "Bearer")
+    @Schema(description = "Token type", example = TOKEN_TYPE)
     @Builder.Default
-    private String tokenType = "Bearer";
+    private String tokenType = TOKEN_TYPE;
 
     @Schema(description = "Token expiration time in seconds", example = "3600")
     private Long expiresIn;

@@ -8,6 +8,8 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.TOKEN_TYPE;
+
 /**
  * Configuration for a payment provider
  *
@@ -69,7 +71,7 @@ public class PaymentProviderConfig {
      * Authentication scheme (e.g., "Bearer", "Basic", "Api-Key")
      */
     @Builder.Default
-    private String authScheme = "Bearer";
+    private String authScheme = TOKEN_TYPE;
 
     // =========================================================================
     // REQUEST CONFIGURATION

@@ -43,7 +43,7 @@ import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_CU
  * <p>All endpoints require authentication. Administrative endpoints
  * require ADMIN role.</p>
  *
- * @author Household Store Team
+ * @author G@LTor85
  * @since 1.0
  */
 @Slf4j

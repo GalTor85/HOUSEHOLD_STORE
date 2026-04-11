@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static ru.galtor85.household_store.constants.EndpointConstants.*;
+import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 /**
  * Security configuration for the application.
@@ -50,7 +51,7 @@ import static ru.galtor85.household_store.constants.EndpointConstants.*;
 @Slf4j
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -134,8 +135,8 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        .requestMatchers(ADMIN_ROOT).hasRole("ADMIN")
-                        .requestMatchers(MANAGER_ROOT).hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers(ADMIN_ROOT).hasRole(ROLE_ADMIN)
+                        .requestMatchers(MANAGER_ROOT).hasAnyRole(ROLE_ADMIN, ROLE_MANAGER)
                         .requestMatchers(USER_ROOT).authenticated()
                         .anyRequest().permitAll()
                 )
@@ -147,8 +148,8 @@ public class SecurityConfig {
                                     request.getRequestURI(), authException.getMessage()));
 
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType("application/json;charset=UTF-8");
-                            response.setCharacterEncoding("UTF-8");
+                            response.setContentType(CONTENT_TYPE_JSON_UTF8);
+                            response.setCharacterEncoding(UTF_8_ENCODING);
 
                             ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
                                     .success(false)
@@ -163,8 +164,8 @@ public class SecurityConfig {
                                     request.getRequestURI(), accessDeniedException.getMessage()));
 
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            response.setContentType("application/json;charset=UTF-8");
-                            response.setCharacterEncoding("UTF-8");
+                            response.setContentType(CONTENT_TYPE_JSON_UTF8);
+                            response.setCharacterEncoding(UTF_8_ENCODING);
 
                             ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
                                     .success(false)
@@ -192,7 +193,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
         configuration.setAllowedMethods(ALLOWED_METHODS);
         configuration.setAllowedHeaders(ALLOWED_HEADERS);
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(CORS_ALLOW_CREDENTIALS);
         configuration.setMaxAge(corsMaxAge);
         configuration.setExposedHeaders(EXPOSED_HEADERS);
 
@@ -201,7 +202,7 @@ public class SecurityConfig {
         log.debug(messageService.get("security-config.log.cors.allowed.origins", configuration.getAllowedOrigins()));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration(CORS_URL_PATTERN, configuration);
 
         log.debug(messageService.get("security-config.log.cors.configuration.source.configured"));
 

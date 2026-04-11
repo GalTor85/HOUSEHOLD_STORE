@@ -10,7 +10,6 @@ import ru.galtor85.household_store.advice.exception.auth.TokenSecurityException;
 import ru.galtor85.household_store.advice.exception.auth.TokenUnsupportedException;
 import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.service.i18n.MessageService;
-
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
@@ -18,6 +17,8 @@ import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+
+import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 @Slf4j
 @Component
@@ -34,6 +35,13 @@ public class JwtTokenProvider {
     @Value("${app.jwt.refresh-token-validity:86400000}")
     private long refreshTokenValidity;
 
+    @Value("${app.jwt.key-length:32}")
+    private int jwtKeyLength;
+
+    private static final String JWT_ALGORITHM = "AES";
+
+    private static final long MILLIS_PER_SECOND = 1000;
+
     public JwtTokenProvider(MessageService messageService) {
         this.messageService = messageService;
     }
@@ -43,16 +51,16 @@ public class JwtTokenProvider {
             String secret = jwtSecret;
             byte[] keyBytes;
 
-            if (secret.length() >= 32) {
-                keyBytes = secret.substring(0, 32).getBytes(StandardCharsets.UTF_8);
+            if (secret.length() >= jwtKeyLength) {
+                keyBytes = secret.substring(0,jwtKeyLength).getBytes(StandardCharsets.UTF_8);
             } else {
-                keyBytes = new byte[32];
+                keyBytes = new byte[jwtKeyLength];
                 byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
-                System.arraycopy(secretBytes, 0, keyBytes, 0, Math.min(secretBytes.length, 32));
+                System.arraycopy(secretBytes, 0, keyBytes, 0, Math.min(secretBytes.length, jwtKeyLength));
             }
 
             log.info(messageService.get("jwt.log.key.created", keyBytes.length));
-            return new SecretKeySpec(keyBytes, "AES");
+            return new SecretKeySpec(keyBytes, JWT_ALGORITHM);
 
         } catch (Exception e) {
             log.error(messageService.get("jwt.log.key.error", e.getMessage()), e);
@@ -69,10 +77,10 @@ public class JwtTokenProvider {
             Date validity = new Date(now.getTime() + accessTokenValidity);
 
             Map<String, Object> claims = new HashMap<>();
-            claims.put("role", securityUser.getRole().name());
-            claims.put("identify", identify);
-            claims.put("userId", securityUser.getUserId());
-            claims.put("type", "access");
+            claims.put(JWT_CLAIM_ROLE, securityUser.getRole().name());
+            claims.put(JWT_CLAIM_IDENTIFY, identify);
+            claims.put(JWT_CLAIM_USER_ID, securityUser.getUserId());
+            claims.put(JWT_CLAIM_TYPE, JWT_TOKEN_TYPE_ACCESS);
 
             return Jwts.builder()
                     .claims(claims)
@@ -97,9 +105,9 @@ public class JwtTokenProvider {
             Date validity = new Date(now.getTime() + refreshTokenValidity);
 
             Map<String, Object> claims = new HashMap<>();
-            claims.put("identify", identify);
-            claims.put("userId", securityUser.getUserId());
-            claims.put("type", "refresh");
+            claims.put(JWT_CLAIM_IDENTIFY, identify);
+            claims.put(JWT_CLAIM_USER_ID, securityUser.getUserId());
+            claims.put(JWT_CLAIM_TYPE, JWT_TOKEN_TYPE_REFRESH);
 
             return Jwts.builder()
                     .claims(claims)
@@ -165,7 +173,7 @@ public class JwtTokenProvider {
                     .build()
                     .parseEncryptedClaims(token)
                     .getPayload()
-                    .get("userId", Long.class);
+                    .get(JWT_CLAIM_USER_ID, Long.class);
 
             log.debug(messageService.get("jwt.log.userid.extracted", userId));
             return userId;
@@ -183,7 +191,7 @@ public class JwtTokenProvider {
                     .build()
                     .parseEncryptedClaims(token)
                     .getPayload()
-                    .get("role", String.class);
+                    .get(JWT_CLAIM_ROLE, String.class);
 
             log.debug(messageService.get("jwt.log.role.extracted", role));
             return role;
@@ -210,6 +218,6 @@ public class JwtTokenProvider {
     }
 
     public Long getValidity() {
-        return accessTokenValidity / 1000;
+        return accessTokenValidity / MILLIS_PER_SECOND;
     }
 }

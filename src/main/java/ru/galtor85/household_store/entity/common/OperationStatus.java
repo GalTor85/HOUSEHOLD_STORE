@@ -13,7 +13,7 @@ import ru.galtor85.household_store.service.i18n.MessageService;
  * <p>For logging and display purposes, use {@link #getLocalizedName(MessageService)}
  * to get localized status names.</p>
  *
- * @author Household Store Team
+ * @author G@LTor85
  * @since 1.0
  */
 @Getter

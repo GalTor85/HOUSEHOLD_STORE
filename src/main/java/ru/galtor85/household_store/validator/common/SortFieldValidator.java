@@ -13,7 +13,7 @@ import java.util.Set;
  * <p>This validator ensures that only allowed sort fields are used
  * to prevent SQL injection and invalid sort operations.</p>
  *
- * @author Household Store Team
+ * @author G@LTor85
  * @since 1.0
  */
 @Component
