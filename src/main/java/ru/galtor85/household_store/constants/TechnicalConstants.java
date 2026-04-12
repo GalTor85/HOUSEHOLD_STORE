@@ -217,6 +217,26 @@ public final class TechnicalConstants {
     /** OGRN pattern (13 digits) */
     public static final String OGRN_PATTERN = "^\\d{13}$";
 
+    /**
+     * Credit card number pattern (16 digits)
+     */
+    public static final String CREDIT_CARD_NUMBER_PATTERN = "^\\d{16}$";
+
+    /**
+     * Credit card expiry date pattern (MM/YY)
+     */
+    public static final String CREDIT_CARD_EXPIRY_PATTERN = "^(0[1-9]|1[0-2])/([0-9]{2})$";
+
+    /**
+     * Credit card CVV/CVC pattern (3 or 4 digits)
+     */
+    public static final String CREDIT_CARD_CVV_PATTERN = "^\\d{3,4}$";
+
+    /**
+     * Bank BIC pattern (9 digits)
+     */
+    public static final String BANK_BIC_PATTERN = "^\\d{9}$";
+
     // =========================================================================
     // PASSWORD & SECURITY
     // =========================================================================
@@ -434,6 +454,11 @@ public final class TechnicalConstants {
     /** Maximum currency symbol length */
     public static final int MAX_SYMBOL_LENGTH = 5;
 
+    /** Default currency */
+    public static final String DEFAULT_CURRENCY = "RUB";
+
+    public static final String DEFAULT_CURRENCY_CODE = "RUB";
+
     // =========================================================================
     // CASH REGISTER
     // =========================================================================
@@ -545,11 +570,42 @@ public final class TechnicalConstants {
     public static final String FALLBACK_TXN_PREFIX = "TXN_";
 
     // =========================================================================
+    // PAYMENT METHOD VALIDATION
+    // =========================================================================
+
+    /**
+     * Maximum length for payment method name
+     */
+    public static final int MAX_PAYMENT_METHOD_NAME_LENGTH = 100;
+
+    /**
+     * Minimum number of months for installment payment
+     */
+    public static final int MIN_INSTALLMENT_MONTHS = 1;
+
+    /**
+     * Maximum number of months for installment payment
+     */
+    public static final int MAX_INSTALLMENT_MONTHS = 36;
+
+    /**
+     * Maximum length for text fields (description, reason, etc.)
+     */
+    public static final int MAX_TEXT_LENGTH = 500;
+
+    /**
+     * Maximum length for cardholder name
+     */
+    public static final int MAX_CARDHOLDER_NAME_LENGTH = 100;
+
+    // =========================================================================
     // SYSTEM & AUDIT
     // =========================================================================
 
     /** System creator identifier for audit trail */
     public static final String SYSTEM_CREATOR = "system";
+
+    public static final String DEFAULT_REASON_FOR_CREATE = "creation by " + SYSTEM_CREATOR;
 
     /** Default active status */
     public static final boolean DEFAULT_ACTIVE_STATUS = true;

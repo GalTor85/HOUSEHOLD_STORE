@@ -9,5 +9,6 @@ public enum PaymentMethodType {
     ELECTRONIC,     // Electronic wallets (Qiwi, WebMoney, YooMoney)
     CRYPTO,         // Cryptocurrency
     MOBILE_PAYMENT, // Mobile payments (Apple Pay, Google Pay)
+    CASH,           // Cash Register
     INSTALLMENT     // Installment/Credit
 }

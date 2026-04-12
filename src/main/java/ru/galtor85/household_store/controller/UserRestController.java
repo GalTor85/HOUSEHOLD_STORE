@@ -18,18 +18,25 @@ import ru.galtor85.household_store.dto.request.user.UserEditRequest;
 import ru.galtor85.household_store.dto.request.user.UserUpdatePasswordRequest;
 import ru.galtor85.household_store.dto.response.cart.CartDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
+import ru.galtor85.household_store.dto.response.payment.PaymentMethodForUserDto;
 import ru.galtor85.household_store.dto.response.payment.PaymentTransactionDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.dto.response.user.UserResponse;
+import ru.galtor85.household_store.dto.response.user.UserTypeAssignmentDto;
 import ru.galtor85.household_store.entity.user.User;
+import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.mapper.user.UserMapper;
 import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.cart.CartService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.order.SalesOrderService;
+import ru.galtor85.household_store.service.payment.PaymentMethodService;
 import ru.galtor85.household_store.service.payment.PaymentService;
 import ru.galtor85.household_store.service.user.UserSearchService;
 import ru.galtor85.household_store.service.auth.UserService;
+import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
+
+import java.util.List;
 
 import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_USERS;
 
@@ -63,6 +70,8 @@ public class UserRestController extends BaseController{
     private final CartService cartService;
     private final SalesOrderService salesOrderService;
     private final PaymentService paymentService;
+    private final PaymentMethodService paymentMethodService;
+    private final UserTypeAssignmentService userTypeAssignmentService;
 
 
     // =========================================================================
@@ -440,11 +449,11 @@ public class UserRestController extends BaseController{
     public ResponseEntity<ApiResponse<PaymentTransactionDto>> processPayment(
             @Valid @RequestBody PaymentProcessRequest request) {
 
-        PaymentTransactionDto transaction = paymentService.customerPayOrder(
-                request.getOrderId(),
-                request.getPaymentMethodId(),
-                getCurrentUserId()
-        );
+        if (request.getOrderId() == null) {
+            throw new IllegalArgumentException(messageService.get("payment.order.id.required"));
+        }
+
+        PaymentTransactionDto transaction = paymentService.processPayment(request, getCurrentUserId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("payment.order.paid"),
@@ -484,6 +493,72 @@ public class UserRestController extends BaseController{
                 cancelledOrder));
     }
 
+    // =========================================================================
+// PAYMENT METHODS FOR CUSTOMERS
+// =========================================================================
+
+    /**
+     * Gets available payment methods for the current user.
+     *
+     * @return list of payment methods available for user's type
+     */
+    @GetMapping("/payment-methods")
+    @Operation(summary = "Get available payment methods",
+            description = "Retrieves all payment methods available for the current user's type")
+    public ResponseEntity<ApiResponse<List<PaymentMethodForUserDto>>> getAvailablePaymentMethods() {
+
+        User user = getCurrentUser();
+        UserType userType = getUserType(user);
+
+        log.debug(messageService.get("user.payment.methods.fetch.start", user.getId(), userType));
+
+        List<PaymentMethodForUserDto> result = paymentMethodService.getPaymentMethodsForUserType(userType);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("user.payment.methods.fetched"),
+                result));
+    }
+
+    /**
+     * Gets payment method details by ID.
+     *
+     * @param methodId payment method ID
+     * @return payment method details
+     */
+    @GetMapping("/payment-methods/{methodId}")
+    @Operation(summary = "Get payment method details",
+            description = "Retrieves details of a specific payment method")
+    public ResponseEntity<ApiResponse<PaymentMethodForUserDto>> getPaymentMethodDetails(
+            @Parameter(description = "Payment method ID", example = "1", required = true)
+            @PathVariable Long methodId) {
+
+        User user = getCurrentUser();
+        UserType userType = getUserType(user);
+
+        log.debug(messageService.get("user.payment.method.details.start", methodId, userType));
+
+        PaymentMethodForUserDto result = paymentMethodService.getPaymentMethodForUserType(methodId, userType);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("user.payment.method.details.fetched"),
+                result));
+    }
+
+    /**
+     * Helper method to get user type.
+     */
+    private UserType getUserType(User user) {
+        if (user == null) {
+            return UserType.RETAIL;
+        }
+
+        UserTypeAssignmentDto assignment = userTypeAssignmentService.getCurrentUserType(user.getId());
+        if (assignment != null && assignment.getUserType() != null) {
+            return assignment.getUserType();
+        }
+
+        return UserType.RETAIL;
+    }
 
 
     // =========================================================================

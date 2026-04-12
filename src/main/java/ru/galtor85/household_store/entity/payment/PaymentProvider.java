@@ -25,5 +25,8 @@ public enum PaymentProvider {
 
     // Installment services
     SPLIT,
-    YANDEX_SPLIT
+    YANDEX_SPLIT,
+
+    //
+    CASH_REGISTER
 }

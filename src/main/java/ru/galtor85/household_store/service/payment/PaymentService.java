@@ -5,30 +5,33 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.finance.InsufficientFundsException;
-import ru.galtor85.household_store.config.FinancialConfig;
 import ru.galtor85.household_store.converter.PaymentTransactionConverter;
+import ru.galtor85.household_store.dto.request.finance.BankAccountTransactionRequest;
 import ru.galtor85.household_store.dto.request.finance.CashTransactionRequest;
+import ru.galtor85.household_store.dto.request.payment.PaymentProcessRequest;
+import ru.galtor85.household_store.dto.response.finance.BankAccountDto;
+import ru.galtor85.household_store.dto.response.finance.CashRegisterDto;
+import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
 import ru.galtor85.household_store.dto.response.payment.PaymentTransactionDto;
-import ru.galtor85.household_store.entity.common.OperationStatus;
-import ru.galtor85.household_store.entity.finance.BankAccount;
-import ru.galtor85.household_store.entity.finance.CashRegister;
-import ru.galtor85.household_store.entity.finance.Invoice;
+import ru.galtor85.household_store.dto.response.user.UserTypeAssignmentDto;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.finance.TransactionType;
 import ru.galtor85.household_store.entity.order.OrderType;
 import ru.galtor85.household_store.entity.payment.PaymentMethod;
 import ru.galtor85.household_store.entity.payment.PaymentTransaction;
 import ru.galtor85.household_store.entity.payment.PaymentTransactionStatus;
-import ru.galtor85.household_store.repository.finance.BankAccountRepository;
-import ru.galtor85.household_store.repository.finance.InvoiceRepository;
+import ru.galtor85.household_store.entity.user.Role;
 import ru.galtor85.household_store.repository.payment.PaymentMethodRepository;
+import ru.galtor85.household_store.repository.payment.PaymentMethodUserTypeRepository;
 import ru.galtor85.household_store.repository.payment.PaymentTransactionRepository;
+import ru.galtor85.household_store.repository.auth.SecurityUserRepository;
+import ru.galtor85.household_store.security.SecurityUser;
+import ru.galtor85.household_store.service.cash.CashRegisterService;
 import ru.galtor85.household_store.service.cash.CashTransactionService;
-import ru.galtor85.household_store.service.currency.CurrencyService;
+import ru.galtor85.household_store.service.finance.BankAccountService;
+import ru.galtor85.household_store.service.finance.InvoiceService;
 import ru.galtor85.household_store.service.i18n.MessageService;
-import ru.galtor85.household_store.util.math.BigDecimalUtils;
-import ru.galtor85.household_store.validator.cash.CashRegisterValidator;
-import ru.galtor85.household_store.validator.finance.BankAccountValidator;
+import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -37,300 +40,383 @@ import java.util.List;
 import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 /**
- * Unified payment service for all payment methods
+ * Service for processing all types of payments in the system.
+ *
+ * <p>This service provides a unified entry point for all payment operations:
+ * customer payments for sales orders, invoice payments, manager payments to suppliers
+ * from bank accounts or cash registers, cash receipt from customers, and refunds.</p>
+ *
+ * <p>The service uses a dispatcher pattern where {@link #processPayment(PaymentProcessRequest, Long)}
+ * routes requests to specific handlers based on request fields.</p>
+ *
+ * @author G@LTor85
+ * @since 1.0
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
 
+    // =========================================================================
+    // DEPENDENCIES
+    // =========================================================================
+
     private final PaymentMethodRepository paymentMethodRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
-    private final PaymentGatewayFactory gatewayFactory;
-    private final InvoiceRepository invoiceRepository;
-    private final BankAccountRepository bankAccountRepository;
-    private final CashTransactionService cashTransactionService;
-    private final CashRegisterValidator cashRegisterValidator;
-    private final BankAccountValidator bankAccountValidator;
     private final PaymentTransactionConverter paymentTransactionConverter;
+    private final CashTransactionService cashTransactionService;
+    private final SecurityUserRepository securityUserRepository;
     private final MessageService messageService;
-    private final FinancialConfig financialConfig;
-    private final BigDecimalUtils bigDecimalUtils;
-    private final CurrencyService currencyService;
+    private final PaymentGatewayFactory gatewayFactory;
+    private final UserTypeAssignmentService userTypeAssignmentService;
+    private final PaymentMethodUserTypeRepository paymentMethodUserTypeRepository;
+    private final BankAccountService bankAccountService;
+    private final CashRegisterService cashRegisterService;
+    private final InvoiceService invoiceService;
+
+    // =========================================================================
+    // PUBLIC DISPATCHER METHOD
+    // =========================================================================
+
+    /**
+     * Unified entry point for all payment operations.
+     * Routes to specific handler based on request fields.
+     *
+     * @param request the payment request containing all necessary data
+     * @param userId the ID of the user performing the payment
+     * @return payment transaction DTO with status and details
+     * @throws IllegalArgumentException if payment type is unsupported
+     */
+    @Transactional
+    public PaymentTransactionDto processPayment(PaymentProcessRequest request, Long userId) {
+        log.info(messageService.get("payment.process.start", request.getPaymentTargetDescription()));
+
+        validateCommonPaymentRequest(request);
+
+        if (request.isCustomerOrderPayment()) {
+            return customerPayOrder(request, userId);
+        } else if (request.isInvoicePayment()) {
+            return payInvoice(request, userId);
+        } else if (request.isManagerSupplierBankPayment()) {
+            return managerPaySupplierFromBank(request, userId);
+        } else if (request.isManagerSupplierCashPayment()) {
+            return managerPaySupplierFromCash(request, userId);
+        } else if (request.isManagerReceiveCash()) {
+            return managerReceiveCashPayment(request, userId);
+        } else if (request.isRefund()) {
+            return managerProcessCashRefund(request, userId);
+        }
+
+        throw new IllegalArgumentException(messageService.get("payment.unsupported.type"));
+    }
 
     // =========================================================================
     // CUSTOMER PAYMENTS
     // =========================================================================
 
     /**
-     * Customer pays for their sales order using saved payment method
+     * Customer pays for their sales order.
      *
-     * @param salesOrderId    sales order ID
-     * @param paymentMethodId payment method ID (card, wallet, etc.)
-     * @param userId          customer ID
-     * @return payment transaction DTO
+     * @param request the payment request with order ID and payment method
+     * @param userId the ID of the customer
+     * @return completed payment transaction DTO
      */
     @Transactional
-    public PaymentTransactionDto customerPayOrder(Long salesOrderId, Long paymentMethodId, Long userId) {
+    public PaymentTransactionDto customerPayOrder(PaymentProcessRequest request, Long userId) {
+        Long salesOrderId = request.getOrderId();
+        Long paymentMethodId = request.getPaymentMethodId();
+
         log.info(messageService.get("payment.customer.pay.start", salesOrderId, userId));
 
         PaymentMethod paymentMethod = validatePaymentMethod(paymentMethodId, userId);
 
-        Invoice invoice = findInvoiceBySalesOrder(salesOrderId);
-        validateInvoicePayable(invoice);
+        List<InvoiceDto> invoices = invoiceService.getInvoicesBySalesOrder(salesOrderId);
+        InvoiceDto invoiceDto = invoices.stream()
+                .filter(i -> i.getStatus() == InvoiceStatus.PENDING || i.getStatus() == InvoiceStatus.PARTIALLY_PAID)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        messageService.get("payment.no.payable.invoice.sales", salesOrderId)));
 
-        BigDecimal remainingAmount = invoice.getRemainingAmount();
+        BigDecimal amount = request.getAmount() != null ? request.getAmount() : invoiceDto.getRemainingAmount();
 
-        PaymentTransaction transaction = createPaymentTransaction(
-                paymentMethod, invoice, remainingAmount,
-                messageService.get("payment.customer.order.description", salesOrderId)
-        );
+        PaymentTransaction transaction = createPaymentTransaction(paymentMethod, invoiceDto, amount, userId);
+        transaction = paymentTransactionRepository.save(transaction);
 
         try {
             PaymentGateway gateway = gatewayFactory.getGateway(paymentMethod.getProvider());
             PaymentResult result = gateway.processPayment(
-                    paymentMethod, remainingAmount, invoice.getCurrency(),
+                    paymentMethod, amount, invoiceDto.getCurrency(),
                     messageService.get("payment.customer.order.description", salesOrderId)
             );
 
             if (result.isSuccess()) {
                 completeTransaction(transaction, result);
-                updateInvoiceAfterPayment(invoice);
+                if (amount.compareTo(invoiceDto.getRemainingAmount()) >= 0) {
+                    invoiceService.markAsPaid(invoiceDto.getId(), null, userId);
+                } else {
+                    invoiceService.markAsPartiallyPaid(invoiceDto.getId(), amount, null, userId);
+                }
                 log.info(messageService.get("payment.customer.pay.success", salesOrderId, transaction.getId()));
             } else {
                 failTransaction(transaction, result.getErrorMessage());
-                log.error(messageService.get("payment.customer.pay.failed", salesOrderId, result.getErrorMessage()));
+                throw new RuntimeException(result.getErrorMessage());
             }
-
-            return paymentTransactionConverter.toDto(paymentTransactionRepository.save(transaction));
-
         } catch (Exception e) {
             failTransaction(transaction, e.getMessage());
-            paymentTransactionRepository.save(transaction);
-            log.error(messageService.get("payment.customer.pay.error", salesOrderId, e.getMessage()), e);
             throw new RuntimeException(messageService.get("payment.process.error", e.getMessage()), e);
+        }
+
+        return paymentTransactionConverter.toDto(transaction);
+    }
+
+    /**
+     * Customer pays an invoice directly.
+     *
+     * @param request the payment request with invoice ID
+     * @param userId the ID of the user
+     * @return payment transaction DTO
+     */
+    @Transactional
+    public PaymentTransactionDto payInvoice(PaymentProcessRequest request, Long userId) {
+        Long invoiceId = request.getInvoiceId();
+        InvoiceDto invoice = invoiceService.getInvoiceById(invoiceId);
+
+        if (invoice.getSalesOrderId() != null) {
+            PaymentProcessRequest adaptedRequest = PaymentProcessRequest.builder()
+                    .paymentMethodId(request.getPaymentMethodId())
+                    .orderId(invoice.getSalesOrderId())
+                    .amount(request.getAmount())
+                    .build();
+            return customerPayOrder(adaptedRequest, userId);
+        } else {
+            if (!isManager(userId)) {
+                throw new SecurityException(messageService.get("payment.manager.only"));
+            }
+            return managerPaySupplierFromBank(request, userId);
         }
     }
 
     // =========================================================================
-    // MANAGER PAYMENTS - SUPPLIER
+    // MANAGER PAYMENTS
     // =========================================================================
 
     /**
-     * Manager pays supplier for purchase order from bank account
+     * Manager pays supplier from company bank account.
      *
-     * @param bankAccountId   company bank account ID
-     * @param purchaseOrderId purchase order ID
-     * @param amount          payment amount
-     * @return payment transaction DTO
+     * @param request the payment request with purchase order ID and bank account ID
+     * @param managerId the ID of the manager
+     * @return completed payment transaction DTO
      */
     @Transactional
-    public PaymentTransactionDto managerPaySupplierFromBank(Long bankAccountId, Long purchaseOrderId,
-                                                            BigDecimal amount) {
+    public PaymentTransactionDto managerPaySupplierFromBank(PaymentProcessRequest request, Long managerId) {
+        Long purchaseOrderId = request.getPurchaseOrderId();
+        Long bankAccountId = request.getBankAccountId();
+        BigDecimal amount = request.getAmount();
+
         log.info(messageService.get("payment.manager.supplier.bank.start", purchaseOrderId, bankAccountId));
 
-        BankAccount bankAccount = bankAccountValidator.validateExists(bankAccountId);
-        bankAccountValidator.validateActive(bankAccount);
+        validateManagerRole(managerId);
 
+        BankAccountDto bankAccount = bankAccountService.getBankAccountById(bankAccountId);
+        if (!bankAccount.getActive()) {
+            throw new IllegalStateException(messageService.get("bank.account.inactive", bankAccountId));
+        }
         if (bankAccount.getBalance().compareTo(amount) < 0) {
             throw new InsufficientFundsException(bankAccountId, bankAccount.getBalance(), amount);
         }
 
-        Invoice invoice = findInvoiceByPurchaseOrder(purchaseOrderId);
-        validateInvoicePayable(invoice);
+        List<InvoiceDto> invoices = invoiceService.getInvoicesByPurchaseOrder(purchaseOrderId);
+        InvoiceDto invoice = invoices.stream()
+                .filter(i -> i.getStatus() == InvoiceStatus.PENDING || i.getStatus() == InvoiceStatus.PARTIALLY_PAID)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        messageService.get("payment.no.payable.invoice.purchase", purchaseOrderId)));
 
-        // Withdraw from bank account
-        bankAccount.withdraw(amount);
-        bankAccountRepository.save(bankAccount);
-
-        // Create payment transaction
-        PaymentTransaction transaction = createSupplierPaymentTransaction(
-                invoice, amount, BANK_ACCOUNT_TYPE, bankAccountId.toString()
+        bankAccountService.withdraw(
+                BankAccountTransactionRequest.builder()
+                        .accountId(bankAccountId)
+                        .amount(amount)
+                        .description(messageService.get("payment.supplier.payment.description", purchaseOrderId))
+                        .build(),
+                managerId
         );
+
+        PaymentTransaction transaction = createSupplierPaymentTransaction(invoice, amount, BANK_ACCOUNT_TYPE, bankAccountId.toString());
         completeTransaction(transaction, PaymentResult.success(BANK_TXN_PREFIX + System.currentTimeMillis()));
 
-        updateInvoiceAfterPayment(invoice);
+        if (amount.compareTo(invoice.getRemainingAmount()) >= 0) {
+            invoiceService.markAsPaid(invoice.getId(), null, managerId);
+        } else {
+            invoiceService.markAsPartiallyPaid(invoice.getId(), amount, null, managerId);
+        }
 
         log.info(messageService.get("payment.manager.supplier.bank.success", purchaseOrderId, amount));
-
-        return paymentTransactionConverter.toDto(paymentTransactionRepository.save(transaction));
+        return paymentTransactionConverter.toDto(transaction);
     }
 
     /**
-     * Manager pays supplier for purchase order from cash register
+     * Manager pays supplier from cash register.
      *
-     * @param cashRegisterId cash register ID
-     * @param invoiceId      invoice ID
-     * @param amount         payment amount
-     * @param managerId      manager ID
-     * @return payment transaction DTO
+     * @param request the payment request with purchase order ID and cash register ID
+     * @param managerId the ID of the manager
+     * @return completed payment transaction DTO
      */
     @Transactional
-    public PaymentTransactionDto managerPaySupplierFromCash(Long cashRegisterId, Long invoiceId,
-                                                            BigDecimal amount, Long managerId) {
-        log.info(messageService.get("payment.manager.supplier.cash.start", invoiceId, cashRegisterId));
+    public PaymentTransactionDto managerPaySupplierFromCash(PaymentProcessRequest request, Long managerId) {
+        Long purchaseOrderId = request.getPurchaseOrderId();
+        Long cashRegisterId = request.getCashRegisterId();
+        BigDecimal amount = request.getAmount();
 
-        CashRegister cashRegister = cashRegisterValidator.validateExists(cashRegisterId);
-        cashRegisterValidator.validateActive(cashRegister);
-        cashRegisterValidator.validateSufficientFunds(cashRegister, amount);
+        log.info(messageService.get("payment.manager.supplier.cash.start", purchaseOrderId, cashRegisterId));
 
-        Invoice invoice = invoiceRepository.findById(invoiceId)
+        validateManagerRole(managerId);
+
+        CashRegisterDto cashRegister = cashRegisterService.getCashRegisterById(cashRegisterId);
+        if (!cashRegister.getIsActive()) {
+            throw new IllegalStateException(messageService.get("cash.register.closed", cashRegisterId));
+        }
+
+        List<InvoiceDto> invoices = invoiceService.getInvoicesByPurchaseOrder(purchaseOrderId);
+        InvoiceDto invoice = invoices.stream()
+                .filter(i -> i.getStatus() == InvoiceStatus.PENDING || i.getStatus() == InvoiceStatus.PARTIALLY_PAID)
+                .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
-                        messageService.get("invoice.not.found", invoiceId)));
+                        messageService.get("payment.no.payable.invoice.purchase", purchaseOrderId)));
 
-        validateInvoicePayable(invoice);
-
-        // Create expense transaction in cash register
         CashTransactionRequest expenseRequest = CashTransactionRequest.builder()
                 .cashRegisterId(cashRegisterId)
                 .transactionType(TransactionType.EXPENSE)
                 .amount(amount)
-                .invoiceId(invoiceId)
-                .purchaseOrderId(invoice.getPurchaseOrderId())
-                .description(messageService.get("payment.supplier.payment.description",
-                        invoice.getPurchaseOrderId()))
+                .invoiceId(invoice.getId())
+                .purchaseOrderId(purchaseOrderId)
+                .description(messageService.get("payment.supplier.payment.description", purchaseOrderId))
                 .build();
-
         cashTransactionService.createTransaction(expenseRequest, managerId);
 
-        // Create payment transaction
-        PaymentTransaction transaction = createSupplierPaymentTransaction(
-                invoice, amount, CASH_REGISTER_TYPE, cashRegisterId.toString()
-        );
+        PaymentTransaction transaction = createSupplierPaymentTransaction(invoice, amount, CASH_REGISTER_TYPE, cashRegisterId.toString());
         completeTransaction(transaction, PaymentResult.success(CASH_REGISTER_TXN_PREFIX + System.currentTimeMillis()));
 
-        updateInvoiceAfterPayment(invoice);
-
-        log.info(messageService.get("payment.manager.supplier.cash.success", invoiceId, amount));
-
-        return paymentTransactionConverter.toDto(paymentTransactionRepository.save(transaction));
-    }
-
-    // =========================================================================
-    // MANAGER PAYMENTS - CUSTOMER CASH
-    // =========================================================================
-
-    /**
-     * Manager receives cash payment from customer at point of sale
-     *
-     * @param cashRegisterId cash register ID
-     * @param invoiceId      invoice ID
-     * @param amount         payment amount
-     * @param customerId     customer ID
-     * @param managerId      manager ID
-     * @return payment transaction DTO
-     */
-    @Transactional
-    public PaymentTransactionDto managerReceiveCashPayment(Long cashRegisterId, Long invoiceId,
-                                                           BigDecimal amount, Long customerId,
-                                                           Long managerId) {
-        log.info(messageService.get("payment.manager.receive.cash.start", invoiceId, amount));
-
-        if (customerId == null) {
-            throw new IllegalArgumentException(messageService.get("payment.customer.id.required"));
+        if (amount.compareTo(invoice.getRemainingAmount()) >= 0) {
+            invoiceService.markAsPaid(invoice.getId(), cashRegisterId, managerId);
+        } else {
+            invoiceService.markAsPartiallyPaid(invoice.getId(), amount, cashRegisterId, managerId);
         }
 
-        CashRegister cashRegister = cashRegisterValidator.validateExists(cashRegisterId);
-        cashRegisterValidator.validateActive(cashRegister);
+        log.info(messageService.get("payment.manager.supplier.cash.success", purchaseOrderId, amount));
+        return paymentTransactionConverter.toDto(transaction);
+    }
 
-        Invoice invoice = invoiceRepository.findById(invoiceId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        messageService.get("invoice.not.found", invoiceId)));
+    /**
+     * Manager receives cash payment from customer.
+     *
+     * @param request the payment request with invoice ID, customer ID and cash register ID
+     * @param managerId the ID of the manager
+     * @return completed payment transaction DTO
+     */
+    @Transactional
+    public PaymentTransactionDto managerReceiveCashPayment(PaymentProcessRequest request, Long managerId) {
+        Long cashRegisterId = request.getCashRegisterId();
+        Long invoiceId = request.getInvoiceId();
+        BigDecimal amount = request.getAmount();
 
-        validateInvoicePayable(invoice);
+        log.info(messageService.get("payment.manager.receive.cash.start", invoiceId, amount));
 
-        // Create income transaction in cash register
+        validateManagerRole(managerId);
+
+        CashRegisterDto cashRegister = cashRegisterService.getCashRegisterById(cashRegisterId);
+        if (!cashRegister.getIsActive()) {
+            throw new IllegalStateException(messageService.get("cash.register.closed", cashRegisterId));
+        }
+
+        InvoiceDto invoice = invoiceService.getInvoiceById(invoiceId);
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new IllegalStateException(messageService.get("invoice.already.paid", invoice.getInvoiceNumber()));
+        }
+        if (invoice.getStatus() == InvoiceStatus.CANCELLED) {
+            throw new IllegalStateException(messageService.get("invoice.cancelled", invoice.getInvoiceNumber()));
+        }
+
         CashTransactionRequest incomeRequest = CashTransactionRequest.builder()
                 .cashRegisterId(cashRegisterId)
                 .transactionType(TransactionType.INCOME)
                 .amount(amount)
                 .invoiceId(invoiceId)
-                .customerId(customerId)
+                .customerId(request.getCustomerId())
                 .salesOrderId(invoice.getSalesOrderId())
                 .description(messageService.get("payment.customer.cash.payment.description",
-                        invoice.getSalesOrderId(), customerId))
+                        invoice.getSalesOrderId(), request.getCustomerId()))
                 .build();
-
         cashTransactionService.createTransaction(incomeRequest, managerId);
 
-        // Create payment transaction
-        PaymentTransaction transaction = createCustomerPaymentTransaction(
-                invoice, amount, cashRegisterId.toString(), customerId
-        );
+        PaymentTransaction transaction = createCustomerPaymentTransaction(invoice, amount, cashRegisterId.toString(), request.getCustomerId());
         completeTransaction(transaction, PaymentResult.success(CASH_REGISTER_TXN_PREFIX + System.currentTimeMillis()));
 
-        updateInvoiceAfterPayment(invoice);
+        if (amount.compareTo(invoice.getRemainingAmount()) >= 0) {
+            invoiceService.markAsPaid(invoice.getId(), cashRegisterId, managerId);
+        } else {
+            invoiceService.markAsPartiallyPaid(invoice.getId(), amount, cashRegisterId, managerId);
+        }
 
         log.info(messageService.get("payment.manager.receive.cash.success", invoiceId, amount));
-
-        return paymentTransactionConverter.toDto(paymentTransactionRepository.save(transaction));
+        return paymentTransactionConverter.toDto(transaction);
     }
 
-    // =========================================================================
-    // MANAGER REFUNDS
-    // =========================================================================
-
     /**
-     * Manager processes cash refund to customer
+     * Manager processes cash refund to customer.
      *
-     * @param cashRegisterId        cash register ID
-     * @param originalTransactionId original payment transaction ID
-     * @param amount                refund amount
-     * @param reason                refund reason
-     * @param managerId             manager ID
-     * @return refund transaction DTO
+     * @param request the payment request with original transaction ID and refund reason
+     * @param managerId the ID of the manager
+     * @return refund payment transaction DTO
      */
     @Transactional
-    public PaymentTransactionDto managerProcessCashRefund(Long cashRegisterId, Long originalTransactionId,
-                                                          BigDecimal amount, String reason, Long managerId) {
+    public PaymentTransactionDto managerProcessCashRefund(PaymentProcessRequest request, Long managerId) {
+        Long originalTransactionId = request.getOriginalTransactionId();
+        Long cashRegisterId = request.getCashRegisterId();
+        BigDecimal amount = request.getAmount();
+        String reason = request.getRefundReason();
+
         log.info(messageService.get("payment.manager.refund.cash.start", originalTransactionId, amount));
 
-        CashRegister cashRegister = cashRegisterValidator.validateExists(cashRegisterId);
-        cashRegisterValidator.validateActive(cashRegister);
-        cashRegisterValidator.validateSufficientFunds(cashRegister, amount);
+        validateManagerRole(managerId);
+
+        CashRegisterDto cashRegister = cashRegisterService.getCashRegisterById(cashRegisterId);
+        if (!cashRegister.getIsActive()) {
+            throw new IllegalStateException(messageService.get("cash.register.closed", cashRegisterId));
+        }
 
         PaymentTransaction originalTransaction = paymentTransactionRepository.findById(originalTransactionId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         messageService.get("payment.transaction.not.found", originalTransactionId)));
 
         if (originalTransaction.getStatus() != PaymentTransactionStatus.COMPLETED) {
-            throw new IllegalStateException(
-                    messageService.get("payment.transaction.not.completed", originalTransactionId));
+            throw new IllegalStateException(messageService.get("payment.refund.non.completed"));
         }
 
         boolean alreadyRefunded = paymentTransactionRepository.existsByOriginalTransactionId(originalTransactionId);
         if (alreadyRefunded) {
-            throw new IllegalStateException(
-                    messageService.get("payment.transaction.already.refunded", originalTransactionId));
+            throw new IllegalStateException(messageService.get("payment.refund.already.processed"));
         }
 
-        Invoice invoice = invoiceRepository.findById(originalTransaction.getInvoiceId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        messageService.get("invoice.not.found", originalTransaction.getInvoiceId())));
+        InvoiceDto invoice = invoiceService.getInvoiceById(originalTransaction.getInvoiceId());
 
-        // Create refund transaction in cash register (EXPENSE for refund)
         CashTransactionRequest refundRequest = CashTransactionRequest.builder()
                 .cashRegisterId(cashRegisterId)
                 .transactionType(TransactionType.EXPENSE)
                 .amount(amount)
                 .originalTransactionId(originalTransactionId)
                 .invoiceId(invoice.getId())
-                .description(messageService.get("payment.cash.refund.description",
-                        originalTransactionId, reason))
+                .description(messageService.get("payment.cash.refund.description", originalTransactionId, reason))
                 .build();
-
         cashTransactionService.createTransaction(refundRequest, managerId);
 
-        // Create refund payment transaction
         PaymentTransaction refundTransaction = createRefundTransaction(originalTransaction, amount, reason);
+        refundTransaction = paymentTransactionRepository.save(refundTransaction);
 
-        // Mark original as refunded
         originalTransaction.setStatus(PaymentTransactionStatus.REFUNDED);
         paymentTransactionRepository.save(originalTransaction);
 
         log.info(messageService.get("payment.manager.refund.cash.success", originalTransactionId));
-
-        return paymentTransactionConverter.toDto(paymentTransactionRepository.save(refundTransaction));
+        return paymentTransactionConverter.toDto(refundTransaction);
     }
 
     // =========================================================================
@@ -338,23 +424,9 @@ public class PaymentService {
     // =========================================================================
 
     /**
-     * Get payment transaction by ID
+     * Gets all supplier payments for a purchase order.
      *
-     * @param transactionId transaction ID
-     * @return payment transaction DTO
-     */
-    @Transactional(readOnly = true)
-    public PaymentTransactionDto getPaymentTransaction(Long transactionId) {
-        PaymentTransaction transaction = paymentTransactionRepository.findById(transactionId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        messageService.get("payment.transaction.not.found", transactionId)));
-        return paymentTransactionConverter.toDto(transaction);
-    }
-
-    /**
-     * Get supplier payment history for purchase order
-     *
-     * @param purchaseOrderId purchase order ID
+     * @param purchaseOrderId the purchase order ID
      * @return list of payment transaction DTOs
      */
     @Transactional(readOnly = true)
@@ -365,9 +437,9 @@ public class PaymentService {
     }
 
     /**
-     * Get customer payment history for sales order
+     * Gets all customer payments for a sales order.
      *
-     * @param salesOrderId sales order ID
+     * @param salesOrderId the sales order ID
      * @return list of payment transaction DTOs
      */
     @Transactional(readOnly = true)
@@ -378,179 +450,77 @@ public class PaymentService {
     }
 
     /**
-     * Get cash register balance
+     * Gets a payment transaction by ID.
      *
-     * @param cashRegisterId cash register ID
-     * @return current balance
+     * @param transactionId the transaction ID
+     * @return payment transaction DTO
+     * @throws IllegalArgumentException if transaction not found
      */
     @Transactional(readOnly = true)
-    public BigDecimal getCashRegisterBalance(Long cashRegisterId) {
-        CashRegister cashRegister = cashRegisterValidator.validateExists(cashRegisterId);
-        return cashRegister.getCurrentBalance();
-    }
-
-    /**
-     * Get bank account balance
-     *
-     * @param bankAccountId bank account ID
-     * @return current balance
-     */
-    @Transactional(readOnly = true)
-    public BigDecimal getBankAccountBalance(Long bankAccountId) {
-        BankAccount bankAccount = bankAccountValidator.validateExists(bankAccountId);
-        return bankAccount.getBalance();
-    }
-
-    // =========================================================================
-    // LEGACY METHODS (for backward compatibility)
-    // =========================================================================
-
-    /**
-     * Process payment using specified payment method (legacy)
-     *
-     * @param paymentMethodId payment method ID
-     * @param amount          payment amount
-     * @param currency        payment currency
-     * @param invoiceId       associated invoice ID
-     * @param orderId         associated order ID
-     * @param orderType       order type (PURCHASE, SALES)
-     * @param description     payment description
-     * @return payment transaction
-     */
-    @Transactional
-    public PaymentTransaction processPayment(Long paymentMethodId,
-                                             BigDecimal amount,
-                                             String currency,
-                                             Long invoiceId,
-                                             Long orderId,
-                                             OrderType orderType,
-                                             String description
-    ) {
-        log.info(messageService.get("payment.service.process.start",
-                paymentMethodId, amount, currency));
-
-        if (currency == null || currency.isBlank()) {
-            currency = financialConfig.getDefaultCurrency();
-        }
-
-        currencyService.getCurrencyByCode(currency);
-
-        PaymentMethod paymentMethod = paymentMethodRepository.findById(paymentMethodId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        messageService.get("payment.method.not.found", paymentMethodId)));
-
-        if (!paymentMethod.isActive()) {
-            throw new IllegalStateException(
-                    messageService.get("payment.method.inactive", paymentMethodId));
-        }
-
-        if (!paymentMethod.validate()) {
-            throw new IllegalArgumentException(
-                    messageService.get("payment.method.invalid", paymentMethodId));
-        }
-
-        PaymentTransaction transaction = PaymentTransaction.builder()
-                .paymentMethodId(paymentMethodId)
-                .invoiceId(invoiceId)
-                .orderId(orderId)
-                .orderType(orderType)
-                .amount(amount)
-                .currency(currency)
-                .status(PaymentTransactionStatus.PENDING)
-                .description(description)
-                .processingFee(paymentMethod.getProcessingFee())
-                .netAmount(calculateNetAmount(amount, paymentMethod.getProcessingFee()))
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        transaction = paymentTransactionRepository.save(transaction);
-
-        PaymentGateway gateway = gatewayFactory.getGateway(paymentMethod.getProvider());
-
-        try {
-            PaymentResult result = gateway.processPayment(paymentMethod, amount, currency, description);
-
-            if (result.isSuccess()) {
-                transaction.setStatus(PaymentTransactionStatus.COMPLETED);
-                transaction.setProviderTransactionId(result.getTransactionId());
-                transaction.setCompletedAt(LocalDateTime.now());
-                log.info(messageService.get("payment.service.success",
-                        transaction.getId(), result.getTransactionId()));
-            } else {
-                transaction.setStatus(PaymentTransactionStatus.FAILED);
-                transaction.setErrorMessage(result.getErrorMessage());
-                log.error(messageService.get("payment.service.failed",
-                        transaction.getId(), result.getErrorMessage()));
-            }
-
-            return paymentTransactionRepository.save(transaction);
-
-        } catch (Exception e) {
-            transaction.setStatus(PaymentTransactionStatus.FAILED);
-            transaction.setErrorMessage(e.getMessage());
-            paymentTransactionRepository.save(transaction);
-            throw new RuntimeException(
-                    messageService.get("payment.service.error", e.getMessage()), e);
-        }
-    }
-
-    /**
-     * Refund payment (legacy)
-     *
-     * @param transactionId original payment transaction ID
-     * @param reason        refund reason
-     * @return refund transaction
-     */
-    @Transactional
-    public PaymentTransaction refundPayment(Long transactionId, String reason) {
-        log.info(messageService.get("payment.service.refund.start", transactionId, reason));
-
-        PaymentTransaction original = paymentTransactionRepository.findById(transactionId)
+    public PaymentTransactionDto getPaymentTransaction(Long transactionId) {
+        PaymentTransaction transaction = paymentTransactionRepository.findById(transactionId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         messageService.get("payment.transaction.not.found", transactionId)));
-
-        if (original.getStatus() != PaymentTransactionStatus.COMPLETED) {
-            throw new IllegalStateException(
-                    messageService.get("payment.transaction.not.completed", transactionId));
-        }
-
-        PaymentMethod paymentMethod = paymentMethodRepository.findById(original.getPaymentMethodId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        messageService.get("payment.method.not.found", original.getPaymentMethodId())));
-
-        PaymentGateway gateway = gatewayFactory.getGateway(paymentMethod.getProvider());
-
-        PaymentResult result = gateway.refundPayment(paymentMethod, original.getProviderTransactionId(),
-                original.getAmount(), reason);
-
-        PaymentTransaction refund = PaymentTransaction.builder()
-                .paymentMethodId(original.getPaymentMethodId())
-                .invoiceId(original.getInvoiceId())
-                .orderId(original.getOrderId())
-                .orderType(original.getOrderType())
-                .amount(original.getAmount())
-                .currency(original.getCurrency())
-                .status(result.isSuccess() ? PaymentTransactionStatus.REFUNDED : PaymentTransactionStatus.FAILED)
-                .description(TransactionType.REFUND + ": " + reason)
-                .providerTransactionId(result.getTransactionId())
-                .completedAt(result.isSuccess() ? LocalDateTime.now() : null)
-                .errorMessage(result.getErrorMessage())
-                .build();
-
-        if (result.isSuccess()) {
-            original.setStatus(PaymentTransactionStatus.REFUNDED);
-            paymentTransactionRepository.save(original);
-        }
-
-        log.info(messageService.get("payment.service.refund.complete", transactionId,
-                result.isSuccess() ? OperationStatus.SUCCESS.getCode() : OperationStatus.FAILED.getCode()));
-
-        return paymentTransactionRepository.save(refund);
+        return paymentTransactionConverter.toDto(transaction);
     }
 
     // =========================================================================
-    // PRIVATE HELPER METHODS
+    // LEGACY METHODS (deprecated)
     // =========================================================================
+
+    /**
+     * Legacy method for processing payments.
+     *
+     * @deprecated Use {@link #processPayment(PaymentProcessRequest, Long)} instead
+     */
+    @Deprecated
+    @Transactional
+    public PaymentTransaction processPayment(Long paymentMethodId, BigDecimal amount, String currency,
+                                             Long invoiceId, Long orderId, OrderType orderType, String description) {
+        PaymentMethod paymentMethod = paymentMethodRepository.findById(paymentMethodId).orElseThrow();
+        InvoiceDto invoice = invoiceService.getInvoiceById(invoiceId);
+        PaymentTransaction transaction = createPaymentTransaction(paymentMethod, invoice, amount, null);
+        transaction = paymentTransactionRepository.save(transaction);
+        return transaction;
+    }
+
+    /**
+     * Legacy method for refunding payments.
+     *
+     * @deprecated Use {@link #processPayment(PaymentProcessRequest, Long)} with refund fields instead
+     */
+    @Deprecated
+    @Transactional
+    public PaymentTransaction refundPayment(Long transactionId, String reason) {
+        return null;
+    }
+
+    // =========================================================================
+    // PRIVATE HELPERS
+    // =========================================================================
+
+    private void validateCommonPaymentRequest(PaymentProcessRequest request) {
+        if (request.getPaymentMethodId() == null) {
+            throw new IllegalArgumentException(messageService.get("payment.validation.payment.method.required"));
+        }
+        if (request.getAmount() != null && request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException(messageService.get("payment.validation.amount.positive"));
+        }
+    }
+
+    private void validateManagerRole(Long userId) {
+        SecurityUser securityUser = securityUserRepository.findById(userId)
+                .orElseThrow(() -> new SecurityException(messageService.get("payment.user.not.found", userId)));
+        if (securityUser.getRole() != Role.ADMIN && securityUser.getRole() != Role.MANAGER) {
+            throw new SecurityException(messageService.get("payment.manager.role.required.message"));
+        }
+    }
+
+    private boolean isManager(Long userId) {
+        return securityUserRepository.findById(userId)
+                .map(su -> su.getRole() == Role.ADMIN || su.getRole() == Role.MANAGER)
+                .orElse(false);
+    }
 
     private PaymentMethod validatePaymentMethod(Long paymentMethodId, Long userId) {
         PaymentMethod paymentMethod = paymentMethodRepository.findById(paymentMethodId)
@@ -558,68 +528,46 @@ public class PaymentService {
                         messageService.get("payment.method.not.found", paymentMethodId)));
 
         if (!paymentMethod.isActive()) {
-            throw new IllegalStateException(
-                    messageService.get("payment.method.inactive", paymentMethodId));
+            throw new IllegalStateException(messageService.get("payment.method.inactive", paymentMethodId));
         }
 
-        if (!paymentMethod.getCreatedBy().equals(userId)) {
-            throw new SecurityException(
-                    messageService.get("payment.method.not.belong.to.user", paymentMethodId, userId));
+        UserTypeAssignmentDto userType = userTypeAssignmentService.getCurrentUserType(userId);
+        if (userType == null) {
+            throw new IllegalStateException(messageService.get("user.type.not.found", userId));
         }
 
-        if (!paymentMethod.validate()) {
-            throw new IllegalArgumentException(
-                    messageService.get("payment.method.invalid", paymentMethodId));
+        boolean isAvailable = paymentMethodUserTypeRepository
+                .existsByPaymentMethodIdAndUserType(paymentMethodId, userType.getUserType());
+
+        if (!isAvailable) {
+            throw new SecurityException(messageService.get("payment.method.not.available.for.user.type",
+                    paymentMethodId, userType.getUserType()));
         }
 
         return paymentMethod;
     }
 
-    private Invoice findInvoiceBySalesOrder(Long salesOrderId) {
-        return invoiceRepository.findBySalesOrderId(salesOrderId).stream()
-                .filter(i -> i.getStatus() == InvoiceStatus.PENDING ||
-                        i.getStatus() == InvoiceStatus.PARTIALLY_PAID)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        messageService.get("invoice.not.found.for.order", salesOrderId)));
-    }
-
-    private Invoice findInvoiceByPurchaseOrder(Long purchaseOrderId) {
-        return invoiceRepository.findByPurchaseOrderId(purchaseOrderId).stream()
-                .filter(i -> i.getStatus() == InvoiceStatus.PENDING ||
-                        i.getStatus() == InvoiceStatus.PARTIALLY_PAID)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        messageService.get("invoice.not.found.for.purchase.order", purchaseOrderId)));
-    }
-
-    private void validateInvoicePayable(Invoice invoice) {
-        if (!invoice.isPayable()) {
-            throw new IllegalStateException(
-                    messageService.get("invoice.not.payable", invoice.getId(), invoice.getStatus()));
-        }
-    }
-
-    private PaymentTransaction createPaymentTransaction(PaymentMethod paymentMethod, Invoice invoice,
-                                                        BigDecimal amount, String description) {
+    private PaymentTransaction createPaymentTransaction(PaymentMethod paymentMethod, InvoiceDto invoice,
+                                                        BigDecimal amount, Long userId) {
         return PaymentTransaction.builder()
                 .paymentMethodId(paymentMethod.getId())
                 .invoiceId(invoice.getId())
-                .orderId(invoice.getOrderId())
-                .orderType(invoice.isPurchaseOrder() ? OrderType.PURCHASE : OrderType.SALES)
+                .orderId(invoice.getPurchaseOrderId() != null ? invoice.getPurchaseOrderId() : invoice.getSalesOrderId())
+                .orderType(invoice.getPurchaseOrderId() != null ? OrderType.PURCHASE : OrderType.SALES)
                 .amount(amount)
                 .currency(invoice.getCurrency())
                 .status(PaymentTransactionStatus.PENDING)
-                .description(description)
+                .description(messageService.get("payment.transaction.description",
+                        invoice.getPurchaseOrderId() != null ? "purchase" : "sales",
+                        invoice.getPurchaseOrderId() != null ? invoice.getPurchaseOrderId() : invoice.getSalesOrderId()))
                 .processingFee(paymentMethod.getProcessingFee())
                 .netAmount(calculateNetAmount(amount, paymentMethod.getProcessingFee()))
                 .createdAt(LocalDateTime.now())
                 .build();
     }
 
-    private PaymentTransaction createSupplierPaymentTransaction(Invoice invoice, BigDecimal amount,
-                                                                String sourceType, String sourceId
-    ) {
+    private PaymentTransaction createSupplierPaymentTransaction(InvoiceDto invoice, BigDecimal amount,
+                                                                String sourceType, String sourceId) {
         return PaymentTransaction.builder()
                 .paymentMethodId(null)
                 .invoiceId(invoice.getId())
@@ -634,9 +582,8 @@ public class PaymentService {
                 .build();
     }
 
-    private PaymentTransaction createCustomerPaymentTransaction(Invoice invoice, BigDecimal amount,
-                                                                String paymentId,
-                                                                Long customerId) {
+    private PaymentTransaction createCustomerPaymentTransaction(InvoiceDto invoice, BigDecimal amount,
+                                                                String paymentId, Long customerId) {
         return PaymentTransaction.builder()
                 .paymentMethodId(null)
                 .invoiceId(invoice.getId())
@@ -651,9 +598,7 @@ public class PaymentService {
                 .build();
     }
 
-    private PaymentTransaction createRefundTransaction(PaymentTransaction original,
-                                                       BigDecimal amount,
-                                                       String reason) {
+    private PaymentTransaction createRefundTransaction(PaymentTransaction original, BigDecimal amount, String reason) {
         return PaymentTransaction.builder()
                 .paymentMethodId(original.getPaymentMethodId())
                 .invoiceId(original.getInvoiceId())
@@ -674,35 +619,26 @@ public class PaymentService {
         transaction.setProviderTransactionId(result.getTransactionId());
         transaction.setProviderPaymentUrl(result.getPaymentUrl());
         transaction.setCompletedAt(LocalDateTime.now());
+
         if (result.hasFeeInfo()) {
             transaction.setProcessingFee(result.getFee());
             transaction.setNetAmount(result.getNetAmount());
         }
+
+        paymentTransactionRepository.save(transaction);
     }
 
     private void failTransaction(PaymentTransaction transaction, String errorMessage) {
         transaction.setStatus(PaymentTransactionStatus.FAILED);
         transaction.setErrorMessage(errorMessage);
-    }
-
-    private void updateInvoiceAfterPayment(Invoice invoice) {
-        BigDecimal totalPaid = invoice.getTotalPaidAmount();
-
-        if (totalPaid.compareTo(invoice.getAmount()) >= 0) {
-            invoice.markAsPaid();
-        } else {
-            invoice.setStatus(InvoiceStatus.PARTIALLY_PAID);
-        }
-
-        invoiceRepository.save(invoice);
+        paymentTransactionRepository.save(transaction);
     }
 
     private BigDecimal calculateNetAmount(BigDecimal amount, BigDecimal feePercent) {
-        // Use BigDecimalUtils for null and zero check
-        if (bigDecimalUtils.isNullOrZero(feePercent)) {
+        if (feePercent == null || feePercent.compareTo(BigDecimal.ZERO) == 0) {
             return amount;
         }
-        // Use BigDecimalUtils for percentage calculation
-        return bigDecimalUtils.applyPercentageDiscount(amount, feePercent);
+        BigDecimal fee = amount.multiply(feePercent).divide(BigDecimal.valueOf(100));
+        return amount.subtract(fee);
     }
 }

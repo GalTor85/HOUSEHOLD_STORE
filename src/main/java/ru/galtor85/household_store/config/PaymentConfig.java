@@ -126,6 +126,24 @@ public class PaymentConfig {
 
             /** Webhook URL for payment notifications */
             private String webhookUrl;
+
+            /**
+             * API key for authentication with the payment provider.
+             * Used for secure API access.
+             */
+            private String apiKey;
+
+            /**
+             * API secret for authentication with the payment provider.
+             * Used for secure API access alongside the API key.
+             */
+            private String apiSecret;
+
+            /**
+             * Flag indicating whether this payment provider is enabled.
+             * When set to false, the provider will not be initialized.
+             */
+            private boolean enabled = false;
         }
     }
 }

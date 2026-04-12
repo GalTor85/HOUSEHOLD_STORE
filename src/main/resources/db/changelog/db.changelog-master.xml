@@ -5,14 +5,14 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <!-- Создание схемы -->
+    <!-- Create schema -->
     <changeSet id="0" author="household">
         <sql>
             CREATE SCHEMA IF NOT EXISTS household_schema;
         </sql>
     </changeSet>
 
-    <!-- 1. Создание таблиц -->
+    <!-- 1. Create tables -->
     <changeSet id="1" author="household">
         <sqlFile path="db/changelog/01-initial-schema.sql"
                  relativeToChangelogFile="false"
@@ -20,7 +20,7 @@
                  stripComments="true"/>
     </changeSet>
 
-    <!-- 2. Базовые данные -->
+    <!-- 2. Default data -->
     <changeSet id="2" author="household">
         <sqlFile path="db/changelog/02-default-data.sql"
                  relativeToChangelogFile="false"
@@ -28,12 +28,37 @@
                  stripComments="true"/>
     </changeSet>
 
-    <!-- 3. Индексы для производительности -->
+    <!-- 3. Performance indexes -->
     <changeSet id="3" author="household">
         <sqlFile path="db/changelog/03-indexes.sql"
                  relativeToChangelogFile="false"
                  splitStatements="true"
                  stripComments="true"/>
     </changeSet>
+
+    <!-- 4. Payment method user types table -->
+    <changeSet id="4" author="household">
+        <sqlFile path="db/changelog/04-payment-method-user-types.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="true"
+                 stripComments="true"/>
+    </changeSet>
+
+    <!-- 5. Payment method user types constraints -->
+    <changeSet id="5" author="household">
+        <sqlFile path="db/changelog/05-payment-method-user-types-constraints.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="false"
+                 stripComments="true"/>
+    </changeSet>
+
+    <!-- 6. Payment method user types trigger -->
+    <changeSet id="6" author="household">
+        <sqlFile path="db/changelog/06-payment-method-user-types-trigger.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="false"/>
+    </changeSet>
+
+    <include file="db/changelog/db.changelog-add-masked-identifier.xml"/>
 
 </databaseChangeLog>

@@ -2,7 +2,6 @@ package ru.galtor85.household_store.service.payment;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.config.PaymentConfig;
 import ru.galtor85.household_store.entity.payment.PaymentProvider;
@@ -14,7 +13,6 @@ import java.math.BigDecimal;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static ru.galtor85.household_store.constants.TechnicalConstants.TOKEN_TYPE;
 
 /**
  * Factory for creating universal payment gateways.
@@ -75,197 +73,63 @@ public class PaymentGatewayFactory {
     private PaymentProviderConfig getConfigForProvider(PaymentProvider provider) {
         log.debug(messageService.get("payment.gateway.factory.building.config", provider));
 
+        // Get the configuration from PaymentConfig by provider name
+        PaymentConfig.ProvidersConfig.ProviderConfig cfg = getProviderConfig(provider);
+
+        //TODO
+        if (cfg == null) {
+            // If there is no configuration, create a stub for the test
+            log.warn("No configuration found for provider: {}, using default mock config", provider);
+            return buildMockConfig(provider);
+        }
+
+        return PaymentProviderConfig.builder()
+                .providerName(provider.name())
+                .providerCode(provider.name().toLowerCase())
+                .paymentUrl(cfg.getPaymentUrl())
+                .refundUrl(cfg.getRefundUrl())
+                .statusUrl(cfg.getStatusUrl())
+                .apiKey(cfg.getApiKey())
+                .apiSecret(cfg.getApiSecret())
+                .feePercent(cfg.getFeePercent() != null ? BigDecimal.valueOf(cfg.getFeePercent()) : null)
+                .feeFixed(cfg.getFeeFixed() != null ? BigDecimal.valueOf(cfg.getFeeFixed()) : null)
+                .transactionPrefix(cfg.getTransactionPrefix())
+                .returnUrl(cfg.getReturnUrl())
+                .webhookUrl(cfg.getWebhookUrl())
+                .connectTimeout(cfg.getConnectTimeout() != null ? cfg.getConnectTimeout() : 30000)
+                .readTimeout(cfg.getReadTimeout() != null ? cfg.getReadTimeout() : 30000)
+                .supportsRefunds(true)
+                .build();
+    }
+
+    /**
+     * Builds a mock configuration for payment providers that don't have real integration.
+     * Used for testing and development purposes only.
+     *
+     * @param provider the payment provider to create mock config for
+     * @return mock payment provider configuration
+     */
+    private PaymentProviderConfig buildMockConfig(PaymentProvider provider) {
+        return PaymentProviderConfig.builder()
+                .providerName(provider.name())
+                .providerCode(provider.name().toLowerCase())
+                .paymentUrl("https://mock-payment-gateway.com/pay")
+                .feePercent(BigDecimal.ZERO)
+                .transactionPrefix(provider.name().substring(0, Math.min(4, provider.name().length())))
+                .supportsRefunds(true)
+                .build();
+    }
+
+    private PaymentConfig.ProvidersConfig.ProviderConfig getProviderConfig(PaymentProvider provider) {
         return switch (provider) {
-            case SBERBANK -> buildSberbankConfig();
-            case YOOMONEY -> buildYooMoneyConfig();
-            case QIWI -> buildQiwiConfig();
-            case PAYPAL -> buildPayPalConfig();
-            case STRIPE -> buildStripeConfig();
-            default -> {
-                log.error(messageService.get("payment.gateway.factory.unknown.provider", provider));
-                throw new IllegalArgumentException(
-                        messageService.get("payment.gateway.factory.unknown.provider.error", provider)
-                );
-            }
+            case SBERBANK -> paymentConfig.getProviders().getSberbank();
+            case VISA_MASTERCARD, MIR -> paymentConfig.getProviders().getSberbank(); // карты через Сбер
+            case YOOMONEY -> paymentConfig.getProviders().getYoomoney();
+            case QIWI -> paymentConfig.getProviders().getQiwi();
+            case PAYPAL -> paymentConfig.getProviders().getPaypal();
+            case STRIPE -> paymentConfig.getProviders().getStripe();
+            default -> null;
         };
-    }
-
-    /**
-     * Builds configuration for Sberbank payment provider.
-     *
-     * @return PaymentProviderConfig for Sberbank
-     */
-    private PaymentProviderConfig buildSberbankConfig() {
-        PaymentConfig.ProvidersConfig.ProviderConfig cfg = paymentConfig.getProviders().getSberbank();
-
-        log.debug(messageService.get("payment.gateway.factory.config.sberbank",
-                cfg.getPaymentUrl(), cfg.getTransactionPrefix()));
-
-        return PaymentProviderConfig.builder()
-                .providerName("Sberbank")
-                .providerCode("sberbank")
-                .paymentUrl(cfg.getPaymentUrl())
-                .refundUrl(cfg.getRefundUrl())
-                .statusUrl(cfg.getStatusUrl())
-                .apiKey(System.getenv("SBERBANK_API_KEY"))
-                .apiSecret(System.getenv("SBERBANK_API_SECRET"))
-                .authScheme(TOKEN_TYPE)
-                .httpMethod(HttpMethod.POST)
-                .feePercent(cfg.getFeePercent() != null ? BigDecimal.valueOf(cfg.getFeePercent()) : null)
-                .transactionPrefix(cfg.getTransactionPrefix())
-                .returnUrl(cfg.getReturnUrl())
-                .webhookUrl(cfg.getWebhookUrl())
-                .supportsRefunds(true)
-                .supportsWebhooks(true)
-                .connectTimeout(cfg.getConnectTimeout() != null ? cfg.getConnectTimeout() : 30000)
-                .readTimeout(cfg.getReadTimeout() != null ? cfg.getReadTimeout() : 30000)
-                .paymentParams(Map.of(
-                        "language", "ru",
-                        "pageView", "DESKTOP"
-                ))
-                .build();
-    }
-
-    /**
-     * Builds configuration for YooMoney payment provider.
-     *
-     * @return PaymentProviderConfig for YooMoney
-     */
-    private PaymentProviderConfig buildYooMoneyConfig() {
-        PaymentConfig.ProvidersConfig.ProviderConfig cfg = paymentConfig.getProviders().getYoomoney();
-
-        log.debug(messageService.get("payment.gateway.factory.config.yoomoney",
-                cfg.getPaymentUrl(), cfg.getTransactionPrefix()));
-
-        return PaymentProviderConfig.builder()
-                .providerName("YooMoney")
-                .providerCode("yoomoney")
-                .paymentUrl(cfg.getPaymentUrl())
-                .refundUrl(cfg.getRefundUrl())
-                .statusUrl(cfg.getStatusUrl())
-                .apiKey(System.getenv("YOOMONEY_SHOP_ID"))
-                .apiSecret(System.getenv("YOOMONEY_SECRET_KEY"))
-                .authScheme("Basic")
-                .httpMethod(HttpMethod.POST)
-                .feePercent(cfg.getFeePercent() != null ? BigDecimal.valueOf(cfg.getFeePercent()) : null)
-                .transactionPrefix(cfg.getTransactionPrefix())
-                .returnUrl(cfg.getReturnUrl())
-                .webhookUrl(cfg.getWebhookUrl())
-                .supportsRefunds(true)
-                .supportsWebhooks(true)
-                .connectTimeout(cfg.getConnectTimeout() != null ? cfg.getConnectTimeout() : 30000)
-                .readTimeout(cfg.getReadTimeout() != null ? cfg.getReadTimeout() : 30000)
-                .paymentParams(Map.of(
-                        "capture", true,
-                        "confirmation.type", "redirect"
-                ))
-                .build();
-    }
-
-    /**
-     * Builds configuration for Qiwi payment provider.
-     *
-     * @return PaymentProviderConfig for Qiwi
-     */
-    private PaymentProviderConfig buildQiwiConfig() {
-        PaymentConfig.ProvidersConfig.ProviderConfig cfg = paymentConfig.getProviders().getQiwi();
-
-        log.debug(messageService.get("payment.gateway.factory.config.qiwi",
-                cfg.getPaymentUrl(), cfg.getTransactionPrefix()));
-
-        return PaymentProviderConfig.builder()
-                .providerName("Qiwi")
-                .providerCode("qiwi")
-                .paymentUrl(cfg.getPaymentUrl())
-                .refundUrl(cfg.getRefundUrl())
-                .statusUrl(cfg.getStatusUrl())
-                .apiKey(System.getenv("QIWI_API_KEY"))
-                .authScheme(TOKEN_TYPE)
-                .httpMethod(HttpMethod.PUT)
-                .feePercent(cfg.getFeePercent() != null ? BigDecimal.valueOf(cfg.getFeePercent()) : null)
-                .transactionPrefix(cfg.getTransactionPrefix())
-                .returnUrl(cfg.getReturnUrl())
-                .webhookUrl(cfg.getWebhookUrl())
-                .supportsRefunds(true)
-                .supportsWebhooks(true)
-                .connectTimeout(cfg.getConnectTimeout() != null ? cfg.getConnectTimeout() : 30000)
-                .readTimeout(cfg.getReadTimeout() != null ? cfg.getReadTimeout() : 30000)
-                .paymentParams(Map.of(
-                        "expirationDateTime", "P1D"
-                ))
-                .build();
-    }
-
-    /**
-     * Builds configuration for PayPal payment provider.
-     *
-     * @return PaymentProviderConfig for PayPal
-     */
-    private PaymentProviderConfig buildPayPalConfig() {
-        PaymentConfig.ProvidersConfig.ProviderConfig cfg = paymentConfig.getProviders().getPaypal();
-
-        log.debug(messageService.get("payment.gateway.factory.config.paypal",
-                cfg.getPaymentUrl(), cfg.getTransactionPrefix()));
-
-        return PaymentProviderConfig.builder()
-                .providerName("PayPal")
-                .providerCode("paypal")
-                .paymentUrl(cfg.getPaymentUrl())
-                .refundUrl(cfg.getRefundUrl())
-                .statusUrl(cfg.getStatusUrl())
-                .apiKey(System.getenv("PAYPAL_CLIENT_ID"))
-                .apiSecret(System.getenv("PAYPAL_CLIENT_SECRET"))
-                .authScheme(TOKEN_TYPE)
-                .httpMethod(HttpMethod.POST)
-                .feePercent(cfg.getFeePercent() != null ? BigDecimal.valueOf(cfg.getFeePercent()) : null)
-                .feeFixed(cfg.getFeeFixed() != null ? BigDecimal.valueOf(cfg.getFeeFixed()) : null)
-                .transactionPrefix(cfg.getTransactionPrefix())
-                .returnUrl(cfg.getReturnUrl())
-                .webhookUrl(cfg.getWebhookUrl())
-                .supportsRefunds(true)
-                .supportsWebhooks(true)
-                .connectTimeout(cfg.getConnectTimeout() != null ? cfg.getConnectTimeout() : 30000)
-                .readTimeout(cfg.getReadTimeout() != null ? cfg.getReadTimeout() : 30000)
-                .paymentParams(Map.of(
-                        "intent", "CAPTURE"
-                ))
-                .build();
-    }
-
-    /**
-     * Builds configuration for Stripe payment provider.
-     *
-     * @return PaymentProviderConfig for Stripe
-     */
-    private PaymentProviderConfig buildStripeConfig() {
-        PaymentConfig.ProvidersConfig.ProviderConfig cfg = paymentConfig.getProviders().getStripe();
-
-        log.debug(messageService.get("payment.gateway.factory.config.stripe",
-                cfg.getPaymentUrl(), cfg.getTransactionPrefix()));
-
-        return PaymentProviderConfig.builder()
-                .providerName("Stripe")
-                .providerCode("stripe")
-                .paymentUrl(cfg.getPaymentUrl())
-                .refundUrl(cfg.getRefundUrl())
-                .statusUrl(cfg.getStatusUrl())
-                .apiSecret(System.getenv("STRIPE_SECRET_KEY"))
-                .authScheme(TOKEN_TYPE)
-                .httpMethod(HttpMethod.POST)
-                .feePercent(cfg.getFeePercent() != null ? BigDecimal.valueOf(cfg.getFeePercent()) : null)
-                .feeFixed(cfg.getFeeFixed() != null ? BigDecimal.valueOf(cfg.getFeeFixed()) : null)
-                .transactionPrefix(cfg.getTransactionPrefix())
-                .returnUrl(cfg.getReturnUrl())
-                .webhookUrl(cfg.getWebhookUrl())
-                .supportsRecurring(true)
-                .supportsRefunds(true)
-                .supportsWebhooks(true)
-                .connectTimeout(cfg.getConnectTimeout() != null ? cfg.getConnectTimeout() : 30000)
-                .readTimeout(cfg.getReadTimeout() != null ? cfg.getReadTimeout() : 30000)
-                .paymentParams(Map.of(
-                        "capture_method", "automatic"
-                ))
-                .build();
     }
 
     /**

@@ -80,6 +80,6 @@ public class SalesOrderInvoiceCreator implements InvoiceCreator<SalesOrder> {
     public boolean shouldCreateInvoice(SalesOrder order) {
         // Для продаж создаем счет только для оптовых заказов
         // Розничные заказы оплачиваются сразу
-        return order.isWholesale();
+        return true;
     }
 }

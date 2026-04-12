@@ -72,6 +72,8 @@ public interface PaymentMethodRepository extends JpaRepository<PaymentMethod, Lo
      */
     List<PaymentMethod> findByMethodTypeAndActiveTrue(PaymentMethodType type);
 
+    Optional<PaymentMethod> findByName(String name);
+
     // =========================================================================
     // SEARCH BY PROVIDER
     // =========================================================================
@@ -122,6 +124,17 @@ public interface PaymentMethodRepository extends JpaRepository<PaymentMethod, Lo
      */
     @Query("SELECT pm FROM PaymentMethod pm WHERE pm.createdBy = :userId AND pm.isDefault = true")
     Optional<PaymentMethod> findDefaultByUserId(@Param("userId") Long userId);
+
+    /**
+     * Finds payment methods by user ID.
+     */
+    List<PaymentMethod> findByCreatedBy(Long userId);
+
+    /**
+     * Finds active payment methods by user ID.
+     */
+    @Query("SELECT pm FROM PaymentMethod pm WHERE pm.createdBy = :userId AND pm.active = true")
+    List<PaymentMethod> findActiveByCreatedBy(@Param("userId") Long userId);
 
     // =========================================================================
     // COUNT QUERIES

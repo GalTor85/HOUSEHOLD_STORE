@@ -12,15 +12,15 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Base entity for all payment methods
+ * Entity for all payment methods
  */
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
 @Table(name = "payment_methods", schema = "household_schema")
-@Inheritance(strategy = InheritanceType.JOINED)
-public abstract class PaymentMethod {
+public class PaymentMethod {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,17 +33,28 @@ public abstract class PaymentMethod {
     @Enumerated(EnumType.STRING)
     private PaymentMethodType methodType;
 
+    @Column(name = "provider")
+    @Enumerated(EnumType.STRING)
+    private PaymentProvider provider;
+
     @Column(name = "is_active")
+    @Builder.Default
     private boolean active = true;
 
     @Column(name = "is_default")
+    @Builder.Default
     private boolean isDefault = false;
 
     @Column(nullable = false)
+    @Builder.Default
     private String currency = "RUB";
 
     @Column(name = "processing_fee", precision = 5, scale = 2)
+    @Builder.Default
     private BigDecimal processingFee = BigDecimal.ZERO;
+
+    @Column(name = "masked_identifier")
+    private String maskedIdentifier;
 
     @Column(name = "created_by")
     private Long createdBy;
@@ -56,7 +67,18 @@ public abstract class PaymentMethod {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public abstract boolean validate();
-    public abstract String getMaskedIdentifier();
-    public abstract PaymentProvider getProvider();
+    public boolean validate() {
+        return true;
+    }
+
+    public String getMaskedIdentifier() {
+        if (maskedIdentifier != null && !maskedIdentifier.isEmpty()) {
+            return maskedIdentifier;
+        }
+        return "***";
+    }
+
+    public PaymentProvider getProvider() {
+        return provider != null ? provider : PaymentProvider.SBERBANK;
+    }
 }

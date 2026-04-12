@@ -28,6 +28,7 @@ import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_REASON_FOR_CREATE;
 import static ru.galtor85.household_store.constants.TechnicalConstants.SYSTEM_CREATOR;
 
 /**
@@ -248,7 +249,7 @@ public class DatabaseInitializer {
                             savedUser.getId(),
                             userType,
                             SYSTEM_CREATOR,
-                            "Default " + role.name().toLowerCase() + " user"
+                            DEFAULT_REASON_FOR_CREATE
                     );
                 }
 
