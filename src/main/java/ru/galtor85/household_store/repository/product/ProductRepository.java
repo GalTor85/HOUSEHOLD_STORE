@@ -49,6 +49,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                  @Param("maxPrice") BigDecimal maxPrice,
                                  Pageable pageable);
 
+    /**
+     * Finds products by category with pagination.
+     *
+     * @param category category name
+     * @param pageable pagination information
+     * @return page of active products in category
+     */
+    Page<Product> findByCategoryAndActiveTrue(String category, Pageable pageable);
+
     @Query("SELECT DISTINCT p.category FROM Product p WHERE p.category IS NOT NULL AND p.active = true")
     List<String> findAllCategories();
 

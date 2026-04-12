@@ -91,21 +91,28 @@ public class StockDisplayService {
      * Gets all products with availability for customers.
      * Only includes stock from warehouses visible for sale.
      *
-     * @param page page number (0-indexed)
+     * @param category category filter (optional)
+     * @param page page number
      * @param size page size
      * @param sortBy sort field (name, price, etc.)
      * @param sortDir sort direction (asc/desc)
      * @return page of product availability DTOs
      */
-    public Page<ProductAvailabilityDto> getAllProductsWithAvailability(int page, int size,
+    public Page<ProductAvailabilityDto> getAllProductsWithAvailability(String category, int page, int size,
                                                                        String sortBy, String sortDir) {
-        log.debug(messageService.get("stock.display.service.products.start", page, size));
+        log.debug(messageService.get("stock.display.service.products.start", page, size, category));
 
         Sort sort = sortDir.equalsIgnoreCase("desc") ?
                 Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<Product> products = productRepository.findAll(pageable);
+        Page<Product> products;
+
+        if (category != null && !category.isBlank()) {
+            products = productRepository.findByCategoryAndActiveTrue(category, pageable);
+        } else {
+            products = productRepository.findByActiveTrue(pageable);
+        }
 
         Page<ProductAvailabilityDto> result = products.map(product -> {
             Integer availableStock = processor.calculateAvailableStockForCustomer(product);

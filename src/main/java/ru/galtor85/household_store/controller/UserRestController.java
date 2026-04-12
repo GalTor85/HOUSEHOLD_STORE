@@ -28,6 +28,7 @@ import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.mapper.user.UserMapper;
+import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.cart.CartService;
 import ru.galtor85.household_store.service.i18n.MessageService;
@@ -76,6 +77,7 @@ public class UserRestController extends BaseController{
     private final PaymentMethodService paymentMethodService;
     private final UserTypeAssignmentService userTypeAssignmentService;
     private final StockDisplayService stockDisplayService;
+    private final ProductRepository productRepository;
 
 
     // =========================================================================
@@ -170,6 +172,7 @@ public class UserRestController extends BaseController{
      * Gets all products with availability for customers.
      * Shows products from warehouses visible for sale only.
      *
+     * @param category category filter (optional)
      * @param page page number (0-indexed)
      * @param size page size
      * @param sortBy sort field
@@ -180,6 +183,8 @@ public class UserRestController extends BaseController{
     @Operation(summary = "Get all products with availability",
             description = "Returns paginated list of products with stock availability from visible warehouses")
     public ResponseEntity<ApiResponse<Page<ProductAvailabilityDto>>> getAllProductsWithAvailability(
+            @Parameter(description = "Category filter", example = "Electronics")
+            @RequestParam(required = false) String category,
             @Parameter(description = "Page number (0-indexed)", example = "0")
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size", example = "20")
@@ -189,16 +194,37 @@ public class UserRestController extends BaseController{
             @Parameter(description = "Sort direction (asc/desc)", example = "asc")
             @RequestParam(defaultValue = "asc") String sortDir) {
 
-        log.debug(messageService.get("user.stock.products.start", page, size));
+        log.debug(messageService.get("user.stock.products.start", page, size, category));
 
         Page<ProductAvailabilityDto> products = stockDisplayService.getAllProductsWithAvailability(
-                page, size, sortBy, sortDir);
+                category, page, size, sortBy, sortDir);
 
         log.debug(messageService.get("user.stock.products.complete", products.getTotalElements()));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("user.stock.products.fetched"),
                 products));
+    }
+
+    /**
+     * Gets all available product categories.
+     *
+     * @return list of categories
+     */
+    @GetMapping("/products/categories")
+    @Operation(summary = "Get all product categories",
+            description = "Returns list of all available product categories")
+    public ResponseEntity<ApiResponse<List<String>>> getProductCategories() {
+
+        log.debug(messageService.get("user.stock.categories.start"));
+
+        List<String> categories = productRepository.findAllCategories();
+
+        log.debug(messageService.get("user.stock.categories.complete", categories.size()));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("user.stock.categories.fetched"),
+                categories));
     }
 
     // =========================================================================
