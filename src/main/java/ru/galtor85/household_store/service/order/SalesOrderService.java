@@ -31,10 +31,11 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.util.date.DateParser;
 import ru.galtor85.household_store.validator.order.SalesOrderValidator;
 
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+
+import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 /**
  * Service for managing sales orders.
@@ -48,6 +49,9 @@ import java.time.format.DateTimeFormatter;
  *   <li>Order notes and rollback functionality</li>
  *   <li>Order statistics for reporting</li>
  * </ul>
+ *
+ * @author G@LTor85
+ * @since 1.0
  */
 @Slf4j
 @Service
@@ -99,7 +103,7 @@ public class SalesOrderService {
         );
 
         // Add creation note
-        addOrderNote(order.getId(), messageService.get("order.sales.creation.manger.from.user",userId,request.getUserId()),userId);
+        addOrderNote(order.getId(), messageService.get("order.sales.creation.manger.from.user", userId, request.getUserId()), userId);
 
         SalesOrderDto result = salesOrderConverter.toDto(order);
 
@@ -218,6 +222,17 @@ public class SalesOrderService {
     }
 
     /**
+     * Retrieves an order by its ID as entity.
+     *
+     * @param orderId the order ID
+     * @return the order entity
+     */
+    @Transactional(readOnly = true)
+    public SalesOrder getSalesOrderEntityById(Long orderId) {
+        return salesOrderValidator.validateSalesOrderExists(orderId);
+    }
+
+    /**
      * Retrieves an order by its order number.
      *
      * @param orderNumber the unique order number
@@ -293,7 +308,7 @@ public class SalesOrderService {
      */
     @Transactional
     public SalesOrderDto cancelOrder(Long orderId, String reason, Long managerId) {
-        return updateOrderStatus(orderId, "CANCELLED", null, reason, managerId);
+        return updateOrderStatus(orderId, ORDER_STATUS_CANCELLED, null, reason, managerId);
     }
 
     // =========================================================================
@@ -518,13 +533,13 @@ public class SalesOrderService {
 
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
 
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        String newNote = String.format("[%s] Manager ID - %s: %s", timestamp, managerId, note);
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern(DATE_FORMAT_PATTERN));
+        String newNote = messageService.get("order.note.format", timestamp, managerId, note);
 
         if (order.getNotes() == null || order.getNotes().isEmpty()) {
             order.setNotes(newNote);
         } else {
-            order.setNotes(order.getNotes() + " --- " + newNote);
+            order.setNotes(order.getNotes() + NOTE_SEPARATOR + newNote);
         }
 
         SalesOrder updatedOrder = salesOrderRepository.save(order);
@@ -621,6 +636,8 @@ public class SalesOrderService {
             case DELIVERED:
                 order.setDeliveredAt(null);
                 break;
+            default:
+                log.debug(messageService.get("sales.order.rollback.no.action", oldStatus));
         }
     }
 
@@ -638,16 +655,18 @@ public class SalesOrderService {
                                  OrderStatus newStatus,
                                  String reason,
                                  Long managerId) {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        String rollbackNote = String.format(
-                "[%s] ROLLBACK: %s → %s by manager %s. Reason: %s",
-                timestamp, oldStatus, newStatus, managerId, reason
-        );
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern(DATE_FORMAT_PATTERN));
+        String rollbackNote = messageService.get("order.rollback.note.format",
+                timestamp,
+                messageService.get("order.status." + oldStatus.name()),
+                messageService.get("order.status." + newStatus.name()),
+                managerId,
+                reason);
 
         if (order.getNotes() == null || order.getNotes().isEmpty()) {
             order.setNotes(rollbackNote);
         } else {
-            order.setNotes(order.getNotes() + "\n" + rollbackNote);
+            order.setNotes(order.getNotes() + LINE_SEPARATOR + rollbackNote);
         }
     }
 

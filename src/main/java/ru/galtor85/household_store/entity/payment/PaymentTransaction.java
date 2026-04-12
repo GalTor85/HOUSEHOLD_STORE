@@ -13,7 +13,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Payment transaction record
+ * Entity representing a payment transaction.
+ *
+ * <p>Stores information about payment operations including amount, currency,
+ * status, processing fees, and links to invoices and orders.</p>
+ *
+ * @author G@LTor85
+ * @since 1.0
  */
 @Data
 @Builder
@@ -38,9 +44,9 @@ public class PaymentTransaction {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "order_type")
-    private OrderType orderType; // PURCHASE, SALES
+    private OrderType orderType;
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
     @Column(nullable = false)
@@ -53,13 +59,13 @@ public class PaymentTransaction {
     @Column(name = "provider_transaction_id")
     private String providerTransactionId;
 
-    @Column(name = "provider_payment_url")
+    @Column(name = "provider_payment_url", length = 500)
     private String providerPaymentUrl;
 
-    @Column(length = 1000)
+    @Column(length = 500)
     private String description;
 
-    @Column(name = "error_message")
+    @Column(name = "error_message", length = 500)
     private String errorMessage;
 
     @Column(name = "processing_fee", precision = 10, scale = 2)
@@ -75,6 +81,9 @@ public class PaymentTransaction {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "created_by")
+    private Long createdBy;
+
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
@@ -84,4 +93,69 @@ public class PaymentTransaction {
 
     @Column(name = "refund_transaction_id")
     private Long refundTransactionId;
+
+    // =========================================================================
+    // BUSINESS METHODS
+    // =========================================================================
+
+    /**
+     * Checks if transaction is completed successfully.
+     *
+     * @return true if status is COMPLETED
+     */
+    public boolean isCompleted() {
+        return status == PaymentTransactionStatus.COMPLETED;
+    }
+
+    /**
+     * Checks if transaction has failed.
+     *
+     * @return true if status is FAILED
+     */
+    public boolean isFailed() {
+        return status == PaymentTransactionStatus.FAILED;
+    }
+
+    /**
+     * Checks if transaction is pending.
+     *
+     * @return true if status is PENDING
+     */
+    public boolean isPending() {
+        return status == PaymentTransactionStatus.PENDING;
+    }
+
+    /**
+     * Checks if transaction is refunded.
+     *
+     * @return true if status is REFUNDED
+     */
+    public boolean isRefunded() {
+        return status == PaymentTransactionStatus.REFUNDED;
+    }
+
+    /**
+     * Marks transaction as completed.
+     */
+    public void markAsCompleted() {
+        this.status = PaymentTransactionStatus.COMPLETED;
+        this.completedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Marks transaction as failed with error message.
+     *
+     * @param errorMessage the error description
+     */
+    public void markAsFailed(String errorMessage) {
+        this.status = PaymentTransactionStatus.FAILED;
+        this.errorMessage = errorMessage;
+    }
+
+    /**
+     * Marks transaction as refunded.
+     */
+    public void markAsRefunded() {
+        this.status = PaymentTransactionStatus.REFUNDED;
+    }
 }

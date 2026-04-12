@@ -12,6 +12,16 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Entity representing a warehouse in the system.
+ *
+ * <p>Warehouse contains storage cells and manages inventory. Each warehouse
+ * has a unique code and barcode for identification. Warehouses can be
+ * hidden from customer view using isVisibleForSale flag.</p>
+ *
+ * @author G@LTor85
+ * @since 1.0
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,21 +35,21 @@ public class Warehouse {
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String code; // Код склада (например, "WH-001")
+    private String code;
 
     @Column(nullable = false)
-    private String name; // Название склада
+    private String name;
 
-    private String description; // Описание
+    private String description;
 
     @Column(nullable = false, unique = true)
-    private String barcode; // Штрих-код склада
+    private String barcode;
 
     @Column(name = "barcode_format")
-    private String barcodeFormat; // EAN_13, CODE_128, QR_CODE и т.д.
+    private String barcodeFormat;
 
     @Column(nullable = false)
-    private String address; // Физический адрес склада
+    private String address;
 
     @Column(name = "contact_person")
     private String contactPerson;
@@ -54,10 +64,10 @@ public class Warehouse {
     private Boolean isActive;
 
     @Column(name = "total_capacity")
-    private Integer totalCapacity; // Общая вместимость в ячейках
+    private Integer totalCapacity;
 
     @Column(name = "used_capacity")
-    private Integer usedCapacity; // Занято ячеек
+    private Integer usedCapacity;
 
     @Column(name = "created_by")
     private Long createdBy;
@@ -70,19 +80,79 @@ public class Warehouse {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Связь с ячейками
     @OneToMany(mappedBy = "warehouse", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<StorageCell> cells = new ArrayList<>();
 
-    // Helper methods
+    @Column(name = "is_visible_for_sale")
+    @Builder.Default
+    private Boolean isVisibleForSale = true;
+
+    // =========================================================================
+    // HELPER METHODS
+    // =========================================================================
+
+    /**
+     * Adds a storage cell to the warehouse.
+     *
+     * @param cell the storage cell to add
+     */
     public void addCell(StorageCell cell) {
         cells.add(cell);
         cell.setWarehouse(this);
     }
 
+    /**
+     * Removes a storage cell from the warehouse.
+     *
+     * @param cell the storage cell to remove
+     */
     public void removeCell(StorageCell cell) {
         cells.remove(cell);
         cell.setWarehouse(null);
+    }
+
+    /**
+     * Checks if warehouse is active.
+     *
+     * @return true if active
+     */
+    public boolean isActive() {
+        return Boolean.TRUE.equals(isActive);
+    }
+
+    /**
+     * Checks if warehouse is visible for sale to customers.
+     *
+     * @return true if visible for sale
+     */
+    public boolean isVisibleForSale() {
+        return Boolean.TRUE.equals(isVisibleForSale);
+    }
+
+    /**
+     * Gets available capacity (total - used).
+     *
+     * @return available capacity
+     */
+    public int getAvailableCapacity() {
+        if (totalCapacity == null) {
+            return 0;
+        }
+        int used = usedCapacity != null ? usedCapacity : 0;
+        return totalCapacity - used;
+    }
+
+    /**
+     * Gets occupancy percentage.
+     *
+     * @return occupancy percentage (0-100)
+     */
+    public double getOccupancyPercentage() {
+        if (totalCapacity == null || totalCapacity == 0) {
+            return 0.0;
+        }
+        int used = usedCapacity != null ? usedCapacity : 0;
+        return (used * 100.0) / totalCapacity;
     }
 }

@@ -15,6 +15,16 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Entity for sales orders.
+ *
+ * <p>Represents a customer order in the system. Contains order items,
+ * pricing information, delivery details, payment status, and reservation
+ * information for cash payments.</p>
+ *
+ * @author G@LTor85
+ * @since 1.0
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -46,7 +56,10 @@ public class SalesOrder {
     @Builder.Default
     private List<SalesOrderItem> items = new ArrayList<>();
 
-    // Финансовые поля
+    // =========================================================================
+    // FINANCIAL FIELDS
+    // =========================================================================
+
     @Column(precision = 10, scale = 2)
     private BigDecimal subtotal;
 
@@ -62,12 +75,19 @@ public class SalesOrder {
     @Column(name = "tax_amount", precision = 10, scale = 2)
     private BigDecimal taxAmount;
 
-    // Поля доставки
+    // =========================================================================
+    // PAYMENT FIELDS
+    // =========================================================================
+
     @Column(name = "payment_method")
     private String paymentMethod;
 
     @Column(name = "payment_details")
     private String paymentDetails;
+
+    // =========================================================================
+    // DELIVERY FIELDS
+    // =========================================================================
 
     @Column(name = "shipping_address")
     private String shippingAddress;
@@ -84,11 +104,30 @@ public class SalesOrder {
     @Column(name = "delivered_at")
     private LocalDateTime deliveredAt;
 
+    // =========================================================================
+    // CANCELLATION FIELDS
+    // =========================================================================
+
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
     @Column(name = "cancellation_reason")
     private String cancellationReason;
+
+    // =========================================================================
+    // RESERVATION FIELDS (for cash payments)
+    // =========================================================================
+
+    @Column(name = "reserved_until")
+    private LocalDateTime reservedUntil;
+
+    @Column(name = "reservation_status")
+    @Enumerated(EnumType.STRING)
+    private ReservationStatus reservationStatus;
+
+    // =========================================================================
+    // AUDIT FIELDS
+    // =========================================================================
 
     @Column(name = "created_by")
     private Long createdBy;
@@ -104,15 +143,33 @@ public class SalesOrder {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // =========================================================================
+    // RELATIONSHIPS
+    // =========================================================================
+
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Invoice> invoices = new ArrayList<>();
 
+    // =========================================================================
+    // BUSINESS METHODS
+    // =========================================================================
+
+    /**
+     * Adds an invoice to this sales order.
+     *
+     * @param invoice the invoice to add
+     */
     public void addInvoice(Invoice invoice) {
         invoices.add(invoice);
         invoice.setSalesOrder(this);
     }
 
+    /**
+     * Gets total paid amount from all invoices.
+     *
+     * @return total paid amount
+     */
     public BigDecimal getTotalPaidAmount() {
         return invoices.stream()
                 .filter(i -> i.getStatus() == InvoiceStatus.PAID)
@@ -120,27 +177,49 @@ public class SalesOrder {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    /**
+     * Gets remaining amount to be paid.
+     *
+     * @return remaining amount
+     */
     public BigDecimal getRemainingAmount() {
         return getTotalAmount().subtract(getTotalPaidAmount());
     }
 
+    /**
+     * Checks if order is fully paid.
+     *
+     * @return true if fully paid
+     */
     public boolean isFullyPaid() {
         return getRemainingAmount().compareTo(BigDecimal.ZERO) <= 0;
     }
 
-    // Вспомогательные методы
+    /**
+     * Adds an item to the order and recalculates totals.
+     *
+     * @param item the order item to add
+     */
     public void addItem(SalesOrderItem item) {
         items.add(item);
         item.setSalesOrder(this);
         recalculateTotals();
     }
 
+    /**
+     * Removes an item from the order and recalculates totals.
+     *
+     * @param item the order item to remove
+     */
     public void removeItem(SalesOrderItem item) {
         items.remove(item);
         item.setSalesOrder(null);
         recalculateTotals();
     }
 
+    /**
+     * Recalculates subtotal and total amounts based on current items.
+     */
     public void recalculateTotals() {
         this.subtotal = items.stream()
                 .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
@@ -152,11 +231,39 @@ public class SalesOrder {
                 .subtract(this.discountAmount != null ? this.discountAmount : BigDecimal.ZERO);
     }
 
+    /**
+     * Checks if order is retail type.
+     *
+     * @return true if retail
+     */
     public boolean isRetail() {
         return orderType == SalesOrderType.RETAIL;
     }
 
+    /**
+     * Checks if order is wholesale type.
+     *
+     * @return true if wholesale
+     */
     public boolean isWholesale() {
         return orderType == SalesOrderType.WHOLESALE;
+    }
+
+    // =========================================================================
+    // INNER ENUMS
+    // =========================================================================
+
+    /**
+     * Reservation status for cash payments.
+     */
+    public enum ReservationStatus {
+        /** Products are reserved for customer */
+        ACTIVE,
+        /** Reservation period has expired */
+        EXPIRED,
+        /** Reservation was cancelled */
+        CANCELLED,
+        /** Products were paid and received */
+        COMPLETED
     }
 }

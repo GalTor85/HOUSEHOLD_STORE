@@ -10,6 +10,12 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * DTO for warehouse details.
+ *
+ * @author G@LTor85
+ * @since 1.0
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -50,6 +56,9 @@ public class WarehouseDto {
 
     @Schema(description = "Is active", example = "true")
     private Boolean isActive;
+
+    @Schema(description = "Is visible for sale to customers", example = "true")
+    private Boolean isVisibleForSale;
 
     @Schema(description = "Total capacity", example = "1000")
     private Integer totalCapacity;

@@ -17,10 +17,13 @@ import ru.galtor85.household_store.dto.response.user.UserTypeAssignmentDto;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.finance.TransactionType;
 import ru.galtor85.household_store.entity.order.OrderType;
+import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.entity.payment.PaymentMethod;
+import ru.galtor85.household_store.entity.payment.PaymentProvider;
 import ru.galtor85.household_store.entity.payment.PaymentTransaction;
 import ru.galtor85.household_store.entity.payment.PaymentTransactionStatus;
 import ru.galtor85.household_store.entity.user.Role;
+import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.repository.payment.PaymentMethodRepository;
 import ru.galtor85.household_store.repository.payment.PaymentMethodUserTypeRepository;
 import ru.galtor85.household_store.repository.payment.PaymentTransactionRepository;
@@ -31,9 +34,12 @@ import ru.galtor85.household_store.service.cash.CashTransactionService;
 import ru.galtor85.household_store.service.finance.BankAccountService;
 import ru.galtor85.household_store.service.finance.InvoiceService;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.order.SalesOrderService;
+import ru.galtor85.household_store.service.reservation.ReservationService;
 import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -73,6 +79,12 @@ public class PaymentService {
     private final BankAccountService bankAccountService;
     private final CashRegisterService cashRegisterService;
     private final InvoiceService invoiceService;
+    private final SalesOrderService salesOrderService;
+    private final ReservationService reservationService;
+    private final SalesOrderRepository salesOrderRepository;
+
+    private static final String CASH_PAYMENT_METHOD = "CASH";
+    private static final BigDecimal PERCENT_DIVISOR = BigDecimal.valueOf(100);
 
     // =========================================================================
     // PUBLIC DISPATCHER METHOD
@@ -128,8 +140,34 @@ public class PaymentService {
 
         log.info(messageService.get("payment.customer.pay.start", salesOrderId, userId));
 
+        // Validate payment method and user type
         PaymentMethod paymentMethod = validatePaymentMethod(paymentMethodId, userId);
 
+        // Get order entity for reservation
+        SalesOrder order = salesOrderService.getSalesOrderEntityById(salesOrderId);
+
+        // Cash payment flow - reserve only, no actual payment processing
+        if (paymentMethod.getProvider() == PaymentProvider.CASH_REGISTER) {
+            log.info(messageService.get("payment.cash.reserve.start", salesOrderId));
+
+            // Reserve products
+            order = reservationService.reserveOrder(order);
+
+            // Update order payment method
+            order.setPaymentMethod(CASH_PAYMENT_METHOD);
+            salesOrderRepository.save(order);
+
+            log.info(messageService.get("payment.cash.reserve.complete", salesOrderId, order.getReservedUntil()));
+
+            // Return pending transaction without actual payment processing
+            return PaymentTransactionDto.builder()
+                    .status(PaymentTransactionStatus.PENDING)
+                    .description(messageService.get("payment.cash.reserved.description", salesOrderId))
+                    .build();
+        }
+
+        // Online payment flow (card, bank transfer, etc.)
+        // Find payable invoice for the order
         List<InvoiceDto> invoices = invoiceService.getInvoicesBySalesOrder(salesOrderId);
         InvoiceDto invoiceDto = invoices.stream()
                 .filter(i -> i.getStatus() == InvoiceStatus.PENDING || i.getStatus() == InvoiceStatus.PARTIALLY_PAID)
@@ -137,11 +175,20 @@ public class PaymentService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         messageService.get("payment.no.payable.invoice.sales", salesOrderId)));
 
+        // Determine payment amount (full or partial)
         BigDecimal amount = request.getAmount() != null ? request.getAmount() : invoiceDto.getRemainingAmount();
 
+        // Create pending payment transaction
         PaymentTransaction transaction = createPaymentTransaction(paymentMethod, invoiceDto, amount, userId);
         transaction = paymentTransactionRepository.save(transaction);
 
+        // Reserve products if not already reserved
+        if (order.getReservationStatus() != SalesOrder.ReservationStatus.ACTIVE) {
+            log.info(messageService.get("payment.reserve.start", salesOrderId, paymentMethod.getProvider()));
+            order = reservationService.reserveOrder(order);
+        }
+
+        // Process payment through external gateway
         try {
             PaymentGateway gateway = gatewayFactory.getGateway(paymentMethod.getProvider());
             PaymentResult result = gateway.processPayment(
@@ -150,19 +197,29 @@ public class PaymentService {
             );
 
             if (result.isSuccess()) {
+                // Complete transaction and update invoice
                 completeTransaction(transaction, result);
+
                 if (amount.compareTo(invoiceDto.getRemainingAmount()) >= 0) {
+                    // Full payment
                     invoiceService.markAsPaid(invoiceDto.getId(), null, userId);
+                    reservationService.completeReservation(order);
                 } else {
+                    // Partial payment
                     invoiceService.markAsPartiallyPaid(invoiceDto.getId(), amount, null, userId);
                 }
+
                 log.info(messageService.get("payment.customer.pay.success", salesOrderId, transaction.getId()));
             } else {
+                // Payment failed - release reservation
                 failTransaction(transaction, result.getErrorMessage());
+                reservationService.releaseReservation(order);
                 throw new RuntimeException(result.getErrorMessage());
             }
         } catch (Exception e) {
+            // Error occurred - release reservation
             failTransaction(transaction, e.getMessage());
+            reservationService.releaseReservation(order);
             throw new RuntimeException(messageService.get("payment.process.error", e.getMessage()), e);
         }
 
@@ -241,7 +298,7 @@ public class PaymentService {
                 managerId
         );
 
-        PaymentTransaction transaction = createSupplierPaymentTransaction(invoice, amount, BANK_ACCOUNT_TYPE, bankAccountId.toString());
+        PaymentTransaction transaction = createSupplierPaymentTransaction(invoice, amount, BANK_ACCOUNT_TYPE, bankAccountId.toString(), managerId);
         completeTransaction(transaction, PaymentResult.success(BANK_TXN_PREFIX + System.currentTimeMillis()));
 
         if (amount.compareTo(invoice.getRemainingAmount()) >= 0) {
@@ -293,7 +350,7 @@ public class PaymentService {
                 .build();
         cashTransactionService.createTransaction(expenseRequest, managerId);
 
-        PaymentTransaction transaction = createSupplierPaymentTransaction(invoice, amount, CASH_REGISTER_TYPE, cashRegisterId.toString());
+        PaymentTransaction transaction = createSupplierPaymentTransaction(invoice, amount, CASH_REGISTER_TYPE, cashRegisterId.toString(), managerId);
         completeTransaction(transaction, PaymentResult.success(CASH_REGISTER_TXN_PREFIX + System.currentTimeMillis()));
 
         if (amount.compareTo(invoice.getRemainingAmount()) >= 0) {
@@ -409,7 +466,7 @@ public class PaymentService {
                 .build();
         cashTransactionService.createTransaction(refundRequest, managerId);
 
-        PaymentTransaction refundTransaction = createRefundTransaction(originalTransaction, amount, reason);
+        PaymentTransaction refundTransaction = createRefundTransaction(originalTransaction, amount, reason, managerId);
         refundTransaction = paymentTransactionRepository.save(refundTransaction);
 
         originalTransaction.setStatus(PaymentTransactionStatus.REFUNDED);
@@ -475,8 +532,8 @@ public class PaymentService {
      */
     @Deprecated
     @Transactional
-    public PaymentTransaction processPayment(Long paymentMethodId, BigDecimal amount, String currency,
-                                             Long invoiceId, Long orderId, OrderType orderType, String description) {
+    public PaymentTransaction processPayment(Long paymentMethodId, BigDecimal amount,
+                                             Long invoiceId) {
         PaymentMethod paymentMethod = paymentMethodRepository.findById(paymentMethodId).orElseThrow();
         InvoiceDto invoice = invoiceService.getInvoiceById(invoiceId);
         PaymentTransaction transaction = createPaymentTransaction(paymentMethod, invoice, amount, null);
@@ -563,11 +620,12 @@ public class PaymentService {
                 .processingFee(paymentMethod.getProcessingFee())
                 .netAmount(calculateNetAmount(amount, paymentMethod.getProcessingFee()))
                 .createdAt(LocalDateTime.now())
+                .createdBy(userId)
                 .build();
     }
 
     private PaymentTransaction createSupplierPaymentTransaction(InvoiceDto invoice, BigDecimal amount,
-                                                                String sourceType, String sourceId) {
+                                                                String sourceType, String sourceId, Long createdBy) {
         return PaymentTransaction.builder()
                 .paymentMethodId(null)
                 .invoiceId(invoice.getId())
@@ -579,6 +637,7 @@ public class PaymentService {
                 .description(messageService.get("payment.supplier.payment.from", sourceType, sourceId))
                 .providerTransactionId(sourceType + "_" + sourceId + "_" + System.currentTimeMillis())
                 .createdAt(LocalDateTime.now())
+                .createdBy(createdBy)
                 .build();
     }
 
@@ -595,10 +654,11 @@ public class PaymentService {
                 .description(messageService.get("payment.customer.payment.received", CASH_PAYMENT_TYPE, customerId))
                 .providerTransactionId(CASH_TXN_PREFIX + "_" + paymentId + "_" + System.currentTimeMillis())
                 .createdAt(LocalDateTime.now())
+                .createdBy(customerId)
                 .build();
     }
 
-    private PaymentTransaction createRefundTransaction(PaymentTransaction original, BigDecimal amount, String reason) {
+    private PaymentTransaction createRefundTransaction(PaymentTransaction original, BigDecimal amount, String reason, Long createdBy) {
         return PaymentTransaction.builder()
                 .paymentMethodId(original.getPaymentMethodId())
                 .invoiceId(original.getInvoiceId())
@@ -611,6 +671,7 @@ public class PaymentService {
                 .providerTransactionId(REFUND_TXN_PREFIX + System.currentTimeMillis())
                 .originalTransactionId(original.getId())
                 .completedAt(LocalDateTime.now())
+                .createdBy(createdBy)
                 .build();
     }
 
@@ -638,7 +699,7 @@ public class PaymentService {
         if (feePercent == null || feePercent.compareTo(BigDecimal.ZERO) == 0) {
             return amount;
         }
-        BigDecimal fee = amount.multiply(feePercent).divide(BigDecimal.valueOf(100));
+        BigDecimal fee = amount.multiply(feePercent).divide(PERCENT_DIVISOR, RoundingMode.HALF_UP);
         return amount.subtract(fee);
     }
 }

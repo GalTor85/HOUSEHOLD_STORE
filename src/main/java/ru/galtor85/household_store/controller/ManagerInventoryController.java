@@ -23,6 +23,7 @@ import ru.galtor85.household_store.dto.request.product.ProductUpdateRequest;
 import ru.galtor85.household_store.dto.request.stock.StockWriteOffRequest;
 import ru.galtor85.household_store.dto.request.warehouse.StorageCellCreateRequest;
 import ru.galtor85.household_store.dto.request.warehouse.WarehouseCreateRequest;
+import ru.galtor85.household_store.dto.response.stock.ProductAvailabilityWithWarehousesDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
 import ru.galtor85.household_store.dto.response.warehouse.StorageCellDto;
@@ -35,6 +36,7 @@ import ru.galtor85.household_store.mapper.warehouse.WarehouseMapper;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.manager.ManagerProductService;
 import ru.galtor85.household_store.service.manager.ManagerPurchaseService;
+import ru.galtor85.household_store.service.stock.StockDisplayService;
 import ru.galtor85.household_store.service.stock.StockService;
 import ru.galtor85.household_store.service.warehouse.WarehouseService;
 
@@ -80,6 +82,7 @@ public class ManagerInventoryController extends BaseController {
     private final StockService stockService;
     private final WarehouseMapper warehouseMapper;
     private final ManagerPurchaseService managerPurchaseService;
+    private final StockDisplayService stockDisplayService;
 
     // =========================================================================
     // PRODUCT MANAGEMENT
@@ -456,6 +459,55 @@ public class ManagerInventoryController extends BaseController {
                 warehouse));
     }
 
+    /**
+     * Gets warehouses for sale with visibility filter.
+     *
+     * @param includeInvisible whether to include invisible warehouses
+     * @return list of warehouses
+     */
+    @GetMapping("/warehouses/for-sale")
+    @Operation(summary = "Get warehouses for sale",
+            description = "Returns warehouses with visibility filter for managers")
+    public ResponseEntity<ApiResponse<List<WarehouseDto>>> getWarehousesForSale(
+            @Parameter(description = "Include invisible warehouses", example = "false")
+            @RequestParam(defaultValue = "false") boolean includeInvisible) {
+
+        log.debug(messageService.get("manager.stock.warehouses.for.sale.start", includeInvisible));
+
+        List<WarehouseDto> warehouses = stockDisplayService.getWarehousesForSale(includeInvisible);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.stock.warehouses.fetched"),
+                warehouses));
+    }
+
+    /**
+     * Toggles warehouse visibility for sale.
+     *
+     * @param warehouseId warehouse ID
+     * @param visible visibility status
+     * @return updated warehouse DTO
+     */
+    @PatchMapping("/warehouses/{warehouseId}/visibility")
+    @Operation(summary = "Toggle warehouse visibility for sale",
+            description = "Sets whether warehouse is visible for customer sales")
+    public ResponseEntity<ApiResponse<WarehouseDto>> toggleWarehouseVisibility(
+            @Parameter(description = "Warehouse ID", example = "1", required = true)
+            @PathVariable Long warehouseId,
+            @Parameter(description = "Visible for sale", example = "true", required = true)
+            @RequestParam boolean visible) {
+
+        log.info(messageService.get("manager.stock.warehouse.visibility.start", warehouseId, visible));
+
+        WarehouseDto warehouse = stockDisplayService.toggleWarehouseVisibility(warehouseId, visible);
+
+        log.info(messageService.get("manager.stock.warehouse.visibility.complete", warehouseId, visible));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.stock.warehouse.visibility.updated"),
+                warehouse));
+    }
+
     // =========================================================================
     // STORAGE CELL MANAGEMENT
     // =========================================================================
@@ -798,6 +850,32 @@ public class ManagerInventoryController extends BaseController {
     }
 
     /**
+     * Gets product availability for manager with warehouse details.
+     *
+     * @param productId        product ID
+     * @param includeInvisible whether to include invisible warehouses
+     * @return product availability with warehouse details
+     */
+    @GetMapping("/products/{productId}/availability/manager")
+    @Operation(summary = "Get product availability for manager",
+            description = "Returns product stock details by warehouse with visibility filter")
+    public ResponseEntity<ApiResponse<ProductAvailabilityWithWarehousesDto>> getProductAvailabilityForManager(
+            @Parameter(description = "Product ID", example = "1", required = true)
+            @PathVariable Long productId,
+            @Parameter(description = "Include invisible warehouses", example = "false")
+            @RequestParam(defaultValue = "false") boolean includeInvisible) {
+
+        log.debug(messageService.get("manager.stock.availability.manager.start", productId, includeInvisible));
+
+        ProductAvailabilityWithWarehousesDto availability = stockDisplayService
+                .getProductAvailabilityForManager(productId, includeInvisible);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.stock.availability.fetched"),
+                availability));
+    }
+
+    /**
      * Gets product stock distribution across warehouses.
      *
      * @param productId product ID
@@ -941,6 +1019,8 @@ public class ManagerInventoryController extends BaseController {
                 messageService.get("stock.movements.fetched"),
                 movements));
     }
+
+
 
     /**
      * Gets movements by batch number.

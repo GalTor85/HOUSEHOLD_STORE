@@ -10,9 +10,21 @@ import ru.galtor85.household_store.entity.order.SalesOrderItem;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.DATE_FORMAT_PATTERN;
+
+/**
+ * Converter for SalesOrder entity to DTO.
+ *
+ * <p>Handles conversion of sales order entities to various DTO formats
+ * including basic order info, items, and extended details with customer information.</p>
+ *
+ * @author G@LTor85
+ * @since 1.0
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -21,7 +33,10 @@ public class SalesOrderConverter {
     private final MessageService messageService;
 
     /**
-     * Конвертирует сущность заказа в DTO
+     * Converts SalesOrder entity to DTO.
+     *
+     * @param order the sales order entity
+     * @return sales order DTO
      */
     public SalesOrderDto toDto(SalesOrder order) {
         if (order == null) {
@@ -33,6 +48,8 @@ public class SalesOrderConverter {
         String localizedStatus = messageService.get(
                 "order.status." + order.getStatus().name()
         );
+
+        String localizedReservationStatus = buildLocalizedReservationStatus(order);
 
         return SalesOrderDto.builder()
                 .id(order.getId())
@@ -59,25 +76,25 @@ public class SalesOrderConverter {
                 .notes(order.getNotes())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
+                .reservationStatus(order.getReservationStatus() != null ? order.getReservationStatus().name() : null)
+                .reservedUntil(order.getReservedUntil())
+                .localizedReservationStatus(localizedReservationStatus)
                 .build();
     }
 
     /**
-     * Конвертирует сущность позиции в DTO
+     * Converts SalesOrderItem entity to DTO.
+     *
+     * @param item the order item entity
+     * @return order item DTO
      */
     public SalesOrderItemDto toItemDto(SalesOrderItem item) {
         if (item == null) {
             return null;
         }
 
-        BigDecimal totalPrice = item.getPrice() != null ?
-                item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())) :
-                BigDecimal.ZERO;
-
-        BigDecimal discountedPrice = null;
-        if (item.getDiscountAmount() != null) {
-            discountedPrice = totalPrice.subtract(item.getDiscountAmount());
-        }
+        BigDecimal totalPrice = calculateTotalPrice(item);
+        BigDecimal discountedPrice = calculateDiscountedPrice(item, totalPrice);
 
         return SalesOrderItemDto.builder()
                 .id(item.getId())
@@ -94,7 +111,10 @@ public class SalesOrderConverter {
     }
 
     /**
-     * Конвертирует список позиций в список DTO
+     * Converts list of SalesOrderItem entities to DTO list.
+     *
+     * @param items list of order items
+     * @return list of order item DTOs
      */
     public List<SalesOrderItemDto> toItemDtoList(List<SalesOrderItem> items) {
         if (items == null) {
@@ -107,7 +127,12 @@ public class SalesOrderConverter {
     }
 
     /**
-     * Конвертирует сущность заказа в DTO с дополнительной информацией
+     * Converts SalesOrder entity to DTO with customer details.
+     *
+     * @param order the sales order entity
+     * @param customerName customer full name
+     * @param customerEmail customer email
+     * @return sales order DTO with customer info
      */
     public SalesOrderDto toDtoWithDetails(SalesOrder order,
                                           String customerName,
@@ -124,7 +149,12 @@ public class SalesOrderConverter {
     }
 
     /**
-     * Конвертирует сущность заказа в DTO со статистикой
+     * Converts SalesOrder entity to DTO with statistics.
+     *
+     * @param order the sales order entity
+     * @param totalItemsCount total number of items in order
+     * @param totalDiscount total discount amount
+     * @return sales order DTO with statistics
      */
     public SalesOrderDto toDtoWithStatistics(SalesOrder order,
                                              Integer totalItemsCount,
@@ -139,5 +169,57 @@ public class SalesOrderConverter {
         }
 
         return dto;
+    }
+
+    // =========================================================================
+    // PRIVATE HELPER METHODS
+    // =========================================================================
+
+    /**
+     * Builds localized reservation status message.
+     *
+     * @param order the sales order entity
+     * @return localized reservation status or null
+     */
+    private String buildLocalizedReservationStatus(SalesOrder order) {
+        if (order.getReservationStatus() == null) {
+            return null;
+        }
+
+        if (order.getReservationStatus() == SalesOrder.ReservationStatus.ACTIVE
+                && order.getReservedUntil() != null) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DATE_FORMAT_PATTERN);
+            return messageService.get("order.reserved.until",
+                    order.getReservedUntil().format(formatter));
+        }
+
+        return messageService.get("order.reservation.status." + order.getReservationStatus().name());
+    }
+
+    /**
+     * Calculates total price for an order item.
+     *
+     * @param item the order item
+     * @return total price (price × quantity)
+     */
+    private BigDecimal calculateTotalPrice(SalesOrderItem item) {
+        if (item.getPrice() == null || item.getQuantity() == null) {
+            return BigDecimal.ZERO;
+        }
+        return item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+    }
+
+    /**
+     * Calculates discounted price for an order item.
+     *
+     * @param item the order item
+     * @param totalPrice the total price
+     * @return discounted price or null if no discount
+     */
+    private BigDecimal calculateDiscountedPrice(SalesOrderItem item, BigDecimal totalPrice) {
+        if (item.getDiscountAmount() == null) {
+            return null;
+        }
+        return totalPrice.subtract(item.getDiscountAmount());
     }
 }

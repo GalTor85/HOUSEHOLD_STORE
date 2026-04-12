@@ -13,6 +13,15 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * DTO for sales order information.
+ *
+ * <p>Contains complete order details including items, pricing, delivery,
+ * payment, and reservation information for cash payments.</p>
+ *
+ * @author G@LTor85
+ * @since 1.0
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -20,6 +29,10 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Sales order DTO")
 public class SalesOrderDto {
+
+    // =========================================================================
+    // IDENTIFIERS
+    // =========================================================================
 
     @Schema(description = "Order ID", example = "1")
     private Long id;
@@ -30,11 +43,13 @@ public class SalesOrderDto {
     @Schema(description = "User ID", example = "1")
     private Long userId;
 
-    // ✅ ДОБАВИТЬ ПОЛЕ ДЛЯ ТИПА ЗАКАЗА
+    // =========================================================================
+    // ORDER TYPE & STATUS
+    // =========================================================================
+
     @Schema(description = "Order type", example = "RETAIL")
     private SalesOrderType orderType;
 
-    // ✅ ДОБАВИТЬ ЛОКАЛИЗОВАННОЕ НАЗВАНИЕ ТИПА
     @Schema(description = "Localized order type", example = "Розничный заказ")
     private String localizedOrderType;
 
@@ -44,8 +59,16 @@ public class SalesOrderDto {
     @Schema(description = "Localized order status", example = "Ожидает оплаты")
     private String localizedStatus;
 
+    // =========================================================================
+    // ORDER ITEMS
+    // =========================================================================
+
     @Schema(description = "Order items")
     private List<SalesOrderItemDto> items;
+
+    // =========================================================================
+    // FINANCIAL FIELDS
+    // =========================================================================
 
     @Schema(description = "Subtotal before discounts", example = "1000.00")
     private BigDecimal subtotal;
@@ -62,11 +85,19 @@ public class SalesOrderDto {
     @Schema(description = "Tax amount", example = "0.00")
     private BigDecimal taxAmount;
 
+    // =========================================================================
+    // PAYMENT FIELDS
+    // =========================================================================
+
     @Schema(description = "Payment method", example = "CREDIT_CARD")
     private String paymentMethod;
 
     @Schema(description = "Payment details (transaction ID)", example = "txn_123456")
     private String paymentDetails;
+
+    // =========================================================================
+    // DELIVERY FIELDS
+    // =========================================================================
 
     @Schema(description = "Shipping address", example = "123 Main St, Moscow")
     private String shippingAddress;
@@ -83,11 +114,32 @@ public class SalesOrderDto {
     @Schema(description = "Actual delivery date")
     private LocalDateTime deliveredAt;
 
+    // =========================================================================
+    // CANCELLATION FIELDS
+    // =========================================================================
+
     @Schema(description = "Cancellation date")
     private LocalDateTime cancelledAt;
 
     @Schema(description = "Cancellation reason", example = "Out of stock")
     private String cancellationReason;
+
+    // =========================================================================
+    // RESERVATION FIELDS (for cash payments)
+    // =========================================================================
+
+    @Schema(description = "Reservation status", example = "ACTIVE")
+    private String reservationStatus;
+
+    @Schema(description = "Reserved until", example = "2026-04-19T15:52:42")
+    private LocalDateTime reservedUntil;
+
+    @Schema(description = "Localized reservation status", example = "Товар зарезервирован до 19.04.2026")
+    private String localizedReservationStatus;
+
+    // =========================================================================
+    // AUDIT FIELDS
+    // =========================================================================
 
     @Schema(description = "Created by user/manager ID", example = "1")
     private Long createdBy;
@@ -101,7 +153,10 @@ public class SalesOrderDto {
     @Schema(description = "Last update timestamp")
     private LocalDateTime updatedAt;
 
-    // Дополнительные поля для удобства
+    // =========================================================================
+    // EXTENDED FIELDS (for convenience)
+    // =========================================================================
+
     @Schema(description = "Customer name", example = "Иван Иванов")
     private String customerName;
 

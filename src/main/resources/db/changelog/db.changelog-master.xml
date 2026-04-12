@@ -61,4 +61,16 @@
 
     <include file="db/changelog/db.changelog-add-masked-identifier.xml"/>
 
+    <include file="db/changelog/db.changelog-reservation.xml"/>
+
+    <include file="db/changelog/db.changelog-warehouse-visibility.xml"/>
+
+    <changeSet id="add-created-by-to-payment-transactions" author="system">
+        <addColumn tableName="payment_transactions" schemaName="household_schema">
+            <column name="created_by" type="bigint">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
 </databaseChangeLog>

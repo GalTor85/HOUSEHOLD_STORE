@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Add reservation columns to sales_orders table -->
+    <changeSet id="add-reservation-columns-to-sales-orders" author="system">
+        <addColumn tableName="sales_orders" schemaName="household_schema">
+            <column name="reserved_until" type="timestamp">
+                <constraints nullable="true"/>
+            </column>
+            <column name="reservation_status" type="varchar(20)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Add index for reservation cleanup queries -->
+    <changeSet id="add-reservation-indexes" author="system">
+        <createIndex tableName="sales_orders" schemaName="household_schema" indexName="idx_sales_orders_reservation">
+            <column name="reservation_status"/>
+            <column name="reserved_until"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

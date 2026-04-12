@@ -20,9 +20,11 @@ import ru.galtor85.household_store.dto.response.cart.CartDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
 import ru.galtor85.household_store.dto.response.payment.PaymentMethodForUserDto;
 import ru.galtor85.household_store.dto.response.payment.PaymentTransactionDto;
+import ru.galtor85.household_store.dto.response.stock.ProductAvailabilityDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.dto.response.user.UserResponse;
 import ru.galtor85.household_store.dto.response.user.UserTypeAssignmentDto;
+import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.mapper.user.UserMapper;
@@ -32,6 +34,7 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.order.SalesOrderService;
 import ru.galtor85.household_store.service.payment.PaymentMethodService;
 import ru.galtor85.household_store.service.payment.PaymentService;
+import ru.galtor85.household_store.service.stock.StockDisplayService;
 import ru.galtor85.household_store.service.user.UserSearchService;
 import ru.galtor85.household_store.service.auth.UserService;
 import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
@@ -72,6 +75,7 @@ public class UserRestController extends BaseController{
     private final PaymentService paymentService;
     private final PaymentMethodService paymentMethodService;
     private final UserTypeAssignmentService userTypeAssignmentService;
+    private final StockDisplayService stockDisplayService;
 
 
     // =========================================================================
@@ -160,6 +164,41 @@ public class UserRestController extends BaseController{
                         userMapper.build(updatedUser)
                 )
         );
+    }
+
+    /**
+     * Gets all products with availability for customers.
+     * Shows products from warehouses visible for sale only.
+     *
+     * @param page page number (0-indexed)
+     * @param size page size
+     * @param sortBy sort field
+     * @param sortDir sort direction
+     * @return page of products with availability information
+     */
+    @GetMapping("/products")
+    @Operation(summary = "Get all products with availability",
+            description = "Returns paginated list of products with stock availability from visible warehouses")
+    public ResponseEntity<ApiResponse<Page<ProductAvailabilityDto>>> getAllProductsWithAvailability(
+            @Parameter(description = "Page number (0-indexed)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size", example = "20")
+            @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort field", example = "name")
+            @RequestParam(defaultValue = "name") String sortBy,
+            @Parameter(description = "Sort direction (asc/desc)", example = "asc")
+            @RequestParam(defaultValue = "asc") String sortDir) {
+
+        log.debug(messageService.get("user.stock.products.start", page, size));
+
+        Page<ProductAvailabilityDto> products = stockDisplayService.getAllProductsWithAvailability(
+                page, size, sortBy, sortDir);
+
+        log.debug(messageService.get("user.stock.products.complete", products.getTotalElements()));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("user.stock.products.fetched"),
+                products));
     }
 
     // =========================================================================
@@ -455,8 +494,20 @@ public class UserRestController extends BaseController{
 
         PaymentTransactionDto transaction = paymentService.processPayment(request, getCurrentUserId());
 
+        SalesOrderDto order = salesOrderService.getSalesOrderById(request.getOrderId());
+
+        String message;
+        if (order.getStatus() == OrderStatus.PENDING &&
+                order.getPaymentMethod() != null &&
+                order.getPaymentMethod().equals("CASH")) {
+            message = messageService.get("payment.order.reserved");
+        } else {
+            message = messageService.get("payment.order.paid");
+        }
+
+
         return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("payment.order.paid"),
+                message,
                 transaction));
     }
 
