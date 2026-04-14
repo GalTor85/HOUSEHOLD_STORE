@@ -13,11 +13,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import ru.galtor85.household_store.dto.request.payment.AssignPaymentMethodToUserTypeRequest;
 import ru.galtor85.household_store.dto.request.payment.CreatePaymentMethodWithTypesRequest;
+import ru.galtor85.household_store.dto.request.payment.ManagerCashPaymentRequest;
 import ru.galtor85.household_store.dto.request.payment.PaymentProcessRequest;
 import ru.galtor85.household_store.dto.response.payment.PaymentMethodWithUserTypesDto;
 import ru.galtor85.household_store.dto.response.payment.PaymentTransactionDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.entity.user.UserType;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.payment.PaymentMethodService;
 import ru.galtor85.household_store.service.payment.PaymentService;
@@ -54,6 +56,8 @@ public class ManagerPaymentController extends BaseController {
     private final PaymentService paymentService;
     private final MessageService messageService;
     private final PaymentMethodService paymentMethodService;
+    private final LogMessageService logMsg;
+
 
     // =========================================================================
     // SUPPLIER PAYMENTS
@@ -74,7 +78,7 @@ public class ManagerPaymentController extends BaseController {
     public ResponseEntity<ApiResponse<PaymentTransactionDto>> paySupplierFromBank(
             @Valid @RequestBody PaymentProcessRequest request) {
 
-        log.info(messageService.get("payment.controller.manager.supplier.bank.request",
+        log.info(logMsg.get("payment.controller.manager.supplier.bank.request",
                 request.getPurchaseOrderId(), request.getBankAccountId(), request.getAmount()));
 
         // Validate reference ID is purchase order ID
@@ -87,7 +91,7 @@ public class ManagerPaymentController extends BaseController {
 
         PaymentTransactionDto transaction = paymentService.processPayment(request, getCurrentUserId());
 
-        log.info(messageService.get("payment.controller.manager.supplier.bank.success",
+        log.info(logMsg.get("payment.controller.manager.supplier.bank.success",
                 request.getPurchaseOrderId(), transaction.getId()));
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -109,7 +113,7 @@ public class ManagerPaymentController extends BaseController {
     public ResponseEntity<ApiResponse<PaymentTransactionDto>> paySupplierFromCash(
             @Valid @RequestBody PaymentProcessRequest request) {
 
-        log.info(messageService.get("payment.controller.manager.supplier.cash.request",
+        log.info(logMsg.get("payment.controller.manager.supplier.cash.request",
                 request.getPurchaseOrderId(), request.getCashRegisterId(), request.getAmount()));
 
         // Transaction type must be EXPENSE for supplier payment
@@ -128,7 +132,7 @@ public class ManagerPaymentController extends BaseController {
 
         PaymentTransactionDto transaction = paymentService.processPayment(request, getCurrentUserId());
 
-        log.info(messageService.get("payment.controller.manager.supplier.cash.success",
+        log.info(logMsg.get("payment.controller.manager.supplier.cash.success",
                 request.getPurchaseOrderId(), transaction.getId()));
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -146,38 +150,34 @@ public class ManagerPaymentController extends BaseController {
      * @return payment transaction DTO with status and details
      */
     @PostMapping("/customer/cash")
-    @Operation(
-            summary = "Receive cash payment from customer",
-            description = "Manager receives cash payment from customer at point of sale. " +
-                    "Creates an INCOME transaction in the cash register."
-    )
+    @Operation(summary = "Receive cash payment from customer",
+            description = "Manager receives cash payment from customer by order number or invoice number")
     public ResponseEntity<ApiResponse<PaymentTransactionDto>> receiveCashPayment(
-            @Valid @RequestBody PaymentProcessRequest request) {
+            @Valid @RequestBody ManagerCashPaymentRequest request) {
 
-        log.info(messageService.get("payment.controller.manager.customer.cash.request",
-                request.getInvoiceId(), request.getCustomerId(), request.getAmount()));
 
-        // CashRegisterId ID is required
-        if (request.getCashRegisterId() == null) {
-            throw new IllegalArgumentException(messageService.get("payment.cash.register.id.required"));
-        }
 
-        // Invoice ID is required
-        if (request.getInvoiceId() == null) {
+        // Validate exactly one of orderNumber or invoiceNumber is provided
+        if ((request.getOrderNumber() == null && request.getInvoiceNumber() == null) ||
+                (request.getOrderNumber() != null && request.getInvoiceNumber() != null)) {
             throw new IllegalArgumentException(
-                    messageService.get("payment.invoice.id.required"));
+                    messageService.get("payment.validation.order.or.invoice.required"));
         }
 
-        // Customer ID is required
-        if (request.getCustomerId() == null) {
-            throw new IllegalArgumentException(
-                    messageService.get("payment.customer.id.required"));
+        String targetType;
+        String targetNumber;
+        if (request.getOrderNumber() != null) {
+            targetType = "order";
+            targetNumber = request.getOrderNumber();
+        } else {
+            targetType = "invoice";
+            targetNumber = request.getInvoiceNumber();
         }
 
-        PaymentTransactionDto transaction = paymentService.processPayment(request, getCurrentUserId());
+        log.info(logMsg.get("payment.controller.manager.customer.cash.request",
+                targetType, targetNumber, request.getAmount(), request.getPaymentMethod()));
 
-        log.info(messageService.get("payment.controller.manager.customer.cash.success",
-                request.getInvoiceId(), transaction.getId()));
+        PaymentTransactionDto transaction = paymentService.managerReceiveCashPayment(request, getCurrentUserId());
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("payment.cash.received"),
@@ -203,7 +203,7 @@ public class ManagerPaymentController extends BaseController {
     public ResponseEntity<ApiResponse<PaymentTransactionDto>> processCashRefund(
             @Valid @RequestBody PaymentProcessRequest request) {
 
-        log.info(messageService.get("payment.controller.manager.refund.request",
+        log.info(logMsg.get("payment.controller.manager.refund.request",
                 request.getOriginalTransactionId(), request.getAmount(), request.getDescription()));
 
         // Original transaction ID is required
@@ -226,7 +226,7 @@ public class ManagerPaymentController extends BaseController {
 
         PaymentTransactionDto transaction = paymentService.processPayment(request, getCurrentUserId());
 
-        log.info(messageService.get("payment.controller.manager.refund.success",
+        log.info(logMsg.get("payment.controller.manager.refund.success",
                 request.getOriginalTransactionId(), transaction.getId()));
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -251,7 +251,7 @@ public class ManagerPaymentController extends BaseController {
             @Valid @RequestBody CreatePaymentMethodWithTypesRequest request) {
 
         Long userId = getCurrentUserId();
-        log.info(messageService.get("payment.controller.manager.create.method.with.types.start",
+        log.info(logMsg.get("payment.controller.manager.create.method.with.types.start",
                 userId, request.getName(), request.getAvailableForUserTypes()));
 
         PaymentMethodWithUserTypesDto result = paymentMethodService.createPaymentMethodWithUserTypes(request, userId);
@@ -276,7 +276,7 @@ public class ManagerPaymentController extends BaseController {
             @Valid @RequestBody AssignPaymentMethodToUserTypeRequest request) {
 
         Long userId = getCurrentUserId();
-        log.info(messageService.get("payment.controller.manager.assign.method.to.types.start",
+        log.info(logMsg.get("payment.controller.manager.assign.method.to.types.start",
                 request.getPaymentMethodId(), request.getUserTypes()));
 
         paymentMethodService.assignPaymentMethodToUserTypes(
@@ -305,12 +305,113 @@ public class ManagerPaymentController extends BaseController {
             @Parameter(description = "User type", example = "RETAIL", required = true)
             @PathVariable UserType userType) {
 
-        log.debug(messageService.get("payment.controller.manager.get.methods.by.type.start", userType));
+        	log.debug(logMsg.get("payment.controller.manager.get.methods.by.type.start", userType));
 
         List<PaymentMethodWithUserTypesDto> result = paymentMethodService.getPaymentMethodsByUserType(userType);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("payment.methods.by.type.fetched", userType),
+                result));
+    }
+
+    // =========================================================================
+// PAYMENT METHOD MANAGEMENT (ACTIVATE/DEACTIVATE/DELETE)
+// =========================================================================
+
+    /**
+     * Activates a payment method.
+     *
+     * @param methodId payment method ID
+     * @return activated payment method DTO
+     */
+    @PatchMapping("/methods/{methodId}/activate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @Operation(summary = "Activate payment method",
+            description = "Activates a payment method, making it available for users")
+    public ResponseEntity<ApiResponse<PaymentMethodWithUserTypesDto>> activatePaymentMethod(
+            @Parameter(description = "Payment method ID", example = "1", required = true)
+            @PathVariable Long methodId) {
+
+        log.info(logMsg.get("payment.controller.manager.activate.method.start", methodId));
+
+        PaymentMethodWithUserTypesDto result = paymentMethodService.activatePaymentMethod(methodId);
+
+        log.info(logMsg.get("payment.controller.manager.activate.method.success", methodId));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("payment.method.activated"),
+                result));
+    }
+
+    /**
+     * Deactivates a payment method.
+     *
+     * @param methodId payment method ID
+     * @return deactivated payment method DTO
+     */
+    @PatchMapping("/methods/{methodId}/deactivate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @Operation(summary = "Deactivate payment method",
+            description = "Deactivates a payment method, hiding it from users")
+    public ResponseEntity<ApiResponse<PaymentMethodWithUserTypesDto>> deactivatePaymentMethod(
+            @Parameter(description = "Payment method ID", example = "1", required = true)
+            @PathVariable Long methodId) {
+
+        log.info(logMsg.get("payment.controller.manager.deactivate.method.start", methodId));
+
+        PaymentMethodWithUserTypesDto result = paymentMethodService.deactivatePaymentMethod(methodId);
+
+        log.info(logMsg.get("payment.controller.manager.deactivate.method.success", methodId));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("payment.method.deactivated"),
+                result));
+    }
+
+    /**
+     * Deletes a payment method permanently.
+     *
+     * @param methodId payment method ID
+     * @return success response
+     */
+    @DeleteMapping("/methods/{methodId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @Operation(summary = "Delete payment method",
+            description = "Permanently deletes a payment method and all its user type assignments")
+    public ResponseEntity<ApiResponse<Void>> deletePaymentMethod(
+            @Parameter(description = "Payment method ID", example = "1", required = true)
+            @PathVariable Long methodId) {
+
+        log.info(logMsg.get("payment.controller.manager.delete.method.start", methodId));
+
+        paymentMethodService.deletePaymentMethod(methodId);
+
+        log.info(logMsg.get("payment.controller.manager.delete.method.success", methodId));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("payment.method.deleted"),
+                null));
+    }
+
+    /**
+     * Gets all payment methods (active and inactive) with user type assignments.
+     *
+     * @return list of all payment methods
+     */
+    @GetMapping("/methods/all")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @Operation(summary = "Get all payment methods",
+            description = "Retrieves all payment methods including inactive ones")
+    public ResponseEntity<ApiResponse<List<PaymentMethodWithUserTypesDto>>> getAllPaymentMethods() {
+
+        	log.debug(logMsg.get("payment.controller.manager.get.all.methods.start"));
+
+        List<PaymentMethodWithUserTypesDto> result = paymentMethodService.getAllPaymentMethodsWithUserTypes();
+
+        	log.debug(logMsg.get("payment.controller.manager.get.all.methods.success", result.size()));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("payment.methods.all.fetched"),
                 result));
     }
 
@@ -334,11 +435,11 @@ public class ManagerPaymentController extends BaseController {
             )
             @PathVariable Long purchaseOrderId) {
 
-        log.info(messageService.get("payment.controller.manager.history.supplier.request", purchaseOrderId));
+        log.info(logMsg.get("payment.controller.manager.history.supplier.request", purchaseOrderId));
 
         List<PaymentTransactionDto> transactions = paymentService.getSupplierPayments(purchaseOrderId);
 
-        log.info(messageService.get("payment.controller.manager.history.supplier.success",
+        log.info(logMsg.get("payment.controller.manager.history.supplier.success",
                 purchaseOrderId, transactions.size()));
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -362,11 +463,11 @@ public class ManagerPaymentController extends BaseController {
             )
             @PathVariable Long salesOrderId) {
 
-        log.info(messageService.get("payment.controller.manager.history.customer.request", salesOrderId));
+        log.info(logMsg.get("payment.controller.manager.history.customer.request", salesOrderId));
 
         List<PaymentTransactionDto> transactions = paymentService.getCustomerPayments(salesOrderId);
 
-        log.info(messageService.get("payment.controller.manager.history.customer.success",
+        log.info(logMsg.get("payment.controller.manager.history.customer.success",
                 salesOrderId, transactions.size()));
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -390,11 +491,11 @@ public class ManagerPaymentController extends BaseController {
             )
             @PathVariable Long transactionId) {
 
-        log.info(messageService.get("payment.controller.manager.transaction.request", transactionId));
+        log.info(logMsg.get("payment.controller.manager.transaction.request", transactionId));
 
         PaymentTransactionDto transaction = paymentService.getPaymentTransaction(transactionId);
 
-        log.info(messageService.get("payment.controller.manager.transaction.success", transactionId));
+        log.info(logMsg.get("payment.controller.manager.transaction.success", transactionId));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("payment.transaction.fetched"),

@@ -14,6 +14,7 @@ import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.processor.payment.PaymentMethodProcessor;
 import ru.galtor85.household_store.repository.payment.PaymentMethodRepository;
 import ru.galtor85.household_store.repository.payment.PaymentMethodUserTypeRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.payment.PaymentMethodValidator;
 
@@ -51,6 +52,7 @@ public class PaymentMethodService {
     private final PaymentMethodProcessor processor;
     private final PaymentMethodConverter converter;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     // =========================================================================
     // MANAGER METHODS - CREATE WITH USER TYPES
@@ -68,7 +70,7 @@ public class PaymentMethodService {
      *   <li>Returns the created payment method with assignments</li>
      * </ol>
      *
-     * @param request the payment method creation request with user types
+     * @param request   the payment method creation request with user types
      * @param createdBy ID of the manager creating the method
      * @return created payment method DTO with user type assignments
      * @throws IllegalArgumentException if validation fails
@@ -77,7 +79,7 @@ public class PaymentMethodService {
     public PaymentMethodWithUserTypesDto createPaymentMethodWithUserTypes(
             CreatePaymentMethodWithTypesRequest request, Long createdBy) {
 
-        log.info(messageService.get("payment.service.create.method.with.types.start",
+        log.info(logMsg.get("payment.service.create.method.with.types.start",
                 createdBy, request.getName(), request.getAvailableForUserTypes()));
 
         // Validate request using validator
@@ -99,7 +101,8 @@ public class PaymentMethodService {
             );
         }
 
-        log.info(messageService.get("payment.service.create.method.with.types.success",
+        assert request.getAvailableForUserTypes() != null;
+        log.info(logMsg.get("payment.service.create.method.with.types.success",
                 saved.getId(), request.getAvailableForUserTypes().size()));
 
         return getPaymentMethodWithUserTypes(saved.getId());
@@ -116,15 +119,15 @@ public class PaymentMethodService {
      * with the new set of user types. The sort order determines display priority.</p>
      *
      * @param paymentMethodId payment method ID
-     * @param userTypes set of user types (RETAIL, WHOLESALE, VIP, PARTNER, EMPLOYEE)
-     * @param sortOrder sort order for display (lower number = higher priority)
-     * @param assignedBy ID of the manager performing the assignment
+     * @param userTypes       set of user types (RETAIL, WHOLESALE, VIP, PARTNER, EMPLOYEE)
+     * @param sortOrder       sort order for display (lower number = higher priority)
+     * @param assignedBy      ID of the manager performing the assignment
      */
     @Transactional
     public void assignPaymentMethodToUserTypes(Long paymentMethodId, Set<UserType> userTypes,
                                                Integer sortOrder, Long assignedBy) {
 
-        log.info(messageService.get("payment.service.assign.method.to.types.start",
+        log.info(logMsg.get("payment.service.assign.method.to.types.start",
                 paymentMethodId, userTypes));
 
         // Remove existing assignments using repository
@@ -145,7 +148,7 @@ public class PaymentMethodService {
             paymentMethodUserTypeRepository.save(assignment);
         }
 
-        log.info(messageService.get("payment.service.assign.method.to.types.success",
+        log.info(logMsg.get("payment.service.assign.method.to.types.success",
                 paymentMethodId, userTypes.size()));
     }
 
@@ -165,7 +168,7 @@ public class PaymentMethodService {
      */
     @Transactional(readOnly = true)
     public PaymentMethodWithUserTypesDto getPaymentMethodWithUserTypes(Long paymentMethodId) {
-        log.debug(messageService.get("payment.service.get.method.with.types.start", paymentMethodId));
+        	log.debug(logMsg.get("payment.service.get.method.with.types.start", paymentMethodId));
 
         // Validate payment method exists using validator
         PaymentMethod paymentMethod = validator.validatePaymentMethodExists(paymentMethodId);
@@ -180,9 +183,9 @@ public class PaymentMethodService {
                 .collect(Collectors.toSet());
 
         // Get sort order (use first assignment's order or default 0)
-        Integer sortOrder = assignments.isEmpty() ? 0 : assignments.get(0).getSortOrder();
+        Integer sortOrder = assignments.isEmpty() ? 0 : assignments.getFirst().getSortOrder();
 
-        log.debug(messageService.get("payment.service.get.method.with.types.success",
+        	log.debug(logMsg.get("payment.service.get.method.with.types.success",
                 paymentMethodId, userTypes.size()));
 
         // Convert to DTO using converter
@@ -199,12 +202,16 @@ public class PaymentMethodService {
      */
     @Transactional(readOnly = true)
     public List<PaymentMethodWithUserTypesDto> getAllPaymentMethodsWithUserTypes() {
-        log.debug(messageService.get("payment.service.get.all.methods.start"));
+        	log.debug(logMsg.get("payment.service.get.all.methods.start"));
 
         List<PaymentMethod> methods = paymentMethodRepository.findAll();
 
-        log.debug(messageService.get("payment.service.get.all.methods.count", methods.size()));
+        	log.debug(logMsg.get("payment.service.get.all.methods.count", methods.size()));
 
+        return getPaymentMethodWithUserTypesDtos(methods);
+    }
+
+    private List<PaymentMethodWithUserTypesDto> getPaymentMethodWithUserTypesDtos(List<PaymentMethod> methods) {
         return methods.stream()
                 .map(method -> {
                     List<PaymentMethodUserType> assignments = paymentMethodUserTypeRepository
@@ -212,7 +219,7 @@ public class PaymentMethodService {
                     Set<UserType> userTypes = assignments.stream()
                             .map(PaymentMethodUserType::getUserType)
                             .collect(Collectors.toSet());
-                    Integer sortOrder = assignments.isEmpty() ? 0 : assignments.get(0).getSortOrder();
+                    Integer sortOrder = assignments.isEmpty() ? 0 : assignments.getFirst().getSortOrder();
                     return converter.toDtoWithUserTypes(method, userTypes, sortOrder);
                 })
                 .collect(Collectors.toList());
@@ -229,28 +236,18 @@ public class PaymentMethodService {
      */
     @Transactional(readOnly = true)
     public List<PaymentMethodWithUserTypesDto> getPaymentMethodsByUserType(UserType userType) {
-        log.debug(messageService.get("payment.service.get.methods.by.type.start", userType));
+        	log.debug(logMsg.get("payment.service.get.methods.by.type.start", userType));
 
         // Get payment method IDs for this user type from repository
         List<Long> methodIds = paymentMethodUserTypeRepository
                 .findActivePaymentMethodIdsByUserType(userType);
 
-        log.debug(messageService.get("payment.service.get.methods.by.type.ids", methodIds.size(), userType));
+        	log.debug(logMsg.get("payment.service.get.methods.by.type.ids", methodIds.size(), userType));
 
         // Fetch payment methods by IDs
         List<PaymentMethod> methods = paymentMethodRepository.findAllById(methodIds);
 
-        return methods.stream()
-                .map(method -> {
-                    List<PaymentMethodUserType> assignments = paymentMethodUserTypeRepository
-                            .findByPaymentMethodId(method.getId());
-                    Set<UserType> userTypes = assignments.stream()
-                            .map(PaymentMethodUserType::getUserType)
-                            .collect(Collectors.toSet());
-                    Integer sortOrder = assignments.isEmpty() ? 0 : assignments.get(0).getSortOrder();
-                    return converter.toDtoWithUserTypes(method, userTypes, sortOrder);
-                })
-                .collect(Collectors.toList());
+        return getPaymentMethodWithUserTypesDtos(methods);
     }
 
     // =========================================================================
@@ -264,14 +261,14 @@ public class PaymentMethodService {
      * assignments if provided in the request.</p>
      *
      * @param methodId payment method ID
-     * @param request update request with new values
+     * @param request  update request with new values
      * @return updated payment method DTO with user type assignments
      * @throws IllegalArgumentException if payment method not found
      */
     @Transactional
     public PaymentMethodWithUserTypesDto updatePaymentMethod(Long methodId,
                                                              CreatePaymentMethodWithTypesRequest request) {
-        log.info(messageService.get("payment.service.update.method.start", methodId));
+        log.info(logMsg.get("payment.service.update.method.start", methodId));
 
         // Validate payment method exists
         PaymentMethod paymentMethod = validator.validatePaymentMethodExists(methodId);
@@ -280,7 +277,7 @@ public class PaymentMethodService {
         converter.updateEntityWithTypes(paymentMethod, request);
 
         // Save using processor
-        PaymentMethod updated = processor.updatePaymentMethod(paymentMethod);
+        processor.updatePaymentMethod(paymentMethod);
 
         // Update user type assignments if provided
         if (request.getAvailableForUserTypes() != null) {
@@ -288,7 +285,7 @@ public class PaymentMethodService {
                     request.getSortOrder(), paymentMethod.getCreatedBy());
         }
 
-        log.info(messageService.get("payment.service.update.method.success", methodId));
+        log.info(logMsg.get("payment.service.update.method.success", methodId));
 
         return getPaymentMethodWithUserTypes(methodId);
     }
@@ -305,16 +302,15 @@ public class PaymentMethodService {
      */
     @Transactional
     public PaymentMethodWithUserTypesDto deactivatePaymentMethod(Long methodId) {
-        log.info(messageService.get("payment.service.deactivate.method.start", methodId));
+        log.info(logMsg.get("payment.service.deactivate.method.start", methodId));
 
         // Validate payment method exists
         PaymentMethod paymentMethod = validator.validatePaymentMethodExists(methodId);
 
         // Deactivate using processor
-        paymentMethod.setActive(false);
-        PaymentMethod updated = processor.updatePaymentMethod(paymentMethod);
+        processor.deactivatePaymentMethod(paymentMethod);
 
-        log.info(messageService.get("payment.service.deactivate.method.success", methodId));
+        log.info(logMsg.get("payment.service.deactivate.method.success", methodId));
 
         return getPaymentMethodWithUserTypes(methodId);
     }
@@ -331,16 +327,20 @@ public class PaymentMethodService {
      */
     @Transactional
     public PaymentMethodWithUserTypesDto activatePaymentMethod(Long methodId) {
-        log.info(messageService.get("payment.service.activate.method.start", methodId));
+        log.info(logMsg.get("payment.service.activate.method.start", methodId));
 
         // Validate payment method exists
         PaymentMethod paymentMethod = validator.validatePaymentMethodExists(methodId);
 
-        // Activate using processor
-        paymentMethod.setActive(true);
-        PaymentMethod updated = processor.updatePaymentMethod(paymentMethod);
+        if (paymentMethod.isActive()) {
+            	log.debug(logMsg.get("payment.service.activate.method.already.active", methodId));
+            return getPaymentMethodWithUserTypes(methodId);
+        }
 
-        log.info(messageService.get("payment.service.activate.method.success", methodId));
+        // Activate using processor
+        processor.activatePaymentMethod(paymentMethod);
+
+        log.info(logMsg.get("payment.service.activate.method.success", methodId));
 
         return getPaymentMethodWithUserTypes(methodId);
     }
@@ -356,7 +356,7 @@ public class PaymentMethodService {
      */
     @Transactional
     public void deletePaymentMethod(Long methodId) {
-        log.info(messageService.get("payment.service.delete.method.start", methodId));
+        log.info(logMsg.get("payment.service.delete.method.start", methodId));
 
         // Validate payment method exists
         PaymentMethod paymentMethod = validator.validatePaymentMethodExists(methodId);
@@ -367,7 +367,7 @@ public class PaymentMethodService {
         // Delete payment method using processor
         paymentMethodRepository.delete(paymentMethod);
 
-        log.info(messageService.get("payment.service.delete.method.success", methodId));
+        log.info(logMsg.get("payment.service.delete.method.success", methodId));
     }
 
     // =========================================================================
@@ -385,20 +385,20 @@ public class PaymentMethodService {
      */
     @Transactional(readOnly = true)
     public List<PaymentMethodForUserDto> getPaymentMethodsForUserType(UserType userType) {
-        log.debug(messageService.get("payment.service.get.user.methods.start", userType));
+        	log.debug(logMsg.get("payment.service.get.user.methods.start", userType));
 
         // Get payment method IDs for this user type from repository
         List<Long> methodIds = paymentMethodUserTypeRepository
                 .findActivePaymentMethodIdsByUserType(userType);
 
-        log.debug(messageService.get("payment.service.get.user.methods.count", methodIds.size(), userType));
+        	log.debug(logMsg.get("payment.service.get.user.methods.count", methodIds.size(), userType));
 
         // Fetch payment methods by IDs
         List<PaymentMethod> methods = paymentMethodRepository.findAllById(methodIds);
 
         // Convert to user-safe DTOs using converter
         return methods.stream()
-                .filter(PaymentMethod::isActive)
+                .filter(ru.galtor85.household_store.entity.payment.PaymentMethod::isActive)
                 .map(converter::toUserDto)
                 .collect(Collectors.toList());
     }
@@ -413,11 +413,11 @@ public class PaymentMethodService {
      * @param userType the user's type (for validation)
      * @return payment method DTO for user (safe view)
      * @throws IllegalArgumentException if payment method not available for user type
-     * @throws IllegalStateException if payment method is inactive
+     * @throws IllegalStateException    if payment method is inactive
      */
     @Transactional(readOnly = true)
     public PaymentMethodForUserDto getPaymentMethodForUserType(Long methodId, UserType userType) {
-        log.debug(messageService.get("payment.service.get.user.method.start", methodId, userType));
+        	log.debug(logMsg.get("payment.service.get.user.method.start", methodId, userType));
 
         // Check if payment method is available for this user type using repository
         boolean isAvailable = paymentMethodUserTypeRepository
@@ -425,7 +425,7 @@ public class PaymentMethodService {
                 .isPresent();
 
         if (!isAvailable) {
-            log.warn(messageService.get("payment.method.not.available.for.user.type.warn", methodId, userType));
+            log.warn(logMsg.get("payment.method.not.available.for.user.type.warn", methodId, userType));
             throw new IllegalArgumentException(
                     messageService.get("payment.method.not.available.for.user.type", methodId, userType));
         }
@@ -434,12 +434,12 @@ public class PaymentMethodService {
         PaymentMethod paymentMethod = validator.validatePaymentMethodExists(methodId);
 
         if (!paymentMethod.isActive()) {
-            log.warn(messageService.get("payment.method.inactive.warn", methodId));
+            log.warn(logMsg.get("payment.method.inactive.warn", methodId));
             throw new IllegalStateException(
                     messageService.get("payment.method.inactive", methodId));
         }
 
-        log.debug(messageService.get("payment.service.get.user.method.success", methodId, userType));
+        	log.debug(logMsg.get("payment.service.get.user.method.success", methodId, userType));
 
         // Convert to user-safe DTO using converter
         return converter.toUserDto(paymentMethod);

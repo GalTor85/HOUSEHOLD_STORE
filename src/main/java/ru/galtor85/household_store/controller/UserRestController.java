@@ -11,12 +11,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.galtor85.household_store.advice.exception.order.OrderCancellationNotAllowedException;
 import ru.galtor85.household_store.dto.request.cart.AddToCartRequest;
 import ru.galtor85.household_store.dto.request.cart.UpdateCartItemRequest;
+import ru.galtor85.household_store.dto.request.payment.PaymentMethodRequest;
 import ru.galtor85.household_store.dto.request.payment.PaymentProcessRequest;
 import ru.galtor85.household_store.dto.request.user.UserEditRequest;
 import ru.galtor85.household_store.dto.request.user.UserUpdatePasswordRequest;
 import ru.galtor85.household_store.dto.response.cart.CartDto;
+import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
 import ru.galtor85.household_store.dto.response.payment.PaymentMethodForUserDto;
 import ru.galtor85.household_store.dto.response.payment.PaymentTransactionDto;
@@ -24,13 +27,15 @@ import ru.galtor85.household_store.dto.response.stock.ProductAvailabilityDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.dto.response.user.UserResponse;
 import ru.galtor85.household_store.dto.response.user.UserTypeAssignmentDto;
-import ru.galtor85.household_store.entity.order.OrderStatus;
+import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.mapper.user.UserMapper;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.cart.CartService;
+import ru.galtor85.household_store.service.finance.InvoiceService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.order.SalesOrderService;
 import ru.galtor85.household_store.service.payment.PaymentMethodService;
@@ -70,6 +75,7 @@ public class UserRestController extends BaseController{
     private final UserService userService;
     private final UserMapper userMapper;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final UserSearchService userSearchService;
     private final CartService cartService;
     private final SalesOrderService salesOrderService;
@@ -78,6 +84,7 @@ public class UserRestController extends BaseController{
     private final UserTypeAssignmentService userTypeAssignmentService;
     private final StockDisplayService stockDisplayService;
     private final ProductRepository productRepository;
+    private final InvoiceService invoiceService;
 
 
     // =========================================================================
@@ -94,11 +101,11 @@ public class UserRestController extends BaseController{
             description = "Retrieves the profile of the currently authenticated user")
     public ResponseEntity<ApiResponse<UserResponse>> getUserInfo() {
 
-        log.info(messageService.get("user-rest-controller.log.profile.fetch.start"));
+        log.info(logMsg.get("user-rest-controller.log.profile.fetch.start"));
 
         User user = getCurrentUser();
 
-        log.info(messageService.get("user-rest-controller.log.profile.fetch.success", user.getId()));
+        log.info(logMsg.get("user-rest-controller.log.profile.fetch.success", user.getId()));
 
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -120,7 +127,7 @@ public class UserRestController extends BaseController{
     public ResponseEntity<ApiResponse<UserResponse>> editUser(
             @Valid @RequestBody UserEditRequest request) {
 
-        log.info(messageService.get("user-rest-controller.log.profile.update.start"));
+        log.info(logMsg.get("user-rest-controller.log.profile.update.start"));
 
         SecurityUser securityUser = getCurrentSecurityUser();
         User updatedUser = userService.edit(
@@ -128,7 +135,7 @@ public class UserRestController extends BaseController{
                 request
         );
 
-        log.info(messageService.get("user-rest-controller.log.profile.update.success", updatedUser.getId()));
+        log.info(logMsg.get("user-rest-controller.log.profile.update.success", updatedUser.getId()));
 
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -150,7 +157,7 @@ public class UserRestController extends BaseController{
     public ResponseEntity<ApiResponse<UserResponse>> updatePassword(
             @Valid @RequestBody UserUpdatePasswordRequest request) {
 
-        log.info(messageService.get("user-rest-controller.log.password.update.start"));
+        log.info(logMsg.get("user-rest-controller.log.password.update.start"));
 
         SecurityUser securityUser = getCurrentSecurityUser();
         User updatedUser = userService.passwordUpdate(
@@ -158,7 +165,7 @@ public class UserRestController extends BaseController{
                 request
         );
 
-        log.info(messageService.get("user-rest-controller.log.password.update.success", updatedUser.getId()));
+        log.info(logMsg.get("user-rest-controller.log.password.update.success", updatedUser.getId()));
 
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -194,12 +201,12 @@ public class UserRestController extends BaseController{
             @Parameter(description = "Sort direction (asc/desc)", example = "asc")
             @RequestParam(defaultValue = "asc") String sortDir) {
 
-        log.debug(messageService.get("user.stock.products.start", page, size, category));
+        log.debug(logMsg.get("user.stock.products.start", page, size, category));
 
         Page<ProductAvailabilityDto> products = stockDisplayService.getAllProductsWithAvailability(
                 category, page, size, sortBy, sortDir);
 
-        log.debug(messageService.get("user.stock.products.complete", products.getTotalElements()));
+        log.debug(logMsg.get("user.stock.products.complete", products.getTotalElements()));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("user.stock.products.fetched"),
@@ -216,11 +223,11 @@ public class UserRestController extends BaseController{
             description = "Returns list of all available product categories")
     public ResponseEntity<ApiResponse<List<String>>> getProductCategories() {
 
-        log.debug(messageService.get("user.stock.categories.start"));
+        log.debug(logMsg.get("user.stock.categories.start"));
 
         List<String> categories = productRepository.findAllCategories();
 
-        log.debug(messageService.get("user.stock.categories.complete", categories.size()));
+        log.debug(logMsg.get("user.stock.categories.complete", categories.size()));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("user.stock.categories.fetched"),
@@ -241,7 +248,7 @@ public class UserRestController extends BaseController{
             description = "Retrieves the active shopping cart for the authenticated user")
     public ResponseEntity<ApiResponse<CartDto>> getCart() {
         Long userId = getCurrentUserId();
-        log.debug(messageService.get("cart.controller.get", userId));
+        log.debug(logMsg.get("cart.controller.get", userId));
 
         CartDto cart = cartService.getActiveCart(userId);
 
@@ -263,7 +270,7 @@ public class UserRestController extends BaseController{
             @Valid @RequestBody AddToCartRequest request) {
 
         Long userId = getCurrentUserId();
-        log.info(messageService.get("cart.controller.add.start", userId, request.getProductId()));
+        log.info(logMsg.get("cart.controller.add.start", userId, request.getProductId()));
 
         CartDto cart = cartService.addToCart(userId, request);
 
@@ -289,7 +296,7 @@ public class UserRestController extends BaseController{
             @Valid @RequestBody UpdateCartItemRequest request) {
 
         Long userId = getCurrentUserId();
-        log.info(messageService.get("cart.controller.update.start", userId, productId));
+        log.info(logMsg.get("cart.controller.update.start", userId, productId));
 
         CartDto cart = cartService.updateCartItem(userId, productId, request);
 
@@ -312,7 +319,7 @@ public class UserRestController extends BaseController{
             @PathVariable Long productId) {
 
         Long userId = getCurrentUserId();
-        log.info(messageService.get("cart.controller.remove.start", userId, productId));
+        log.info(logMsg.get("cart.controller.remove.start", userId, productId));
 
         CartDto cart = cartService.removeFromCart(userId, productId);
 
@@ -331,7 +338,7 @@ public class UserRestController extends BaseController{
             description = "Removes all items from the user's shopping cart")
     public ResponseEntity<ApiResponse<Void>> clearCart() {
         Long userId = getCurrentUserId();
-        log.info(messageService.get("cart.controller.clear.start", userId));
+        log.info(logMsg.get("cart.controller.clear.start", userId));
 
         cartService.clearCart(userId);
 
@@ -350,7 +357,7 @@ public class UserRestController extends BaseController{
             description = "Prepares the cart for checkout and initiates the ordering process")
     public ResponseEntity<ApiResponse<CartDto>> checkoutCart() {
         Long userId = getCurrentUserId();
-        log.info(messageService.get("cart.controller.checkout.start", userId));
+        log.info(logMsg.get("cart.controller.checkout.start", userId));
 
         CartDto cart = cartService.checkoutCart(userId);
 
@@ -377,7 +384,7 @@ public class UserRestController extends BaseController{
             @RequestParam String shippingAddress) {
 
         Long userId = getCurrentUserId();
-        log.info(messageService.get("user.order.create.from.cart.start", userId));
+        log.info(logMsg.get("user.order.create.from.cart.start", userId));
 
         SalesOrderDto order = salesOrderService.createOrderFromCart(userId, shippingAddress);
 
@@ -404,7 +411,7 @@ public class UserRestController extends BaseController{
             @RequestParam String promoCode) {
 
         Long userId = getCurrentUserId();
-        log.info(messageService.get("user.order.create.from.cart.promo.start", userId, promoCode));
+        log.info(logMsg.get("user.order.create.from.cart.promo.start", userId, promoCode));
 
         SalesOrderDto order = salesOrderService.createOrderFromCartWithPromo(userId, shippingAddress, promoCode);
 
@@ -435,7 +442,7 @@ public class UserRestController extends BaseController{
             @RequestParam(defaultValue = "20") int size) {
 
         Long userId = getCurrentUserId();
-        log.debug(messageService.get("user.orders.fetch.start", userId));
+        log.debug(logMsg.get("user.orders.fetch.start", userId));
 
         Page<SalesOrderDto> orders = salesOrderService.getCustomerOrders(userId, null, null, null, page, size);
 
@@ -458,13 +465,13 @@ public class UserRestController extends BaseController{
             @PathVariable Long orderId) {
 
         Long userId = getCurrentUserId();
-        log.debug(messageService.get("user.order.fetch.start", userId, orderId));
+        log.debug(logMsg.get("user.order.fetch.start", userId, orderId));
 
         SalesOrderDto order = salesOrderService.getSalesOrderById(orderId);
 
         // Verify order belongs to the user
         if (!order.getUserId().equals(userId)) {
-            log.warn(messageService.get("user.order.access.denied", userId, orderId));
+            	log.warn(logMsg.get("user.order.access.denied", userId, orderId));
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error(messageService.get("user.order.access.denied.message")));
         }
@@ -488,12 +495,12 @@ public class UserRestController extends BaseController{
             @PathVariable String orderNumber) {
 
         Long userId = getCurrentUserId();
-        log.debug(messageService.get("user.order.fetch.by.number.start", userId, orderNumber));
+        log.debug(logMsg.get("user.order.fetch.by.number.start", userId, orderNumber));
 
         SalesOrderDto order = salesOrderService.getSalesOrderByNumber(orderNumber);
 
         if (!order.getUserId().equals(userId)) {
-            log.warn(messageService.get("user.order.access.denied", userId, orderNumber));
+            	log.warn(logMsg.get("user.order.access.denied", userId, orderNumber));
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error(messageService.get("user.order.access.denied.message")));
         }
@@ -501,40 +508,6 @@ public class UserRestController extends BaseController{
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("user.order.fetched"),
                 order));
-    }
-
-    /**
-     * Processes payment for customer order.
-     *
-     * @param request payment request with order ID and payment method
-     * @return payment transaction details
-     */
-    @PostMapping("/payment")
-    @Operation(summary = "Process payment", description = "Process payment using selected payment method")
-    public ResponseEntity<ApiResponse<PaymentTransactionDto>> processPayment(
-            @Valid @RequestBody PaymentProcessRequest request) {
-
-        if (request.getOrderId() == null) {
-            throw new IllegalArgumentException(messageService.get("payment.order.id.required"));
-        }
-
-        PaymentTransactionDto transaction = paymentService.processPayment(request, getCurrentUserId());
-
-        SalesOrderDto order = salesOrderService.getSalesOrderById(request.getOrderId());
-
-        String message;
-        if (order.getStatus() == OrderStatus.PENDING &&
-                order.getPaymentMethod() != null &&
-                order.getPaymentMethod().equals("CASH")) {
-            message = messageService.get("payment.order.reserved");
-        } else {
-            message = messageService.get("payment.order.paid");
-        }
-
-
-        return ResponseEntity.ok(ApiResponse.success(
-                message,
-                transaction));
     }
 
     /**
@@ -548,31 +521,145 @@ public class UserRestController extends BaseController{
     @Operation(summary = "Cancel order",
             description = "Cancels an existing order that is in a cancellable state")
     public ResponseEntity<ApiResponse<SalesOrderDto>> cancelOrder(
-            @Parameter(description = "Order ID", example = "1", required = true)
             @PathVariable Long orderId,
-            @Parameter(description = "Cancellation reason", example = "Customer changed mind", required = true)
             @RequestParam String reason) {
 
         Long userId = getCurrentUserId();
-        log.info(messageService.get("user.order.cancel.start", userId, orderId));
 
-        SalesOrderDto order = salesOrderService.getSalesOrderById(orderId);
+        try {
+            SalesOrderDto cancelledOrder = salesOrderService.cancelOrderWithOwnershipCheck(
+                    orderId, reason, userId, userId);
 
-        if (!order.getUserId().equals(userId)) {
+            return ResponseEntity.ok(ApiResponse.success(
+                    messageService.get("user.order.cancelled"),
+                    cancelledOrder));
+
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (OrderCancellationNotAllowedException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // =========================================================================
+    // INVOICE PAYMENT (NEW)
+    // =========================================================================
+
+    /**
+     * Pay invoice by invoice number
+     */
+    @PostMapping("/invoices/{invoiceNumber}/pay")
+    @Operation(summary = "Pay invoice by number",
+            description = "Process payment for a specific invoice using its unique number")
+    public ResponseEntity<ApiResponse<PaymentTransactionDto>> payInvoiceByNumber(
+            @Parameter(description = "Invoice number", example = "INV-20240330-001", required = true)
+            @PathVariable String invoiceNumber,
+            @Valid @RequestBody PaymentMethodRequest request) {
+
+        Long currentUserId = getCurrentUserId();
+        log.info(logMsg.get("user.payment.start.by.invoice", invoiceNumber, currentUserId));
+
+        // 1. Find invoice by number
+        InvoiceDto invoice = invoiceService.getInvoiceByNumber(invoiceNumber);
+
+        // 2. Check if invoice is related to a sales order
+        if (invoice.getSalesOrderId() == null) {
+            throw new IllegalArgumentException(messageService.get("payment.error.invoice.not.sales"));
+        }
+
+        // 3. Get order and check if it belongs to the current user
+        SalesOrderDto order = salesOrderService.getSalesOrderById(invoice.getSalesOrderId());
+        if (!order.getUserId().equals(currentUserId)) {
+            	log.warn(logMsg.get("payment.security.invoice.access.denied",
+                    currentUserId, invoiceNumber, order.getUserId()));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(messageService.get("payment.error.access.denied")));
+        }
+
+        // 4. Check if payment is allowed
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(messageService.get("payment.error.invoice.already.paid")));
+        }
+        if (invoice.getStatus() == InvoiceStatus.CANCELLED) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(messageService.get("payment.error.invoice.cancelled")));
+        }
+
+        // 5. Create payment request
+        PaymentProcessRequest paymentRequest = PaymentProcessRequest.builder()
+                .invoiceId(invoice.getId())
+                .paymentMethodId(request.getPaymentMethodId())
+                .amount(request.hasAmount() ? request.getAmount() : null)
+                .build();
+
+        PaymentTransactionDto transaction = paymentService.processPayment(paymentRequest, currentUserId);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("payment.processed"), transaction));
+    }
+
+    /**
+     * Get order invoices
+     */
+    @GetMapping("/orders/{orderNumber}/invoices")
+    @Operation(summary = "Get order invoices",
+            description = "Get all invoices for a specific order")
+    public ResponseEntity<ApiResponse<List<InvoiceDto>>> getOrderInvoices(
+            @Parameter(description = "Order number", example = "SO-20240330-001", required = true)
+            @PathVariable String orderNumber) {
+
+        Long currentUserId = getCurrentUserId();
+        log.debug(logMsg.get("user.order.invoices.fetch.start", currentUserId, orderNumber));
+
+        // Check access to the order
+        SalesOrderDto order = salesOrderService.getSalesOrderByNumber(orderNumber);
+        if (!order.getUserId().equals(currentUserId)) {
+            	log.warn(logMsg.get("user.order.access.denied", currentUserId, orderNumber));
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error(messageService.get("user.order.access.denied.message")));
         }
 
-        SalesOrderDto cancelledOrder = salesOrderService.cancelOrder(orderId, reason, userId);
+        List<InvoiceDto> invoices = invoiceService.getInvoicesBySalesOrder(order.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("user.order.cancelled"),
-                cancelledOrder));
+                messageService.get("user.order.invoices.fetched"), invoices));
+    }
+
+    /**
+     * Get invoice details
+     */
+    @GetMapping("/invoices/{invoiceNumber}")
+    @Operation(summary = "Get invoice details",
+            description = "Get detailed information about a specific invoice")
+    public ResponseEntity<ApiResponse<InvoiceDto>> getInvoiceDetails(
+            @Parameter(description = "Invoice number", example = "INV-20240330-001", required = true)
+            @PathVariable String invoiceNumber) {
+
+        Long currentUserId = getCurrentUserId();
+        log.debug(logMsg.get("user.invoice.fetch.start", currentUserId, invoiceNumber));
+
+        InvoiceDto invoice = invoiceService.getInvoiceByNumber(invoiceNumber);
+
+        // Check access (if the account is associated with the order)
+        if (invoice.getSalesOrderId() != null) {
+            SalesOrderDto order = salesOrderService.getSalesOrderById(invoice.getSalesOrderId());
+            if (!order.getUserId().equals(currentUserId)) {
+                	log.warn(logMsg.get("user.invoice.access.denied", currentUserId, invoiceNumber));
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error(messageService.get("user.order.access.denied.message")));
+            }
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("user.invoice.fetched"), invoice));
     }
 
     // =========================================================================
-// PAYMENT METHODS FOR CUSTOMERS
-// =========================================================================
+    // PAYMENT METHODS FOR CUSTOMERS
+    // =========================================================================
 
     /**
      * Gets available payment methods for the current user.
@@ -587,7 +674,7 @@ public class UserRestController extends BaseController{
         User user = getCurrentUser();
         UserType userType = getUserType(user);
 
-        log.debug(messageService.get("user.payment.methods.fetch.start", user.getId(), userType));
+        log.debug(logMsg.get("user.payment.methods.fetch.start", user.getId(), userType));
 
         List<PaymentMethodForUserDto> result = paymentMethodService.getPaymentMethodsForUserType(userType);
 
@@ -612,7 +699,7 @@ public class UserRestController extends BaseController{
         User user = getCurrentUser();
         UserType userType = getUserType(user);
 
-        log.debug(messageService.get("user.payment.method.details.start", methodId, userType));
+        log.debug(logMsg.get("user.payment.method.details.start", methodId, userType));
 
         PaymentMethodForUserDto result = paymentMethodService.getPaymentMethodForUserType(methodId, userType);
 
@@ -637,7 +724,6 @@ public class UserRestController extends BaseController{
         return UserType.RETAIL;
     }
 
-
     // =========================================================================
     // STATISTICS
     // =========================================================================
@@ -652,7 +738,7 @@ public class UserRestController extends BaseController{
             description = "Calculates the total amount of money the user has spent on all completed orders")
     public ResponseEntity<ApiResponse<java.math.BigDecimal>> getTotalSpent() {
         Long userId = getCurrentUserId();
-        log.debug(messageService.get("user.stats.spent.start", userId));
+        log.debug(logMsg.get("user.stats.spent.start", userId));
 
         java.math.BigDecimal totalSpent = salesOrderService.getUserTotalSpent(userId);
 

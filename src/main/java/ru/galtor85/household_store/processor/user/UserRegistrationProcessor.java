@@ -51,6 +51,7 @@ public class UserRegistrationProcessor {
 
         // Assign default user type only for self-registered customers
         if (role == Role.USER && user.getCreator()==null) {
+            user.setCreator(SYSTEM_CREATOR);
             userTypeAssignmentService.assignUserType(
                     savedUser.getId(),
                     UserType.RETAIL,

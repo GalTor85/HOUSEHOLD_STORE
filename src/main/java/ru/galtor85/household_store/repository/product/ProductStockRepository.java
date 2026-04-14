@@ -3,6 +3,7 @@ package ru.galtor85.household_store.repository.product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -76,24 +77,6 @@ public interface ProductStockRepository extends JpaRepository<ProductStock, Long
     Integer getTotalStockForProduct(@Param("productId") Long productId);
 
     /**
-     * Finds stock records for multiple warehouses.
-     *
-     * @param warehouseIds list of warehouse identifiers
-     * @return list of stock records
-     */
-    @Query("SELECT ps FROM ProductStock ps WHERE ps.warehouseId IN :warehouseIds")
-    List<ProductStock> findByWarehouseIds(@Param("warehouseIds") List<Long> warehouseIds);
-
-    /**
-     * Gets stock summary grouped by warehouse.
-     *
-     * @return list of [warehouseId, totalQuantity] objects
-     */
-    @Query("SELECT ps.warehouseId, SUM(ps.quantity) as totalQuantity " +
-            "FROM ProductStock ps GROUP BY ps.warehouseId")
-    List<Object[]> getStockSummaryByWarehouse();
-
-    /**
      * Gets total available stock for a product across all warehouses.
      * Available = SUM(quantity) - SUM(reservedQuantity)
      *
@@ -116,18 +99,6 @@ public interface ProductStockRepository extends JpaRepository<ProductStock, Long
             "JOIN Warehouse w ON ps.warehouseId = w.id " +
             "WHERE ps.productId = :productId AND w.isVisibleForSale = true")
     Integer getAvailableStockForCustomer(@Param("productId") Long productId);
-
-    /**
-     * Gets stock details by warehouse for a product (without visibility filter).
-     *
-     * @param productId product identifier
-     * @return list of [warehouseId, quantity, reservedQuantity, availableQuantity]
-     */
-    @Query("SELECT ps.warehouseId, ps.quantity, ps.reservedQuantity, " +
-            "COALESCE(ps.quantity - ps.reservedQuantity, ps.quantity) as available " +
-            "FROM ProductStock ps " +
-            "WHERE ps.productId = :productId")
-    List<Object[]> getStockByWarehouseForProduct(@Param("productId") Long productId);
 
     /**
      * Gets stock details by warehouse for a product with visibility flag.
@@ -185,4 +156,24 @@ public interface ProductStockRepository extends JpaRepository<ProductStock, Long
                                                  @Param("sortBy") String sortBy,
                                                  @Param("sortDir") String sortDir,
                                                  Pageable pageable);
+
+    /**
+     * Decreases stock quantity in source warehouse.
+     */
+    @Modifying
+    @Query("UPDATE ProductStock ps SET ps.quantity = ps.quantity - :quantity, ps.updatedAt = CURRENT_TIMESTAMP " +
+            "WHERE ps.productId = :productId AND ps.warehouseId = :warehouseId AND ps.quantity >= :quantity")
+    int decreaseStock(@Param("productId") Long productId,
+                      @Param("warehouseId") Long warehouseId,
+                      @Param("quantity") int quantity);
+
+    /**
+     * Increases stock quantity in destination warehouse.
+     */
+    @Modifying
+    @Query("UPDATE ProductStock ps SET ps.quantity = ps.quantity + :quantity, ps.updatedAt = CURRENT_TIMESTAMP " +
+            "WHERE ps.productId = :productId AND ps.warehouseId = :warehouseId")
+    int increaseStock(@Param("productId") Long productId,
+                      @Param("warehouseId") Long warehouseId,
+                      @Param("quantity") int quantity);
 }

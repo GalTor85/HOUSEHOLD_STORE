@@ -23,7 +23,7 @@ import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.service.currency.CurrencyConversionService;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.util.generator.NumberGenerator;
 import ru.galtor85.household_store.validator.finance.InvoiceValidator;
 
@@ -51,7 +51,7 @@ public class InvoiceService {
     private final InvoiceConverter invoiceConverter;
     private final InvoiceValidator invoiceValidator;
     private final NumberGenerator numberGenerator;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final InvoicePaymentProcessor paymentProcessor;
     private final CashTransactionRepository cashTransactionRepository;
     private final CurrencyConversionService currencyConversionService;
@@ -70,7 +70,7 @@ public class InvoiceService {
      */
     @Transactional
     public InvoiceDto createInvoice(InvoiceCreateRequest request, Long createdBy) {
-        log.info(messageService.get("invoice.create.start",
+        log.info(logMsg.get("invoice.create.start",
                 request.getPurchaseOrderId(), request.getSalesOrderId()));
 
         // Validate request
@@ -111,7 +111,7 @@ public class InvoiceService {
 
         Invoice saved = invoiceRepository.save(invoice);
 
-        log.info(messageService.get("invoice.created", saved.getInvoiceNumber()));
+        log.info(logMsg.get("invoice.created", saved.getInvoiceNumber()));
 
         // New invoice has zero payments
         return invoiceConverter.toDto(saved, BigDecimal.ZERO);
@@ -226,6 +226,10 @@ public class InvoiceService {
         validatePurchaseOrder(purchaseOrderId);
         List<Invoice> invoices = invoiceRepository.findByPurchaseOrderId(purchaseOrderId);
 
+        return getInvoiceDtos(invoices);
+    }
+
+    private List<InvoiceDto> getInvoiceDtos(List<Invoice> invoices) {
         Map<Long, BigDecimal> paidAmounts = calculateTotalPaidMap(invoices);
 
         return invoices.stream()
@@ -247,14 +251,7 @@ public class InvoiceService {
         validateSalesOrder(salesOrderId);
         List<Invoice> invoices = invoiceRepository.findBySalesOrderId(salesOrderId);
 
-        Map<Long, BigDecimal> paidAmounts = calculateTotalPaidMap(invoices);
-
-        return invoices.stream()
-                .map(invoice -> {
-                    BigDecimal totalPaid = paidAmounts.get(invoice.getId());
-                    return invoiceConverter.toDto(invoice, totalPaid != null ? totalPaid : BigDecimal.ZERO);
-                })
-                .collect(Collectors.toList());
+        return getInvoiceDtos(invoices);
     }
 
     // =========================================================================
@@ -279,7 +276,7 @@ public class InvoiceService {
                 false
         );
 
-        log.info(messageService.get("invoice.paid", result.getInvoice().getInvoiceNumber()));
+        log.info(logMsg.get("invoice.paid", result.getInvoice().getInvoiceNumber()));
 
         BigDecimal totalPaid = calculateTotalPaid(result.getInvoice());
         return invoiceConverter.toDto(result.getInvoice(), totalPaid);
@@ -300,7 +297,7 @@ public class InvoiceService {
                 invoiceId, paidAmount, cashRegisterId, cashierId, true
         );
 
-        log.info(messageService.get("invoice.partially.paid",
+        log.info(logMsg.get("invoice.partially.paid",
                 result.getInvoice().getInvoiceNumber(), paidAmount));
 
         BigDecimal totalPaid = calculateTotalPaid(result.getInvoice());
@@ -321,7 +318,7 @@ public class InvoiceService {
      */
     @Transactional
     public InvoiceDto cancelInvoice(Long invoiceId, String reason, Long cancelledBy) {
-        log.info(messageService.get("invoice.cancel.start", invoiceId, reason));
+        log.info(logMsg.get("invoice.cancel.start", invoiceId, reason));
 
         Invoice invoice = invoiceValidator.validateInvoiceExists(invoiceId);
         invoiceValidator.validateInvoiceCancellable(invoice);
@@ -336,7 +333,7 @@ public class InvoiceService {
 
         Invoice saved = invoiceRepository.save(invoice);
 
-        log.info(messageService.get("invoice.cancelled", saved.getInvoiceNumber()));
+        log.info(logMsg.get("invoice.cancelled", saved.getInvoiceNumber()));
 
         BigDecimal totalPaid = calculateTotalPaid(saved);
         return invoiceConverter.toDto(saved, totalPaid);
@@ -454,14 +451,7 @@ public class InvoiceService {
     @Transactional(readOnly = true)
     public List<InvoiceDto> getOverdueInvoices() {
         List<Invoice> invoices = invoiceRepository.findOverdueInvoices(LocalDateTime.now());
-        Map<Long, BigDecimal> paidAmounts = calculateTotalPaidMap(invoices);
-
-        return invoices.stream()
-                .map(invoice -> {
-                    BigDecimal totalPaid = paidAmounts.get(invoice.getId());
-                    return invoiceConverter.toDto(invoice, totalPaid != null ? totalPaid : BigDecimal.ZERO);
-                })
-                .collect(Collectors.toList());
+        return getInvoiceDtos(invoices);
     }
 
     /**
@@ -476,14 +466,7 @@ public class InvoiceService {
         LocalDateTime endDate = now.plusDays(days);
         List<Invoice> invoices = invoiceRepository.findUpcomingInvoices(now, endDate);
 
-        Map<Long, BigDecimal> paidAmounts = calculateTotalPaidMap(invoices);
-
-        return invoices.stream()
-                .map(invoice -> {
-                    BigDecimal totalPaid = paidAmounts.get(invoice.getId());
-                    return invoiceConverter.toDto(invoice, totalPaid != null ? totalPaid : BigDecimal.ZERO);
-                })
-                .collect(Collectors.toList());
+        return getInvoiceDtos(invoices);
     }
 
     /**

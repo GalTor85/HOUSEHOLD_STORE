@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.0</version>
+        <version>4.0.4</version>
         <relativePath/>
     </parent>
 
@@ -20,15 +20,33 @@
 
     <properties>
         <java.version>21</java.version>
+        <skipTests>false</skipTests>
+        <!-- Third-party library versions -->
         <jjwt.version>0.13.0</jjwt.version>
         <springdoc.version>3.0.1</springdoc.version>
-        <skipTests>false</skipTests>
-        <!-- Force AssertJ 3.27.7 which fixes CVE-2026-24400 -->
+        <!-- Security fixes and dependency overrides -->
         <assertj.version>3.27.7</assertj.version>
+        <jackson-fix.version>2.21.1</jackson-fix.version>
+        <spring-security.version>7.0.4</spring-security.version>
+        <tomcat.version>11.0.21</tomcat.version>
+        <jackson-core-v3.version>3.1.1</jackson-core-v3.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <!-- Jackson BOM to ensure consistent versions across modules -->
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson-fix.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
-        <!-- Spring Boot Starters -->
+        <!-- SECTION: Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -50,7 +68,7 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- JWT -->
+        <!-- SECTION: Security & JWT (JSON Web Token) -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -69,47 +87,75 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Database -->
+        <!-- SECTION: Critical Security Patches (Direct Overrides) -->
+        <!-- Fixes vulnerabilities in jackson-core 3.1.0 -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson-core-v3.version}</version>
+        </dependency>
+        <!-- Fixes vulnerabilities in tomcat-embed-core 11.0.18 -->
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
+            <version>${tomcat.version}</version>
+        </dependency>
+
+        <!-- SECTION: Database & Migration -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-
-        <!-- Liquibase -->
         <dependency>
             <groupId>org.liquibase</groupId>
             <artifactId>liquibase-core</artifactId>
         </dependency>
 
-        <!-- Documentation -->
+        <!-- SECTION: Developer Tools & Documentation -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
         </dependency>
-
-        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
 
-        <!-- Test -->
+        <!-- SECTION: Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
             <exclusions>
-                <!-- Exclude vulnerable AssertJ -->
+                <!-- Exclude default AssertJ to use the patched version -->
                 <exclusion>
                     <groupId>org.assertj</groupId>
                     <artifactId>assertj-core</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- Explicit JUnit 5 dependencies -->
+        <!-- Explicit patched AssertJ version -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+            <version>0.10.2</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- JUnit 5 Engine components -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
@@ -125,16 +171,11 @@
             <artifactId>junit-jupiter-params</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <version>${assertj.version}</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- Spring Boot Build Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -155,6 +196,7 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Compiler settings -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -162,6 +204,7 @@
                     <parameters>true</parameters>
                 </configuration>
             </plugin>
+            <!-- Liquibase Migration Plugin -->
             <plugin>
                 <groupId>org.liquibase</groupId>
                 <artifactId>liquibase-maven-plugin</artifactId>
@@ -172,3 +215,4 @@
         </plugins>
     </build>
 </project>
+

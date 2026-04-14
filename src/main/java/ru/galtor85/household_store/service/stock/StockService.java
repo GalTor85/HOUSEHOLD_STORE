@@ -8,22 +8,28 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.advice.exception.stock.InsufficientStockException;
 import ru.galtor85.household_store.advice.exception.stock.ProductStockNotFoundException;
+import ru.galtor85.household_store.advice.exception.warehouse.WarehouseNotFoundException;
 import ru.galtor85.household_store.config.BusinessConfig;
+import ru.galtor85.household_store.dto.request.stock.StockTransferRequest;
 import ru.galtor85.household_store.dto.response.product.ProductStockDistributionDto;
 import ru.galtor85.household_store.dto.response.product.ProductStockDto;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
+import ru.galtor85.household_store.dto.response.stock.StockTransferResponseDto;
 import ru.galtor85.household_store.dto.response.warehouse.WarehouseStockSummaryDto;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.product.ProductStock;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.processor.product.ProductStockProcessor;
 import ru.galtor85.household_store.processor.stock.StockMovementProcessor;
+import ru.galtor85.household_store.processor.stock.StockTransferProcessor;
 import ru.galtor85.household_store.processor.warehouse.WarehouseStockProcessor;
 import ru.galtor85.household_store.processor.warehouse.WarehouseSummaryProcessor;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.util.stock.StockDtoEnricher;
+import ru.galtor85.household_store.validator.stock.StockTransferValidator;
 import ru.galtor85.household_store.validator.stock.StockValidator;
 
 import java.time.LocalDateTime;
@@ -52,6 +58,10 @@ public class StockService {
     private final StockMovementProcessor movementProcessor;
     private final StockDtoEnricher dtoEnricher;
     private final BusinessConfig businessConfig;
+    private final StockTransferProcessor stockTransferProcessor;
+    private final StockTransferValidator stockTransferValidator;
+    private final LogMessageService logMsg;
+
 
     // =========================================================================
     // STOCK VIEW BY WAREHOUSE
@@ -89,8 +99,8 @@ public class StockService {
      */
     @Transactional(readOnly = true)
     public List<ProductStockDto> getProductStockAcrossAllWarehouses(Long productId) {
-        validator.validateProductExists(productId);
-        Product product = productRepository.findById(productId).get();
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ProductNotFoundException(productId));
         return productStockProcessor.getProductStockAcrossAllWarehouses(product);
     }
 
@@ -102,8 +112,8 @@ public class StockService {
      */
     @Transactional(readOnly = true)
     public Integer getTotalStockForProduct(Long productId) {
-        validator.validateProductExists(productId);
-        Product product = productRepository.findById(productId).get();
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ProductNotFoundException(productId));
         return productStockProcessor.getTotalStockForProduct(product);
     }
 
@@ -133,11 +143,11 @@ public class StockService {
      */
     @Transactional(readOnly = true)
     public ProductStockDto getProductStockAtWarehouse(Long productId, Long warehouseId) {
-        validator.validateProductExists(productId);
-        validator.validateWarehouseExists(warehouseId);
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ProductNotFoundException(productId));
 
-        Product product = productRepository.findById(productId).get();
-        Warehouse warehouse = warehouseRepository.findById(warehouseId).get();
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new WarehouseNotFoundException(warehouseId));
 
         return dtoEnricher.enrichStockDto(
                 productStockProcessor.getProductStockAtWarehouse(product, warehouse)
@@ -296,16 +306,20 @@ public class StockService {
     }
 
     /**
-     * Gets the latest movement for a specific product and batch
+     * Transfers stock between warehouses or cells.
      *
-     * @param productId   product identifier
-     * @param batchNumber batch/lot number
-     * @return latest stock movement DTO or null
+     * @param request     transfer request
+     * @param performedBy ID of user performing transfer
+     * @return transfer response
      */
-    @Transactional(readOnly = true)
-    public StockMovementDto getLatestBatchMovement(Long productId, String batchNumber) {
-        validator.validateProductExists(productId);
-        return movementProcessor.getLatestBatchMovement(productId, batchNumber);
+    @Transactional
+    public StockTransferResponseDto transferStock(StockTransferRequest request, Long performedBy) {
+        log.info(logMsg.get("stock.transfer.service.start",
+                request.getProductId(), request.getQuantity()));
+
+        stockTransferValidator.validateTransferRequest(request);
+
+        return stockTransferProcessor.transferStock(request, performedBy);
     }
 
     // =========================================================================
@@ -316,10 +330,10 @@ public class StockService {
      * Updates product stock quantity (increase or decrease)
      * Creates a new stock record if it doesn't exist and operation is increase
      *
-     * @param product    product entity
-     * @param quantity   quantity to change (positive number)
+     * @param product     product entity
+     * @param quantity    quantity to change (positive number)
      * @param warehouseId warehouse identifier
-     * @param increase   true = increase stock, false = decrease stock
+     * @param increase    true = increase stock, false = decrease stock
      * @throws ProductStockNotFoundException if stock record not found and operation is decrease
      * @throws InsufficientStockException    if decrease would result in negative stock
      */

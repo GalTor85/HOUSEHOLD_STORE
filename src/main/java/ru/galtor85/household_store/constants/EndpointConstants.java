@@ -45,6 +45,7 @@ public final class EndpointConstants {
     // USER ENDPOINTS
     // =========================================================================
     public static final String USER_ROOT = API_BASE + "/users/**";
+    public static final String USER_PAY_INVOICE = API_BASE + "/users/invoices/{invoiceNumber}/pay";
 
     // =========================================================================
     // SWAGGER & ACTUATOR

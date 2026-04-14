@@ -23,7 +23,7 @@ import ru.galtor85.household_store.repository.auth.SecurityUserRepository;
 import ru.galtor85.household_store.resolver.UserIdentifierResolver;
 import ru.galtor85.household_store.security.JwtTokenProvider;
 import ru.galtor85.household_store.security.SecurityUser;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.user.UserSearchService;
 import ru.galtor85.household_store.validator.auth.AuthenticationValidator;
 
@@ -70,11 +70,6 @@ public class AuthService {
     // =========================================================================
 
     /**
-     * Default source for self-registration.
-     */
-    private static final String SELF_REGISTRATION_SOURCE = "self-registration";
-
-    /**
      * Maximum length of token preview in logs (prevents full token exposure).
      */
     private static final int TOKEN_PREVIEW_MAX_LENGTH = 20;
@@ -94,7 +89,7 @@ public class AuthService {
     private final UserSearchService userSearchService;
     private final UserToEntity userToEntity;
     private final UserMapper userMapper;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final UserIdentifierResolver userIdentifierResolver;
     private final SecurityUserRepository securityUserRepository;
     private final AuthenticationValidator authenticationValidator;
@@ -122,20 +117,20 @@ public class AuthService {
      */
     @Transactional
     public AuthResponse register(UserCreateRequest request) {
-        log.debug(messageService.get("auth.log.register.attempt", request.getEmail()));
+        log.debug(logMsg.get("auth.log.register.attempt", request.getEmail()));
 
-        User user = userToEntity.build(request, messageService.get(SELF_REGISTRATION_SOURCE));
+        User user = userToEntity.build(request,null);
         User registeredUser = userService.register(user, request.getPassword());
 
         SecurityUser securityUser = securityUserRepository.findById(registeredUser.getId())
                 .orElseThrow(() -> {
-                    log.error(messageService.get("auth.log.security.user.not.found", registeredUser.getId()));
+                    log.error(logMsg.get("auth.log.security.user.not.found", registeredUser.getId()));
                     return new SecurityUserNotFoundException(registeredUser.getId());
                 });
 
         User userForResponse = userSearchService.getUserById(registeredUser.getId());
 
-        log.info(messageService.get("auth.log.user.registered", registeredUser.getEmail()));
+        log.info(logMsg.get("auth.log.user.registered", registeredUser.getEmail()));
 
         return buildAuthResponse(securityUser, userForResponse);
     }
@@ -164,7 +159,7 @@ public class AuthService {
      */
     public AuthResponse login(LoginFormRequest request) {
         String identify = userIdentifierResolver.resolve(request);
-        log.debug(messageService.get("auth.log.login.attempt", identify));
+        log.debug(logMsg.get("auth.log.login.attempt", identify));
 
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -173,20 +168,21 @@ public class AuthService {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
+            assert securityUser != null;
             User user = userSearchService.getUserById(securityUser.getUserId());
 
             if (!securityUser.isEnabled()) {
-                log.warn(messageService.get("auth.log.login.deactivated", identify));
+                log.warn(logMsg.get("auth.log.login.deactivated", identify));
                 throw new AccountDeactivatedException(securityUser.getUserId());
             }
 
-            log.info(messageService.get("auth.log.login.success",
+            log.info(logMsg.get("auth.log.login.success",
                     user.getAuthenticationId(), securityUser.getId()));
 
             return buildAuthResponse(securityUser, user);
 
         } catch (BadCredentialsException e) {
-            log.warn(messageService.get("auth.log.login.bad.credentials", identify));
+            log.warn(logMsg.get("auth.log.login.bad.credentials", identify));
             throw new InvalidCredentialsException(identify);
         }
     }
@@ -218,14 +214,13 @@ public class AuthService {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication != null && authentication.getPrincipal() instanceof SecurityUser) {
-            SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
+        if (authentication != null && authentication.getPrincipal() instanceof SecurityUser securityUser) {
             User user = userSearchService.getUserById(securityUser.getUserId());
 
             if (currentToken != null && !currentToken.isEmpty()) {
                 addTokenToBlacklist(currentToken, securityUser.getUserId());
                 String tokenPreview = getTokenPreview(currentToken);
-                log.info(messageService.get("auth.log.token.blacklisted", tokenPreview));
+                log.info(logMsg.get("auth.log.token.blacklisted", tokenPreview));
             } else {
                 log.warn("No token found in ThreadLocal for logout");
             }
@@ -234,12 +229,12 @@ public class AuthService {
 
             AuthResponse newTokens = buildAuthResponse(securityUser, user);
 
-            log.info(messageService.get("auth.log.logout.success", user.getEmail()));
+            log.info(logMsg.get("auth.log.logout.success", user.getEmail()));
 
             return newTokens;
         }
 
-        log.info(messageService.get("auth.log.logout.success"));
+        log.info(logMsg.get("auth.log.logout.success"));
         SecurityContextHolder.clearContext();
 
         return AuthResponse.builder()
@@ -262,7 +257,8 @@ public class AuthService {
         Authentication authentication = authenticationValidator.validateAuthentication();
         SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
 
-        log.debug(messageService.get("auth.log.token.valid", securityUser.getUsername()));
+        assert securityUser != null;
+        log.debug(logMsg.get("auth.log.token.valid", securityUser.getUsername()));
 
         User user = userSearchService.getUserById(securityUser.getUserId());
 
@@ -294,10 +290,10 @@ public class AuthService {
      * @throws AccountDeactivatedException  if account is disabled
      */
     public AuthResponse refreshToken(String refreshToken) {
-        log.debug(messageService.get("auth.log.refresh.attempt"));
+        log.debug(logMsg.get("auth.log.refresh.attempt"));
 
         if (refreshToken == null || refreshToken.isEmpty()) {
-            log.warn(messageService.get("auth.log.refresh.token.missing"));
+            log.warn(logMsg.get("auth.log.refresh.token.missing"));
             throw new RefreshTokenMissingException();
         }
 
@@ -307,27 +303,27 @@ public class AuthService {
         }
 
         if (!jwtTokenProvider.validateToken(refreshToken)) {
-            log.warn(messageService.get("auth.log.refresh.token.invalid"));
+            log.warn(logMsg.get("auth.log.refresh.token.invalid"));
             throw new TokenExpiredException();
         }
 
         Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
-        log.debug(messageService.get("auth.log.refresh.userid.extracted", userId));
+        log.debug(logMsg.get("auth.log.refresh.userid.extracted", userId));
 
         SecurityUser securityUser = securityUserRepository.findById(userId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("auth.log.security.user.not.found", userId));
+                    log.error(logMsg.get("auth.log.security.user.not.found", userId));
                     return new SecurityUserNotFoundException(userId);
                 });
 
         if (!securityUser.isEnabled()) {
-            log.warn(messageService.get("auth.log.refresh.user.inactive", userId));
+            log.warn(logMsg.get("auth.log.refresh.user.inactive", userId));
             throw new AccountDeactivatedException(userId);
         }
 
         User user = userSearchService.getUserById(userId);
 
-        log.info(messageService.get("auth.log.refresh.success", userId));
+        log.info(logMsg.get("auth.log.refresh.success", userId));
 
         return buildAuthResponse(securityUser, user);
     }

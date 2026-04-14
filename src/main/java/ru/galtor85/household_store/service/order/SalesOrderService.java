@@ -14,26 +14,38 @@ import ru.galtor85.household_store.advice.exception.product.ProductNotFoundExcep
 import ru.galtor85.household_store.advice.exception.rollback.RollbackNotAllowedException;
 import ru.galtor85.household_store.converter.SalesOrderConverter;
 import ru.galtor85.household_store.dto.request.order.SalesOrderCreateRequest;
+import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
+import ru.galtor85.household_store.dto.response.order.PaymentSummaryDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderStatisticsDto;
 import ru.galtor85.household_store.entity.cart.Cart;
 import ru.galtor85.household_store.entity.cart.CartStatus;
+import ru.galtor85.household_store.entity.finance.CashTransaction;
+import ru.galtor85.household_store.entity.finance.Invoice;
+import ru.galtor85.household_store.entity.finance.InvoiceStatus;
+import ru.galtor85.household_store.entity.finance.TransactionType;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.entity.order.SalesOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.processor.sales.SalesOrderProcessor;
 import ru.galtor85.household_store.repository.cart.CartRepository;
+import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
+import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.service.cart.CartService;
+import ru.galtor85.household_store.service.finance.InvoiceService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.util.date.DateParser;
+import ru.galtor85.household_store.validator.order.OrderSalesCancellationValidator;
 import ru.galtor85.household_store.validator.order.SalesOrderValidator;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
@@ -70,7 +82,12 @@ public class SalesOrderService {
     private final SalesOrderProcessor salesOrderProcessor;
     private final SalesOrderConverter salesOrderConverter;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final DateParser dateParser;
+    private final InvoiceService invoiceService;
+    private final InvoiceRepository invoiceRepository;
+    private final CashTransactionRepository cashTransactionRepository;
+    private final OrderSalesCancellationValidator orderCancellationValidator;
 
     // =========================================================================
     // ORDER CREATION
@@ -80,13 +97,13 @@ public class SalesOrderService {
      * Creates a new sales order directly (without cart).
      *
      * @param request the order creation request containing items and customer info
-     * @param userId the ID of the customer placing the order
+     * @param userId  the ID of the customer placing the order
      * @return the created order as a DTO
      */
     @Transactional
     public SalesOrderDto createSalesOrder(SalesOrderCreateRequest request, Long userId) {
 
-        log.info(messageService.get("sales.order.create.start", userId));
+        log.info(logMsg.get("sales.order.create.start", userId));
 
         // Validate request
         salesOrderValidator.validateNotEmpty(request);
@@ -107,7 +124,7 @@ public class SalesOrderService {
 
         SalesOrderDto result = salesOrderConverter.toDto(order);
 
-        log.info(messageService.get("sales.order.created.log",
+        log.info(logMsg.get("sales.order.created.log",
                 order.getOrderNumber(), userId, order.getItems().size(), order.getTotalAmount()));
 
         return result;
@@ -116,7 +133,7 @@ public class SalesOrderService {
     /**
      * Creates an order from the user's active cart.
      *
-     * @param userId the ID of the customer
+     * @param userId          the ID of the customer
      * @param shippingAddress the shipping address for the order
      * @return the created order as a DTO
      * @throws CartNotFoundException if no active cart exists for the user
@@ -124,7 +141,7 @@ public class SalesOrderService {
     @Transactional
     public SalesOrderDto createOrderFromCart(Long userId, String shippingAddress) {
 
-        log.info(messageService.get("sales.order.create.from.cart.start", userId));
+        log.info(logMsg.get("sales.order.create.from.cart.start", userId));
 
         // Get user's active cart
         Cart cart = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
@@ -137,7 +154,7 @@ public class SalesOrderService {
         cart.setStatus(CartStatus.COMPLETED);
         cartRepository.save(cart);
 
-        log.info(messageService.get("sales.order.create.from.cart.complete",
+        log.info(logMsg.get("sales.order.create.from.cart.complete",
                 order.getOrderNumber(), userId, order.getTotalAmount()));
 
         return salesOrderConverter.toDto(order);
@@ -146,14 +163,14 @@ public class SalesOrderService {
     /**
      * Creates an order from cart with a promo code discount.
      *
-     * @param userId the ID of the customer
+     * @param userId          the ID of the customer
      * @param shippingAddress the shipping address for the order
-     * @param promoCode the promo code to apply
+     * @param promoCode       the promo code to apply
      * @return the created order as a DTO
      */
     @Transactional
     public SalesOrderDto createOrderFromCartWithPromo(Long userId, String shippingAddress, String promoCode) {
-        log.info(messageService.get("sales.order.create.from.cart.promo.start", userId, promoCode));
+        log.info(logMsg.get("sales.order.create.from.cart.promo.start", userId, promoCode));
 
         Cart cart = cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
                 .orElseThrow(() -> new CartNotFoundException(userId));
@@ -162,7 +179,7 @@ public class SalesOrderService {
 
         cartService.completeCart(userId);
 
-        log.info(messageService.get("sales.order.create.from.cart.promo.complete",
+        log.info(logMsg.get("sales.order.create.from.cart.promo.complete",
                 order.getOrderNumber(), userId));
 
         return salesOrderConverter.toDto(order);
@@ -175,12 +192,12 @@ public class SalesOrderService {
     /**
      * Retrieves paginated orders for a customer with optional filtering.
      *
-     * @param userId the customer ID (optional)
-     * @param status order status filter (optional)
+     * @param userId    the customer ID (optional)
+     * @param status    order status filter (optional)
      * @param startDate start date for filtering (optional)
-     * @param endDate end date for filtering (optional)
-     * @param page page number (0-indexed)
-     * @param size page size
+     * @param endDate   end date for filtering (optional)
+     * @param page      page number (0-indexed)
+     * @param size      page size
      * @return page of order DTOs
      */
     @Transactional(readOnly = true)
@@ -204,7 +221,7 @@ public class SalesOrderService {
         // Search for orders through the repository
         Page<SalesOrder> orders = salesOrderRepository.search(userId, orderStatus, start, end, pageable);
 
-        log.debug(messageService.get("manager.orders.fetched.log", orders.getTotalElements()));
+        log.debug(logMsg.get("manager.orders.fetched.log", orders.getTotalElements()));
 
         return orders.map(salesOrderConverter::toDto);
     }
@@ -218,7 +235,8 @@ public class SalesOrderService {
     @Transactional(readOnly = true)
     public SalesOrderDto getSalesOrderById(Long orderId) {
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
-        return salesOrderConverter.toDto(order);
+        SalesOrderDto dto = salesOrderConverter.toDto(order);
+        return enrichWithPaymentSummary(dto);
     }
 
     /**
@@ -242,7 +260,114 @@ public class SalesOrderService {
     public SalesOrderDto getSalesOrderByNumber(String orderNumber) {
         SalesOrder order = salesOrderRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(OrderNotFoundException::new);
-        return salesOrderConverter.toDto(order);
+        SalesOrderDto dto = salesOrderConverter.toDto(order);
+        return enrichWithPaymentSummary(dto);
+    }
+
+    /**
+     * Enriches SalesOrderDto with payment summary
+     */
+    public SalesOrderDto enrichWithPaymentSummary(SalesOrderDto order) {
+        try {
+            List<InvoiceDto> invoices = invoiceService.getInvoicesBySalesOrder(order.getId());
+
+            BigDecimal totalPaid = invoices.stream()
+                    .map(inv -> inv.getTotalPaid() != null ? inv.getTotalPaid() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal remainingAmount = order.getTotalAmount().subtract(totalPaid);
+
+            InvoiceDto payableInvoice = invoices.stream()
+                    .filter(inv -> inv.getStatus() == InvoiceStatus.PENDING ||
+                            inv.getStatus() == InvoiceStatus.PARTIALLY_PAID)
+                    .findFirst()
+                    .orElse(null);
+
+            PaymentSummaryDto summary = PaymentSummaryDto.builder()
+                    .totalPaid(totalPaid)
+                    .remainingAmount(remainingAmount.max(BigDecimal.ZERO))
+                    .hasPayableInvoices(payableInvoice != null)
+                    .nextInvoiceNumber(payableInvoice != null ? payableInvoice.getInvoiceNumber() : null)
+                    .invoiceStatus(payableInvoice != null ? payableInvoice.getStatus().name() : null)
+                    .paymentUrl(payableInvoice != null ?
+                            "/app/users/invoices/" + payableInvoice.getInvoiceNumber() + "/pay" : null)
+                    .build();
+
+            order.setPaymentSummary(summary);
+        } catch (Exception e) {
+            log.warn("Failed to enrich order with payment summary: {}", e.getMessage());
+            // Если не удалось получить счета, ставим пустую сводку
+            order.setPaymentSummary(PaymentSummaryDto.builder()
+                    .totalPaid(BigDecimal.ZERO)
+                    .remainingAmount(order.getTotalAmount())
+                    .hasPayableInvoices(false)
+                    .build());
+        }
+
+        return order;
+    }
+
+    /**
+     * Cancels an order after validating it can be cancelled.
+     *
+     * @param orderId order identifier
+     * @param reason  cancellation reason
+     * @param userId  ID of user cancelling the order
+     * @return cancelled order DTO
+     */
+    @Transactional
+    public SalesOrderDto cancelOrderWithValidation(Long orderId, String reason, Long userId) {
+        log.info(logMsg.get("order.cancel.service.start", orderId, userId));
+
+        SalesOrderDto order = getSalesOrderById(orderId);
+
+        // Validate cancellation is allowed
+        orderCancellationValidator.validateCancellable(order);
+
+        return cancelOrder(orderId, reason, userId);
+    }
+
+    /**
+     * Cancels order with ownership check.
+     *
+     * @param orderId     order identifier
+     * @param reason      cancellation reason
+     * @param userId      ID of user cancelling the order
+     * @param ownerUserId ID of order owner
+     * @return cancelled order DTO
+     */
+    @Transactional
+    public SalesOrderDto cancelOrderWithOwnershipCheck(Long orderId, String reason,
+                                                       Long userId, Long ownerUserId) {
+        log.info(logMsg.get("order.cancel.service.ownership.start", orderId, userId, ownerUserId));
+
+        SalesOrderDto order = getSalesOrderById(orderId);
+
+        // Check ownership
+        if (!order.getUserId().equals(ownerUserId)) {
+            log.warn(logMsg.get("order.cancel.service.access.denied",
+                    orderId, userId, ownerUserId));
+            throw new SecurityException(messageService.get("order.cancel.error.access.denied"));
+        }
+
+        // Validate cancellation is allowed
+        orderCancellationValidator.validateCancellable(order);
+
+        return cancelOrder(orderId, reason, userId);
+    }
+
+    /**
+     * Checks if order can be cancelled.
+     */
+    @Transactional(readOnly = true)
+    public boolean canCancelOrder(Long orderId) {
+        try {
+            SalesOrderDto order = getSalesOrderById(orderId);
+            return orderCancellationValidator.isCancellable(order);
+        } catch (Exception e) {
+            log.debug(logMsg.get("order.cancel.service.check.failed", orderId, e.getMessage()));
+            return false;
+        }
     }
 
     // =========================================================================
@@ -252,11 +377,11 @@ public class SalesOrderService {
     /**
      * Updates the status of an existing order.
      *
-     * @param orderId the order ID
-     * @param status the new status
+     * @param orderId        the order ID
+     * @param status         the new status
      * @param trackingNumber tracking number for shipped orders (optional)
-     * @param reason reason for cancellation or refund (optional)
-     * @param managerId ID of the manager performing the update
+     * @param reason         reason for cancellation or refund (optional)
+     * @param managerId      ID of the manager performing the update
      * @return the updated order as a DTO
      */
     @Transactional
@@ -292,7 +417,7 @@ public class SalesOrderService {
 
         SalesOrder updatedOrder = salesOrderRepository.save(order);
 
-        log.info(messageService.get("sales.order.status.updated.log",
+        log.info(logMsg.get("sales.order.status.updated.log",
                 orderId, oldStatus, newStatus, managerId));
 
         return salesOrderConverter.toDto(updatedOrder);
@@ -301,8 +426,8 @@ public class SalesOrderService {
     /**
      * Cancels an existing order.
      *
-     * @param orderId the order ID
-     * @param reason the cancellation reason
+     * @param orderId   the order ID
+     * @param reason    the cancellation reason
      * @param managerId ID of the manager cancelling the order
      * @return the cancelled order as a DTO
      */
@@ -318,10 +443,10 @@ public class SalesOrderService {
     /**
      * Updates the price of an order item.
      *
-     * @param orderId the order ID
-     * @param itemId the order item ID
-     * @param newPrice the new price
-     * @param reason the reason for the price change
+     * @param orderId   the order ID
+     * @param itemId    the order item ID
+     * @param newPrice  the new price
+     * @param reason    the reason for the price change
      * @param managerId ID of the manager making the change
      * @return the updated order as a DTO
      */
@@ -346,7 +471,7 @@ public class SalesOrderService {
 
         SalesOrder updatedOrder = salesOrderRepository.save(order);
 
-        log.info(messageService.get("sales.order.price.updated.log",
+        log.info(logMsg.get("sales.order.price.updated.log",
                 orderId, itemId, oldPrice, newPrice, managerId, reason));
 
         return salesOrderConverter.toDto(updatedOrder);
@@ -355,11 +480,11 @@ public class SalesOrderService {
     /**
      * Updates the quantity of an order item.
      *
-     * @param orderId the order ID
-     * @param itemId the order item ID
+     * @param orderId     the order ID
+     * @param itemId      the order item ID
      * @param newQuantity the new quantity
-     * @param reason the reason for the quantity change
-     * @param managerId ID of the manager making the change
+     * @param reason      the reason for the quantity change
+     * @param managerId   ID of the manager making the change
      * @return the updated order as a DTO
      */
     @Transactional
@@ -394,7 +519,7 @@ public class SalesOrderService {
         order.recalculateTotals();
         SalesOrder updatedOrder = salesOrderRepository.save(order);
 
-        log.info(messageService.get("sales.order.quantity.updated.log",
+        log.info(logMsg.get("sales.order.quantity.updated.log",
                 orderId, itemId, oldQuantity, newQuantity, managerId, reason));
 
         return salesOrderConverter.toDto(updatedOrder);
@@ -403,11 +528,11 @@ public class SalesOrderService {
     /**
      * Adds a new item to an existing order.
      *
-     * @param orderId the order ID
-     * @param productId the product ID to add
-     * @param quantity the quantity to add
+     * @param orderId     the order ID
+     * @param productId   the product ID to add
+     * @param quantity    the quantity to add
      * @param customPrice optional custom price (overrides product price)
-     * @param managerId ID of the manager making the change
+     * @param managerId   ID of the manager making the change
      * @return the updated order as a DTO
      */
     @Transactional
@@ -443,7 +568,7 @@ public class SalesOrderService {
 
         SalesOrder updatedOrder = salesOrderRepository.save(order);
 
-        log.info(messageService.get("sales.order.item.added.log",
+        log.info(logMsg.get("sales.order.item.added.log",
                 orderId, productId, quantity, managerId));
 
         return salesOrderConverter.toDto(updatedOrder);
@@ -452,8 +577,8 @@ public class SalesOrderService {
     /**
      * Removes an item from an existing order.
      *
-     * @param orderId the order ID
-     * @param itemId the order item ID
+     * @param orderId   the order ID
+     * @param itemId    the order item ID
      * @param managerId ID of the manager making the change
      * @return the updated order as a DTO
      */
@@ -470,7 +595,7 @@ public class SalesOrderService {
 
         SalesOrder updatedOrder = salesOrderRepository.save(order);
 
-        log.info(messageService.get("sales.order.item.removed.log",
+        log.info(logMsg.get("sales.order.item.removed.log",
                 orderId, itemId, managerId));
 
         return salesOrderConverter.toDto(updatedOrder);
@@ -483,8 +608,8 @@ public class SalesOrderService {
     /**
      * Rolls back the status of an order.
      *
-     * @param orderId the order ID
-     * @param reason the reason for rollback
+     * @param orderId   the order ID
+     * @param reason    the reason for rollback
      * @param managerId ID of the manager performing the rollback
      * @return the updated order as a DTO
      * @throws RollbackNotAllowedException if rollback is not allowed for the current status
@@ -492,7 +617,7 @@ public class SalesOrderService {
     @Transactional
     public SalesOrderDto rollbackOrderStatus(Long orderId, String reason, Long managerId) {
 
-        log.info(messageService.get("sales.order.rollback.start.log", orderId, managerId, reason));
+        log.info(logMsg.get("sales.order.rollback.start.log", orderId, managerId, reason));
 
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
         OrderStatus currentStatus = order.getStatus();
@@ -504,13 +629,13 @@ public class SalesOrderService {
         OrderStatus targetStatus = currentStatus.getRollbackTargetForSale();
         OrderStatus oldStatus = order.getStatus();
 
-        performRollbackActions(order, oldStatus, targetStatus, reason, managerId);
+        performRollbackActions(order, oldStatus);
         order.setStatus(targetStatus);
         addRollbackNote(order, oldStatus, targetStatus, reason, managerId);
 
         SalesOrder updatedOrder = salesOrderRepository.save(order);
 
-        log.info(messageService.get("sales.order.rollback.success.log",
+        log.info(logMsg.get("sales.order.rollback.success.log",
                 orderId, oldStatus, targetStatus, managerId, reason));
 
         return salesOrderConverter.toDto(updatedOrder);
@@ -523,8 +648,8 @@ public class SalesOrderService {
     /**
      * Adds a note to an existing order.
      *
-     * @param orderId the order ID
-     * @param note the note text
+     * @param orderId   the order ID
+     * @param note      the note text
      * @param managerId ID of the manager adding the note
      * @return the updated order as a DTO
      */
@@ -544,7 +669,7 @@ public class SalesOrderService {
 
         SalesOrder updatedOrder = salesOrderRepository.save(order);
 
-        log.info(messageService.get("sales.order.note.added.log", orderId, managerId));
+        log.info(logMsg.get("sales.order.note.added.log", orderId, managerId));
 
         return salesOrderConverter.toDto(updatedOrder);
     }
@@ -575,15 +700,10 @@ public class SalesOrderService {
                 .build();
     }
 
-    /**
-     * Calculates the total amount spent by a user across all completed orders.
-     *
-     * @param userId the user ID
-     * @return total amount spent
-     */
     @Transactional(readOnly = true)
-    public BigDecimal getUserTotalSpent(Long userId) {
-        return salesOrderRepository.getTotalSpentByUser(userId);
+    public SalesOrder getSalesOrderEntityByNumber(String orderNumber) {
+        return salesOrderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new OrderNotFoundException(orderNumber));
     }
 
     // =========================================================================
@@ -602,7 +722,7 @@ public class SalesOrderService {
                 product.setQuantityInStock(newQuantity);
                 productRepository.save(product);
 
-                log.debug(messageService.get("sales.order.stock.restored",
+                log.debug(logMsg.get("sales.order.stock.restored",
                         item.getProductId(), item.getQuantity()));
             });
         }
@@ -611,17 +731,12 @@ public class SalesOrderService {
     /**
      * Performs specific actions based on the status being rolled back.
      *
-     * @param order the order being rolled back
+     * @param order     the order being rolled back
      * @param oldStatus the original status
-     * @param newStatus the target status
-     * @param reason the rollback reason
-     * @param managerId ID of the manager performing the rollback
      */
     private void performRollbackActions(SalesOrder order,
-                                        OrderStatus oldStatus,
-                                        OrderStatus newStatus,
-                                        String reason,
-                                        Long managerId) {
+                                        OrderStatus oldStatus
+    ) {
         switch (oldStatus) {
             case PAID:
                 reversePayment(order);
@@ -637,17 +752,17 @@ public class SalesOrderService {
                 order.setDeliveredAt(null);
                 break;
             default:
-                log.debug(messageService.get("sales.order.rollback.no.action", oldStatus));
+                log.debug(logMsg.get("sales.order.rollback.no.action", oldStatus));
         }
     }
 
     /**
      * Adds a rollback note to the order.
      *
-     * @param order the order
+     * @param order     the order
      * @param oldStatus the original status
      * @param newStatus the target status
-     * @param reason the rollback reason
+     * @param reason    the rollback reason
      * @param managerId ID of the manager performing the rollback
      */
     private void addRollbackNote(SalesOrder order,
@@ -671,14 +786,40 @@ public class SalesOrderService {
     }
 
     private void reversePayment(SalesOrder order) {
-        log.debug(messageService.get("sales.order.rollback.payment.reversed", order.getId()));
+        log.debug(logMsg.get("sales.order.rollback.payment.reversed", order.getId()));
     }
 
     private void releaseReservedStock(SalesOrder order) {
-        log.debug(messageService.get("sales.order.rollback.stock.released", order.getId()));
+        log.debug(logMsg.get("sales.order.rollback.stock.released", order.getId()));
     }
 
     private void cancelShipment(SalesOrder order) {
-        log.debug(messageService.get("sales.order.rollback.shipment.cancelled", order.getId()));
+        log.debug(logMsg.get("sales.order.rollback.shipment.cancelled", order.getId()));
     }
+
+    @Transactional(readOnly = true)
+    public BigDecimal getUserTotalSpent(Long userId) {
+        // Получаем все заказы пользователя
+        List<SalesOrder> orders = salesOrderRepository.findByUserId(userId);
+
+        BigDecimal totalSpent = BigDecimal.ZERO;
+
+        for (SalesOrder order : orders) {
+            // Получаем все счета для заказа
+            List<Invoice> invoices = invoiceRepository.findBySalesOrderId(order.getId());
+
+            for (Invoice invoice : invoices) {
+                // Суммируем оплаченные суммы (INCOME транзакции)
+                BigDecimal paid = cashTransactionRepository.findByInvoiceId(invoice.getId()).stream()
+                        .filter(tx -> tx.getTransactionType() == TransactionType.INCOME)
+                        .map(CashTransaction::getAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                totalSpent = totalSpent.add(paid);
+            }
+        }
+
+        return totalSpent;
+    }
+
 }

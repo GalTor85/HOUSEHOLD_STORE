@@ -248,6 +248,10 @@ public final class TechnicalConstants {
      */
     public static final int MAX_METADATA_LENGTH = 2000;
 
+    public static final long BYTES_IN_KB = 1024L;
+    public static final long BYTES_IN_MB = BYTES_IN_KB * 1024L;
+    public static final long BYTES_IN_GB = BYTES_IN_MB * 1024L;
+
     // =========================================================================
     // REGEX PATTERNS
     // =========================================================================
@@ -488,6 +492,11 @@ public final class TechnicalConstants {
      * Maximum email length
      */
     public static final int MAX_EMAIL_LENGTH = 100;
+
+    /**
+     * Default source for self-registration.
+     */
+    public static final String SELF_REGISTRATION_SOURCE = "self-registration";
 
     // =========================================================================
     // PHONE

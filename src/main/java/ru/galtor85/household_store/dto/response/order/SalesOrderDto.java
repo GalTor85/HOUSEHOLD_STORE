@@ -95,6 +95,9 @@ public class SalesOrderDto {
     @Schema(description = "Payment details (transaction ID)", example = "txn_123456")
     private String paymentDetails;
 
+    @Schema(description = "Payment summary for the order")
+    private PaymentSummaryDto paymentSummary;
+
     // =========================================================================
     // DELIVERY FIELDS
     // =========================================================================

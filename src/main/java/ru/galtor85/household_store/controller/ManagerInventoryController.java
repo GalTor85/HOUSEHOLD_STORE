@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import ru.galtor85.household_store.dto.request.stock.StockTransferRequest;
 import ru.galtor85.household_store.dto.response.product.ProductDto;
 import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
 import ru.galtor85.household_store.dto.response.product.ProductStockDistributionDto;
@@ -24,6 +25,7 @@ import ru.galtor85.household_store.dto.request.stock.StockWriteOffRequest;
 import ru.galtor85.household_store.dto.request.warehouse.StorageCellCreateRequest;
 import ru.galtor85.household_store.dto.request.warehouse.WarehouseCreateRequest;
 import ru.galtor85.household_store.dto.response.stock.ProductAvailabilityWithWarehousesDto;
+import ru.galtor85.household_store.dto.response.stock.StockTransferResponseDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
 import ru.galtor85.household_store.dto.response.warehouse.StorageCellDto;
@@ -33,6 +35,7 @@ import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.entity.warehouse.CellType;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.mapper.warehouse.WarehouseMapper;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.manager.ManagerProductService;
 import ru.galtor85.household_store.service.manager.ManagerPurchaseService;
@@ -78,6 +81,7 @@ public class ManagerInventoryController extends BaseController {
 
     private final ManagerProductService managerProductService;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final WarehouseService warehouseService;
     private final StockService stockService;
     private final WarehouseMapper warehouseMapper;
@@ -472,7 +476,7 @@ public class ManagerInventoryController extends BaseController {
             @Parameter(description = "Include invisible warehouses", example = "false")
             @RequestParam(defaultValue = "false") boolean includeInvisible) {
 
-        log.debug(messageService.get("manager.stock.warehouses.for.sale.start", includeInvisible));
+        log.debug(logMsg.get("manager.stock.warehouses.for.sale.start", includeInvisible));
 
         List<WarehouseDto> warehouses = stockDisplayService.getWarehousesForSale(includeInvisible);
 
@@ -497,11 +501,11 @@ public class ManagerInventoryController extends BaseController {
             @Parameter(description = "Visible for sale", example = "true", required = true)
             @RequestParam boolean visible) {
 
-        log.info(messageService.get("manager.stock.warehouse.visibility.start", warehouseId, visible));
+        	log.info(logMsg.get("manager.stock.warehouse.visibility.start", warehouseId, visible));
 
         WarehouseDto warehouse = stockDisplayService.toggleWarehouseVisibility(warehouseId, visible);
 
-        log.info(messageService.get("manager.stock.warehouse.visibility.complete", warehouseId, visible));
+        	log.info(logMsg.get("manager.stock.warehouse.visibility.complete", warehouseId, visible));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.stock.warehouse.visibility.updated"),
@@ -657,26 +661,6 @@ public class ManagerInventoryController extends BaseController {
     // =========================================================================
 
     /**
-     * Gets stock movements for a product.
-     *
-     * @param productId product ID
-     * @return list of stock movement DTOs
-     */
-    @GetMapping("/movements/product/{productId}")
-    @Operation(summary = "Get stock movements for product",
-            description = "Retrieves all stock movements (receipts, shipments, transfers) for a product")
-    public ResponseEntity<ApiResponse<List<StockMovementDto>>> getProductMovements(
-            @Parameter(description = "Product ID", example = "1", required = true)
-            @PathVariable Long productId) {
-
-        List<StockMovementDto> movements = warehouseService.getProductMovements(productId);
-
-        return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("manager.movements.fetched"),
-                movements));
-    }
-
-    /**
      * Gets stock movements for a cell.
      *
      * @param cellId cell ID
@@ -694,6 +678,29 @@ public class ManagerInventoryController extends BaseController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.movements.fetched"),
                 movements));
+    }
+
+    /**
+     * Transfers stock between warehouses or cells.
+     *
+     * @param request transfer request
+     * @return transfer response
+     */
+    @PostMapping("/stock/transfer")
+    @Operation(summary = "Transfer stock between warehouses or cells",
+            description = "Transfers specified quantity of product from source to destination")
+    public ResponseEntity<ApiResponse<StockTransferResponseDto>> transferStock(
+            @Valid @RequestBody StockTransferRequest request) {
+
+        User manager = getCurrentUser();
+        	log.info(logMsg.get("manager.stock.transfer.start",
+                request.getProductId(), request.getQuantity()));
+
+        StockTransferResponseDto response = stockService.transferStock(request, manager.getId());
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.stock.transfer.success"),
+                response));
     }
 
     // =========================================================================
@@ -865,7 +872,7 @@ public class ManagerInventoryController extends BaseController {
             @Parameter(description = "Include invisible warehouses", example = "false")
             @RequestParam(defaultValue = "false") boolean includeInvisible) {
 
-        log.debug(messageService.get("manager.stock.availability.manager.start", productId, includeInvisible));
+        log.debug(logMsg.get("manager.stock.availability.manager.start", productId, includeInvisible));
 
         ProductAvailabilityWithWarehousesDto availability = stockDisplayService
                 .getProductAvailabilityForManager(productId, includeInvisible);
@@ -1019,8 +1026,6 @@ public class ManagerInventoryController extends BaseController {
                 messageService.get("stock.movements.fetched"),
                 movements));
     }
-
-
 
     /**
      * Gets movements by batch number.

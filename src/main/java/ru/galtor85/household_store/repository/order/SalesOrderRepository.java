@@ -3,7 +3,6 @@ package ru.galtor85.household_store.repository.order;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,69 +14,47 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Repository for SalesOrder entity.
+ * Provides methods for searching, filtering, and aggregating sales orders.
+ */
 @Repository
 public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
 
     // =========================================================================
-    // БАЗОВЫЕ ЗАПРОСЫ
+    // BASIC QUERIES
     // =========================================================================
 
     /**
-     * Находит заказ по номеру
+     * Finds a sales order by its unique order number.
+     *
+     * @param orderNumber the unique order number
+     * @return optional sales order
      */
     Optional<SalesOrder> findByOrderNumber(String orderNumber);
 
     /**
-     * Находит все заказы пользователя
+     * Finds all sales orders for a specific user.
+     *
+     * @param userId the user identifier
+     * @return list of sales orders
      */
     List<SalesOrder> findByUserId(Long userId);
 
-    /**
-     * Находит заказы пользователя с пагинацией
-     */
-    Page<SalesOrder> findByUserId(Long userId, Pageable pageable);
-
-    /**
-     * Находит заказы по статусу
-     */
-    Page<SalesOrder> findByStatus(OrderStatus status, Pageable pageable);
-
-    /**
-     * Находит заказы по трек-номеру
-     */
-    Optional<SalesOrder> findByTrackingNumber(String trackingNumber);
-
     // =========================================================================
-    // ЗАПРОСЫ С ФИЛЬТРАЦИЕЙ ПО ДАТАМ
+    // ADVANCED SEARCH
     // =========================================================================
 
     /**
-     * Находит заказы пользователя за период
-     */
-    @Query("SELECT so FROM SalesOrder so WHERE so.userId = :userId " +
-            "AND so.createdAt BETWEEN :startDate AND :endDate")
-    List<SalesOrder> findByUserIdAndCreatedAtBetween(@Param("userId") Long userId,
-                                                     @Param("startDate") LocalDateTime startDate,
-                                                     @Param("endDate") LocalDateTime endDate);
-
-    /**
-     * Находит заказы пользователя по статусу за период
-     */
-    @Query("SELECT so FROM SalesOrder so WHERE so.userId = :userId " +
-            "AND so.status = :status " +
-            "AND so.createdAt BETWEEN :startDate AND :endDate")
-    Page<SalesOrder> findByUserIdAndStatusAndCreatedAtBetween(@Param("userId") Long userId,
-                                                              @Param("status") OrderStatus status,
-                                                              @Param("startDate") LocalDateTime startDate,
-                                                              @Param("endDate") LocalDateTime endDate,
-                                                              Pageable pageable);
-
-    // =========================================================================
-    // РАСШИРЕННЫЙ ПОИСК
-    // =========================================================================
-
-    /**
-     * Поиск заказов с фильтрацией
+     * Searches sales orders with optional filters.
+     * All parameters are optional - if null, the filter is ignored.
+     *
+     * @param userId    user identifier filter (optional)
+     * @param status    order status filter (optional)
+     * @param startDate start date filter (optional, inclusive)
+     * @param endDate   end date filter (optional, inclusive)
+     * @param pageable  pagination information
+     * @return page of matching sales orders
      */
     @Query("SELECT so FROM SalesOrder so WHERE " +
             "(COALESCE(:userId, so.userId) = so.userId) AND " +
@@ -90,130 +67,30 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
                             @Param("endDate") LocalDateTime endDate,
                             Pageable pageable);
 
-    /**
-     * Поиск заказов по тексту (номер заказа, трек-номер)
-     */
-    @Query("SELECT so FROM SalesOrder so WHERE " +
-            "LOWER(so.orderNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "LOWER(so.trackingNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
-    Page<SalesOrder> searchByTerm(@Param("searchTerm") String searchTerm, Pageable pageable);
-
     // =========================================================================
-    // СТАТИСТИЧЕСКИЕ ЗАПРОСЫ
+    // STATISTICAL QUERIES
     // =========================================================================
 
     /**
-     * Подсчитывает количество заказов за период
+     * Counts the number of sales orders created within a date range.
+     *
+     * @param startDate start date (inclusive)
+     * @param endDate   end date (inclusive)
+     * @return total count of orders in the period
      */
     @Query("SELECT COUNT(so) FROM SalesOrder so WHERE so.createdAt BETWEEN :startDate AND :endDate")
     long countByCreatedAtBetween(@Param("startDate") LocalDateTime startDate,
                                  @Param("endDate") LocalDateTime endDate);
 
     /**
-     * Подсчитывает количество заказов пользователя за период
-     */
-    @Query("SELECT COUNT(so) FROM SalesOrder so WHERE so.userId = :userId " +
-            "AND so.createdAt BETWEEN :startDate AND :endDate")
-    long countByUserIdAndCreatedAtBetween(@Param("userId") Long userId,
-                                          @Param("startDate") LocalDateTime startDate,
-                                          @Param("endDate") LocalDateTime endDate);
-
-    /**
-     * Суммирует общую сумму заказов за период
+     * Sums the total amount of sales orders created within a date range.
+     *
+     * @param startDate start date (inclusive)
+     * @param endDate   end date (inclusive)
+     * @return total amount of orders in the period, or 0 if none
      */
     @Query("SELECT COALESCE(SUM(so.totalAmount), 0) FROM SalesOrder so " +
             "WHERE so.createdAt BETWEEN :startDate AND :endDate")
     BigDecimal sumTotalAmountByCreatedAtBetween(@Param("startDate") LocalDateTime startDate,
                                                 @Param("endDate") LocalDateTime endDate);
-
-    /**
-     * Суммирует общую сумму заказов пользователя за период
-     */
-    @Query("SELECT COALESCE(SUM(so.totalAmount), 0) FROM SalesOrder so " +
-            "WHERE so.userId = :userId AND so.createdAt BETWEEN :startDate AND :endDate")
-    BigDecimal sumTotalAmountByUserIdAndCreatedAtBetween(@Param("userId") Long userId,
-                                                         @Param("startDate") LocalDateTime startDate,
-                                                         @Param("endDate") LocalDateTime endDate);
-
-    /**
-     * Получает общую сумму всех заказов пользователя
-     */
-    @Query("SELECT COALESCE(SUM(so.totalAmount), 0) FROM SalesOrder so WHERE so.userId = :userId")
-    BigDecimal getTotalSpentByUser(@Param("userId") Long userId);
-
-    // =========================================================================
-    // АНАЛИТИЧЕСКИЕ ЗАПРОСЫ
-    // =========================================================================
-
-    /**
-     * Получает топ продаваемых товаров
-     */
-    @Query("SELECT soi.productId, SUM(soi.quantity) as totalSold " +
-            "FROM SalesOrderItem soi " +
-            "JOIN soi.salesOrder so " +
-            "WHERE so.status = 'COMPLETED' " +
-            "GROUP BY soi.productId " +
-            "ORDER BY totalSold DESC")
-    List<Object[]> findTopSellingProducts(Pageable pageable);
-
-    /**
-     * Получает статистику заказов по дням за период
-     */
-    @Query("SELECT DATE(so.createdAt), COUNT(so), SUM(so.totalAmount) " +
-            "FROM SalesOrder so " +
-            "WHERE so.createdAt BETWEEN :startDate AND :endDate " +
-            "GROUP BY DATE(so.createdAt) " +
-            "ORDER BY DATE(so.createdAt)")
-    List<Object[]> getDailyStats(@Param("startDate") LocalDateTime startDate,
-                                 @Param("endDate") LocalDateTime endDate);
-
-    /**
-     * Получает статистику по статусам заказов
-     */
-    @Query("SELECT so.status, COUNT(so), SUM(so.totalAmount) " +
-            "FROM SalesOrder so " +
-            "GROUP BY so.status")
-    List<Object[]> getStatsByStatus();
-
-    // =========================================================================
-    // ОБНОВЛЕНИЯ
-    // =========================================================================
-
-    /**
-     * Обновляет статус заказа
-     */
-    @Modifying
-    @Query("UPDATE SalesOrder so SET so.status = :status WHERE so.id = :orderId")
-    int updateOrderStatus(@Param("orderId") Long orderId,
-                          @Param("status") OrderStatus status);
-
-    /**
-     * Обновляет трек-номер заказа
-     */
-    @Modifying
-    @Query("UPDATE SalesOrder so SET so.trackingNumber = :trackingNumber WHERE so.id = :orderId")
-    int updateTrackingNumber(@Param("orderId") Long orderId,
-                             @Param("trackingNumber") String trackingNumber);
-    @Query("SELECT so FROM SalesOrder so WHERE so.userId = :userId AND so.status = :status")
-    Page<SalesOrder> findByUserIdAndStatus(@Param("userId") Long userId,
-                                           @Param("status") OrderStatus status,
-                                           Pageable pageable);
-
-    @Query("SELECT so FROM SalesOrder so WHERE so.createdAt BETWEEN :startDate AND :endDate")
-    Page<SalesOrder> findByCreatedAtBetween(@Param("startDate") LocalDateTime startDate,
-                                            @Param("endDate") LocalDateTime endDate,
-                                            Pageable pageable);
-
-    @Query("SELECT so FROM SalesOrder so WHERE so.status = :status AND so.createdAt BETWEEN :startDate AND :endDate")
-    Page<SalesOrder> findByStatusAndCreatedAtBetween(@Param("status") OrderStatus status,
-                                                     @Param("startDate") LocalDateTime startDate,
-                                                     @Param("endDate") LocalDateTime endDate,
-                                                     Pageable pageable);
-
-    @Query("SELECT so FROM SalesOrder so WHERE so.userId = :userId AND so.createdAt BETWEEN :startDate AND :endDate")
-    Page<SalesOrder> findByUserIdAndCreatedAtBetween(@Param("userId") Long userId,
-                                                     @Param("startDate") LocalDateTime startDate,
-                                                     @Param("endDate") LocalDateTime endDate,
-                                                     Pageable pageable);
 }
-
