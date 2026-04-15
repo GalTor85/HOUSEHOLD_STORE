@@ -20,6 +20,7 @@ import ru.galtor85.household_store.processor.cart.CartProcessor;
 import ru.galtor85.household_store.repository.cart.CartItemRepository;
 import ru.galtor85.household_store.repository.cart.CartRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.cart.CartValidator;
 
@@ -48,6 +49,7 @@ public class CartService {
     private final CartProcessor cartProcessor;
     private final MessageService messageService;
     private final BusinessConfig businessConfig;
+    private final LogMessageService logMsg;
 
     // =========================================================================
     // CART RETRIEVAL
@@ -92,7 +94,7 @@ public class CartService {
      */
     @Transactional
     public CartDto addToCart(Long userId, AddToCartRequest request) {
-        log.info(messageService.get("cart.service.add.start", userId, request.getProductId(), request.getQuantity()));
+        log.info(logMsg.get("cart.service.add.start", userId, request.getProductId(), request.getQuantity()));
 
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ProductNotFoundException(request.getProductId()));
@@ -112,18 +114,18 @@ public class CartService {
             cartValidator.validateMaxQuantityPerItem(newQuantity);
             existingItem.setQuantity(newQuantity);
             cartItemRepository.save(existingItem);
-            log.debug(messageService.get("cart.service.item.updated", request.getProductId(), newQuantity));
+            log.debug(logMsg.get("cart.service.item.updated", request.getProductId(), newQuantity));
         } else {
             CartItem newItem = createCartItem(cart, product, request.getQuantity());
             cart.addItem(newItem);
             cartItemRepository.save(newItem);
-            log.debug(messageService.get("cart.service.item.added", request.getProductId()));
+            log.debug(logMsg.get("cart.service.item.added", request.getProductId()));
         }
 
         cart.recalculateTotal();
         Cart savedCart = cartRepository.save(cart);
 
-        log.info(messageService.get("cart.service.add.complete", userId, savedCart.getItemsCount()));
+        log.info(logMsg.get("cart.service.add.complete", userId, savedCart.getItemsCount()));
 
         return cartMapper.toDto(savedCart);
     }
@@ -138,7 +140,7 @@ public class CartService {
      */
     @Transactional
     public CartDto updateCartItem(Long userId, Long productId, UpdateCartItemRequest request) {
-        log.info(messageService.get("cart.service.update.start", userId, productId, request.getQuantity()));
+        log.info(logMsg.get("cart.service.update.start", userId, productId, request.getQuantity()));
 
         Cart cart = cartProcessor.findActiveCart(userId);
         CartItem item = findCartItemOrThrow(cart.getId(), productId);
@@ -146,7 +148,7 @@ public class CartService {
         if (request.getQuantity() <= 0) {
             cart.removeItem(item);
             cartItemRepository.delete(item);
-            log.debug(messageService.get("cart.service.item.removed", productId));
+            log.debug(logMsg.get("cart.service.item.removed", productId));
         } else {
             Product product = productRepository.findById(productId)
                     .orElseThrow(() -> new ProductNotFoundException(productId));
@@ -154,13 +156,13 @@ public class CartService {
 
             item.setQuantity(request.getQuantity());
             cartItemRepository.save(item);
-            log.debug(messageService.get("cart.service.item.updated", productId, request.getQuantity()));
+            log.debug(logMsg.get("cart.service.item.updated", productId, request.getQuantity()));
         }
 
         cart.recalculateTotal();
         Cart savedCart = cartRepository.save(cart);
 
-        log.info(messageService.get("cart.service.update.complete", userId, savedCart.getItemsCount()));
+        log.info(logMsg.get("cart.service.update.complete", userId, savedCart.getItemsCount()));
 
         return cartMapper.toDto(savedCart);
     }
@@ -174,7 +176,7 @@ public class CartService {
      */
     @Transactional
     public CartDto removeFromCart(Long userId, Long productId) {
-        log.info(messageService.get("cart.service.remove.start", userId, productId));
+        log.info(logMsg.get("cart.service.remove.start", userId, productId));
 
         Cart cart = cartProcessor.findActiveCart(userId);
         CartItem item = findCartItemOrThrow(cart.getId(), productId);
@@ -185,7 +187,7 @@ public class CartService {
         cart.recalculateTotal();
         Cart savedCart = cartRepository.save(cart);
 
-        log.info(messageService.get("cart.service.remove.complete", userId));
+        log.info(logMsg.get("cart.service.remove.complete", userId));
 
         return cartMapper.toDto(savedCart);
     }
@@ -197,14 +199,14 @@ public class CartService {
      */
     @Transactional
     public void clearCart(Long userId) {
-        log.info(messageService.get("cart.service.clear.start", userId));
+        log.info(logMsg.get("cart.service.clear.start", userId));
 
         Cart cart = cartProcessor.findActiveCart(userId);
         cartItemRepository.deleteByCartId(cart.getId());
         cart.clear();
         cartRepository.save(cart);
 
-        log.info(messageService.get("cart.service.clear.complete", userId));
+        log.info(logMsg.get("cart.service.clear.complete", userId));
     }
 
     // =========================================================================
@@ -220,7 +222,7 @@ public class CartService {
      */
     @Transactional
     public CartDto checkoutCart(Long userId) {
-        log.info(messageService.get("cart.service.checkout.start", userId));
+        log.info(logMsg.get("cart.service.checkout.start", userId));
 
         Cart cart = cartProcessor.findActiveCart(userId);
         cartValidator.validateCartNotEmpty(cart);
@@ -230,7 +232,7 @@ public class CartService {
         cart.setExpiresAt(LocalDateTime.now().plusDays(expiryDays));
         Cart savedCart = cartRepository.save(cart);
 
-        log.info(messageService.get("cart.service.checkout.complete", userId, savedCart.getId()));
+        log.info(logMsg.get("cart.service.checkout.complete", userId, savedCart.getId()));
 
         return cartMapper.toDto(savedCart);
     }
@@ -244,59 +246,10 @@ public class CartService {
     public void completeCart(Long userId) {
         Cart cart = cartProcessor.findActiveCart(userId);
         cartProcessor.completeCart(cart);
-        log.info(messageService.get("cart.service.completed", userId, cart.getId()));
+        log.info(logMsg.get("cart.service.completed", userId, cart.getId()));
     }
 
-    /**
-     * Marks the cart as abandoned (user left checkout)
-     *
-     * @param userId user identifier
-     */
-    @Transactional
-    public void abandonCart(Long userId) {
-        Cart cart = cartProcessor.findActiveCart(userId);
-        cart.setStatus(CartStatus.ABANDONED);
-        cartRepository.save(cart);
-        log.info(messageService.get("cart.service.abandoned", userId, cart.getId()));
-    }
-
-    // =========================================================================
-    // STATISTICS
-    // =========================================================================
-
-    /**
-     * Gets the total number of items in the user's cart
-     *
-     * @param userId user identifier
-     * @return number of items (0 if no active cart)
-     */
-    @Transactional(readOnly = true)
-    public int getCartItemsCount(Long userId) {
-        try {
-            Cart cart = cartProcessor.findActiveCart(userId);
-            return cart.getItemsCount() != null ? cart.getItemsCount() : 0;
-        } catch (CartNotFoundException e) {
-            return 0;
-        }
-    }
-
-    /**
-     * Gets the total amount of the user's cart
-     *
-     * @param userId user identifier
-     * @return total amount (0 if no active cart)
-     */
-    @Transactional(readOnly = true)
-    public BigDecimal getCartTotal(Long userId) {
-        try {
-            Cart cart = cartProcessor.findActiveCart(userId);
-            return cart.getTotalAmount() != null ? cart.getTotalAmount() : BigDecimal.ZERO;
-        } catch (CartNotFoundException e) {
-            return BigDecimal.ZERO;
-        }
-    }
-
-    // =========================================================================
+     // =========================================================================
     // PRIVATE HELPER METHODS
     // =========================================================================
 

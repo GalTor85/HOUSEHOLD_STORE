@@ -91,8 +91,9 @@ public class PurchaseOrder {
     @Column(name = "payment_due")
     private LocalDate paymentDue;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "payment_status")
-    private String paymentStatus;
+    private OrderPaymentStatus paymentStatus;
 
     // =========================================================================
     // FINANCIAL FIELDS

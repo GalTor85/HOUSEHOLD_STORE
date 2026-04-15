@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.config.PaymentConfig;
 import ru.galtor85.household_store.entity.payment.PaymentProvider;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.payment.gateway.PaymentProviderConfig;
 import ru.galtor85.household_store.service.payment.gateway.UniversalPaymentGateway;
@@ -42,6 +43,7 @@ public class PaymentGatewayFactory {
 
     private final PaymentConfig paymentConfig;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final Map<PaymentProvider, UniversalPaymentGateway> gateways = new ConcurrentHashMap<>();
 
     // =========================================================================
@@ -57,31 +59,9 @@ public class PaymentGatewayFactory {
     public UniversalPaymentGateway getGateway(PaymentProvider provider) {
         if (provider == PaymentProvider.CASH_REGISTER) {
             PaymentProviderConfig cashConfig = buildCashRegisterConfig();
-            return new UniversalPaymentGateway(cashConfig, paymentConfig, messageService);
+            return new UniversalPaymentGateway(cashConfig, paymentConfig, messageService,logMsg);
         }
         return gateways.computeIfAbsent(provider, this::createGateway);
-    }
-
-    /**
-     * Adds or updates a gateway configuration at runtime.
-     *
-     * @param provider the payment provider
-     * @param config   the provider configuration
-     */
-    public void registerGateway(PaymentProvider provider, PaymentProviderConfig config) {
-        gateways.put(provider, new UniversalPaymentGateway(config, paymentConfig, messageService));
-        log.info(messageService.get("payment.gateway.factory.registered", provider));
-    }
-
-    /**
-     * Reloads the gateway configuration for a provider.
-     *
-     * @param provider the payment provider to reload
-     */
-    public void reloadGateway(PaymentProvider provider) {
-        gateways.remove(provider);
-        getGateway(provider);
-        log.info(messageService.get("payment.gateway.factory.reloaded", provider));
     }
 
     // =========================================================================
@@ -97,10 +77,10 @@ public class PaymentGatewayFactory {
     private UniversalPaymentGateway createGateway(PaymentProvider provider) {
         PaymentProviderConfig config = getConfigForProvider(provider);
 
-        log.info(messageService.get("payment.gateway.factory.creating",
+        log.info(logMsg.get("payment.gateway.factory.creating",
                 provider, config.getPaymentUrl()));
 
-        return new UniversalPaymentGateway(config, paymentConfig, messageService);
+        return new UniversalPaymentGateway(config, paymentConfig, messageService, logMsg);
     }
 
     // =========================================================================
@@ -114,13 +94,13 @@ public class PaymentGatewayFactory {
      * @return PaymentProviderConfig with all settings from properties
      */
     private PaymentProviderConfig getConfigForProvider(PaymentProvider provider) {
-        log.debug(messageService.get("payment.gateway.factory.building.config", provider));
+        log.debug(logMsg.get("payment.gateway.factory.building.config", provider));
 
         PaymentConfig.ProvidersConfig.ProviderConfig cfg = getProviderConfig(provider);
 
         // Use mock config for providers without real integration
         if (cfg == null) {
-            log.warn(messageService.get("payment.gateway.factory.no.config", provider));
+            log.warn(logMsg.get("payment.gateway.factory.no.config", provider));
             return buildMockConfig(provider);
         }
 

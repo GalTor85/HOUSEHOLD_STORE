@@ -1,9 +1,13 @@
 package ru.galtor85.household_store.entity.order;
 
+import lombok.Getter;
+import ru.galtor85.household_store.entity.finance.TransactionType;
+
 /**
  * Order type enumeration for payment transactions.
  * Distinguishes between purchase orders (supplier payments) and sales orders (customer payments).
  */
+@Getter
 public enum OrderType {
 
     /** Purchase order - payment to supplier */
@@ -12,19 +16,17 @@ public enum OrderType {
     /** Sales order - payment from customer */
     SALES("SALES");
 
+    private static final String PAYMENT = "payment";
+    private static final String RECEIPT = "receipt";
+
+    /**
+     * -- GETTER --
+     *  Gets the string code of the order type.
+     */
     private final String code;
 
     OrderType(String code) {
         this.code = code;
-    }
-
-    /**
-     * Gets the string code of the order type.
-     *
-     * @return order type code
-     */
-    public String getCode() {
-        return code;
     }
 
     /**
@@ -44,20 +46,12 @@ public enum OrderType {
     }
 
     /**
-     * Checks if this is a purchase order type.
+     * Returns the payment type for the given transaction type.
      *
-     * @return true if PURCHASE
+     * @param transactionType the transaction type
+     * @return payment type (PAYMENT or RECEIPT)
      */
-    public boolean isPurchase() {
-        return this == PURCHASE;
-    }
-
-    /**
-     * Checks if this is a sales order type.
-     *
-     * @return true if SALES
-     */
-    public boolean isSales() {
-        return this == SALES;
+    public String getPaymentType(TransactionType transactionType) {
+        return transactionType == TransactionType.EXPENSE ? PAYMENT : RECEIPT;
     }
 }

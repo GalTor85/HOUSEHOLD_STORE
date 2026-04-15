@@ -13,11 +13,14 @@ import ru.galtor85.household_store.mapper.product.ProductAttributeMapper;
 import ru.galtor85.household_store.mapper.product.ProductMapper;
 import ru.galtor85.household_store.repository.product.ProductAttributeRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.validator.product.ProductValidator;
 
 import java.util.List;
 
+/**
+ * Processor for creating product variants.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -28,11 +31,40 @@ public class ProductVariantProcessor {
     private final ProductMapper productMapper;
     private final ProductAttributeMapper attributeMapper;
     private final ProductValidator validator;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
+    /**
+     * Creates a variant for a parent product.
+     *
+     * @param parentProductId the parent product ID
+     * @param variantRequest  the variant creation request
+     * @param managerId       the manager ID
+     * @return created variant DTO
+     * @throws ProductVariantException if creation fails
+     */
     @Transactional
     public ProductDto createVariant(Long parentProductId, ProductCreateRequest variantRequest,
                                     Long managerId) {
+        return createVariantInternal(parentProductId, variantRequest, managerId);
+    }
+
+    /**
+     * Creates multiple variants for a parent product.
+     *
+     * @param parentProduct   the parent product
+     * @param variantRequests list of variant creation requests
+     * @param managerId       the manager ID
+     */
+    @Transactional
+    public void createVariants(Product parentProduct, List<ProductCreateRequest> variantRequests,
+                               Long managerId) {
+        for (ProductCreateRequest variantRequest : variantRequests) {
+            createVariantInternal(parentProduct.getId(), variantRequest, managerId);
+        }
+    }
+
+    private ProductDto createVariantInternal(Long parentProductId, ProductCreateRequest variantRequest,
+                                             Long managerId) {
 
         Product parentProduct = validator.validateProductExists(parentProductId);
 
@@ -51,11 +83,12 @@ public class ProductVariantProcessor {
             Product savedVariant = productRepository.save(variant);
 
             if (variantRequest.getAttributes() != null && !variantRequest.getAttributes().isEmpty()) {
-                List<ProductAttribute> attributes = attributeMapper.toEntityList(variantRequest.getAttributes(), savedVariant);
+                List<ProductAttribute> attributes = attributeMapper.toEntityList(
+                        variantRequest.getAttributes(), savedVariant);
                 attributeRepository.saveAll(attributes);
             }
 
-            log.info(messageService.get(
+            log.info(logMsg.get(
                     "manager.product.variant.created.log",
                     savedVariant.getSku(),
                     savedVariant.getId(),
@@ -65,19 +98,12 @@ public class ProductVariantProcessor {
             return productMapper.toDto(savedVariant);
 
         } catch (Exception e) {
-            log.error(messageService.get(
+            log.error(logMsg.get(
                     "manager.product.variant.log.error",
                     parentProductId,
                     e.getMessage()
             ));
             throw new ProductVariantException(parentProductId);
-        }
-    }
-
-    public void createVariants(Product parentProduct, List<ProductCreateRequest> variantRequests,
-                               Long managerId) {
-        for (ProductCreateRequest variantRequest : variantRequests) {
-            createVariant(parentProduct.getId(), variantRequest, managerId);
         }
     }
 }

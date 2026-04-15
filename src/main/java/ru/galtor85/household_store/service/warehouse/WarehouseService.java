@@ -16,8 +16,8 @@ import ru.galtor85.household_store.dto.request.warehouse.WarehouseCreateRequest;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
 import ru.galtor85.household_store.dto.response.warehouse.StorageCellDto;
 import ru.galtor85.household_store.dto.response.warehouse.WarehouseDto;
-import ru.galtor85.household_store.entity.warehouse.CellType;
 import ru.galtor85.household_store.entity.product.Product;
+import ru.galtor85.household_store.entity.warehouse.CellType;
 import ru.galtor85.household_store.entity.warehouse.StorageCell;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.mapper.warehouse.StorageCellMapper;
@@ -28,7 +28,7 @@ import ru.galtor85.household_store.processor.stock.StockMovementProcessor;
 import ru.galtor85.household_store.processor.warehouse.WarehouseManagementProcessor;
 import ru.galtor85.household_store.repository.warehouse.StorageCellRepository;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.validator.cell.CellValidationHelper;
 import ru.galtor85.household_store.validator.product.ProductValidator;
 import ru.galtor85.household_store.validator.warehouse.WarehouseValidator;
@@ -61,7 +61,7 @@ public class WarehouseService {
     private final StorageCellRepository storageCellRepository;
     private final WarehouseMapper warehouseMapper;
     private final StorageCellMapper cellMapper;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final BusinessConfig businessConfig;
 
     // Validators
@@ -88,7 +88,7 @@ public class WarehouseService {
      */
     @Transactional
     public WarehouseDto createWarehouse(WarehouseCreateRequest request, Long createdBy) {
-        log.info(messageService.get("warehouse.service.create.start", request.getCode()));
+        log.info(logMsg.get("warehouse.service.create.start", request.getCode()));
 
         // Validate uniqueness
         warehouseValidator.validateWarehouseCodeUnique(request.getCode());
@@ -104,7 +104,7 @@ public class WarehouseService {
         // Create warehouse
         WarehouseDto result = warehouseProcessor.createWarehouse(request, createdBy);
 
-        log.info(messageService.get("warehouse.service.created", result.getCode(), result.getId()));
+        log.info(logMsg.get("warehouse.service.created", result.getCode(), result.getId()));
 
         return result;
     }
@@ -117,7 +117,7 @@ public class WarehouseService {
      */
     @Transactional(readOnly = true)
     public WarehouseDto getWarehouseById(Long warehouseId) {
-        log.debug(messageService.get("warehouse.service.get.by.id", warehouseId));
+        log.debug(logMsg.get("warehouse.service.get.by.id", warehouseId));
         Warehouse warehouse = warehouseValidator.validateWarehouseExists(warehouseId);
         return warehouseMapper.toDto(warehouse);
     }
@@ -145,12 +145,12 @@ public class WarehouseService {
         } else {
             warehouses = warehouseRepository.findAll(pageable);
             if (warehouses.isEmpty()) {
-                log.warn(messageService.get("warehouse.error.not.found"));
+                log.warn(logMsg.get("warehouse.error.not.found"));
                 throw new WarehouseNotFoundException();
             }
         }
 
-        log.debug(messageService.get("warehouse.log.fetched", warehouses.getTotalElements()));
+        log.debug(logMsg.get("warehouse.log.fetched", warehouses.getTotalElements()));
         return warehouses.map(warehouseMapper::toDto);
     }
 
@@ -169,10 +169,10 @@ public class WarehouseService {
     @Transactional
     public StorageCellDto addCell(Long warehouseId, StorageCellCreateRequest request,
                                   Long createdBy) {
-        log.info(messageService.get("warehouse.service.add.cell.start", warehouseId, request.getCode()));
+        log.info(logMsg.get("warehouse.service.add.cell.start", warehouseId, request.getCode()));
         Warehouse warehouse = warehouseValidator.validateWarehouseExists(warehouseId);
         StorageCellDto result = cellProcessor.addCell(warehouse, request, createdBy);
-        log.info(messageService.get("warehouse.service.add.cell.success", result.getCode()));
+        log.info(logMsg.get("warehouse.service.add.cell.success", result.getCode()));
         return result;
     }
 
@@ -187,7 +187,7 @@ public class WarehouseService {
     @Transactional
     public StorageCellDto assignProductToCell(Long cellId, Long productId,
                                               int quantity) {
-        log.info(messageService.get("warehouse.service.assign.product.start", cellId, productId, quantity));
+        log.info(logMsg.get("warehouse.service.assign.product.start", cellId, productId, quantity));
 
         // Find cell
         StorageCell cell = cellProcessor.findCellById(cellId);
@@ -204,7 +204,7 @@ public class WarehouseService {
         // Assign product to cell via processor
         StorageCell updatedCell = assignmentProcessor.assignProductToCell(cell, product, quantity);
 
-        log.info(messageService.get("warehouse.service.assign.product.success", productId, cellId));
+        log.info(logMsg.get("warehouse.service.assign.product.success", productId, cellId));
 
         return cellMapper.toDto(updatedCell);
     }
@@ -218,18 +218,18 @@ public class WarehouseService {
      */
     @Transactional
     public StorageCellDto clearCell(Long cellId, Long clearedBy) {
-        log.info(messageService.get("warehouse.service.clear.cell.start", cellId));
+        log.info(logMsg.get("warehouse.service.clear.cell.start", cellId));
 
         StorageCell cell = cellProcessor.findCellById(cellId);
 
         if (!cell.getIsOccupied()) {
-            log.warn(messageService.get("cell.log.already.empty", cellId));
+            log.warn(logMsg.get("cell.log.already.empty", cellId));
             return cellMapper.toDto(cell);
         }
 
         StorageCell updatedCell = cellProcessor.clearCell(cell, clearedBy);
 
-        log.info(messageService.get("warehouse.service.clear.cell.success", cellId));
+        log.info(logMsg.get("warehouse.service.clear.cell.success", cellId));
 
         return cellMapper.toDto(updatedCell);
     }
@@ -243,12 +243,12 @@ public class WarehouseService {
      */
     @Transactional(readOnly = true)
     public List<StorageCellDto> getAvailableCells(Long warehouseId, CellType cellType) {
-        log.debug(messageService.get("warehouse.service.get.available.cells", warehouseId, cellType));
+        log.debug(logMsg.get("warehouse.service.get.available.cells", warehouseId, cellType));
 
         List<StorageCell> cells = storageCellRepository
                 .findAvailableCellsByType(warehouseId, cellType);
 
-        log.debug(messageService.get("cell.log.available.fetched",
+        log.debug(logMsg.get("cell.log.available.fetched",
                 cells.size(), warehouseId, cellType));
 
         return cells.stream()
@@ -264,7 +264,7 @@ public class WarehouseService {
      */
     @Transactional(readOnly = true)
     public StorageCellDto getCellById(Long cellId) {
-        log.debug(messageService.get("warehouse.service.get.cell.by.id", cellId));
+        log.debug(logMsg.get("warehouse.service.get.cell.by.id", cellId));
         StorageCell cell = cellProcessor.findCellById(cellId);
         return cellMapper.toDto(cell);
     }
@@ -277,13 +277,13 @@ public class WarehouseService {
      */
     @Transactional(readOnly = true)
     public List<StorageCellDto> getWarehouseCells(Long warehouseId) {
-        log.debug(messageService.get("warehouse.service.get.warehouse.cells", warehouseId));
+        log.debug(logMsg.get("warehouse.service.get.warehouse.cells", warehouseId));
 
         warehouseValidator.validateWarehouseExists(warehouseId);
 
         List<StorageCell> cells = storageCellRepository.findByWarehouseId(warehouseId);
 
-        log.debug(messageService.get("warehouse.service.get.warehouse.cells.count", cells.size(), warehouseId));
+        log.debug(logMsg.get("warehouse.service.get.warehouse.cells.count", cells.size(), warehouseId));
 
         return cells.stream()
                 .map(cellMapper::toDto)
@@ -294,19 +294,7 @@ public class WarehouseService {
     // STOCK MOVEMENTS
     // =========================================================================
 
-    /**
-     * Retrieves stock movements for a product.
-     *
-     * @param productId product identifier
-     * @return list of stock movement DTOs
-     */
-    @Transactional(readOnly = true)
-    public List<StockMovementDto> getProductMovements(Long productId) {
-        log.debug(messageService.get("warehouse.service.get.product.movements", productId));
-        return movementProcessor.getProductMovements(productId);
-    }
-
-    /**
+       /**
      * Retrieves stock movements for a cell.
      *
      * @param cellId cell identifier
@@ -314,7 +302,7 @@ public class WarehouseService {
      */
     @Transactional(readOnly = true)
     public List<StockMovementDto> getCellMovements(Long cellId) {
-        log.debug(messageService.get("warehouse.service.get.cell.movements", cellId));
+        log.debug(logMsg.get("warehouse.service.get.cell.movements", cellId));
         return movementProcessor.getCellMovements(cellId);
     }
 }

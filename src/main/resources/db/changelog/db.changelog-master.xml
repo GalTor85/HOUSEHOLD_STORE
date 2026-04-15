@@ -73,4 +73,8 @@
         </addColumn>
     </changeSet>
 
+    <include file="db/changelog/xxx-add-payment-status-to-sales-orders.xml"/>
+
+    <include file="db/changelog/xxx-add-payment-status-to-purchase-orders.xml"/>
+
 </databaseChangeLog>

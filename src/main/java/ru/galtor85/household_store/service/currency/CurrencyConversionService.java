@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.dto.response.finance.CurrencyDto;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.math.BigDecimal;
 
@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 public class CurrencyConversionService {
 
     private final CurrencyService currencyService;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
      * Converts an amount to the base currency
@@ -33,7 +33,7 @@ public class CurrencyConversionService {
             }
             return currencyService.convert(amount, currencyCode, baseCurrency.getCode());
         } catch (Exception e) {
-            log.warn(messageService.get("currency.conversion.to.base.failed",
+            log.warn(logMsg.get("currency.conversion.to.base.failed",
                     currencyCode, e.getMessage()));
             return amount;
         }

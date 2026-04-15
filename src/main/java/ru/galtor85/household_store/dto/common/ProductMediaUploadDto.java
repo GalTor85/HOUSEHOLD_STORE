@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.dto.common;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -11,13 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_ALT_TEXT_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_CAPTION_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_METADATA_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_SORT_ORDER;
-import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_IS_MAIN;
-import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_IS_THUMBNAIL;
-import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_MEDIA_TYPE;
+import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 /**
  * DTO for product media upload.
@@ -34,10 +27,12 @@ public class ProductMediaUploadDto {
     private MultipartFile file;
 
     @Schema(description = "Is main image", example = "true", defaultValue = "false")
+    @Builder.Default
     private Boolean isMain = DEFAULT_IS_MAIN;
 
     @PositiveOrZero(message = "{product.media.validation.sortOrder.positive}")
     @Schema(description = "Sort order", example = "1", defaultValue = "0")
+    @Builder.Default
     private Integer sortOrder = DEFAULT_SORT_ORDER;
 
     @Size(max = MAX_ALT_TEXT_LENGTH, message = "{product.media.validation.altText.max}")
@@ -49,6 +44,7 @@ public class ProductMediaUploadDto {
     private String caption;
 
     @Schema(description = "Media type (IMAGE, VIDEO)", example = "IMAGE", defaultValue = "IMAGE")
+    @Builder.Default
     private String mediaType = DEFAULT_MEDIA_TYPE;
 
     @PositiveOrZero(message = "{product.media.validation.width.positive}")
@@ -62,117 +58,4 @@ public class ProductMediaUploadDto {
     @PositiveOrZero(message = "{product.media.validation.duration.positive}")
     @Schema(description = "Duration in seconds (for videos)", example = "30")
     private Integer duration;
-
-    @Schema(description = "Is this a thumbnail", example = "false", defaultValue = "false")
-    private Boolean isThumbnail = DEFAULT_IS_THUMBNAIL;
-
-    @Size(max = MAX_METADATA_LENGTH, message = "{product.media.validation.metadata.max}")
-    @Schema(description = "Additional metadata as JSON string")
-    private String metadata;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasFile() {
-        return file != null && !file.isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasIsMain() {
-        return isMain != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasSortOrder() {
-        return sortOrder != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasAltText() {
-        return altText != null && !altText.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasCaption() {
-        return caption != null && !caption.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasMediaType() {
-        return mediaType != null && !mediaType.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasWidth() {
-        return width != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasHeight() {
-        return height != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasDuration() {
-        return duration != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasIsThumbnail() {
-        return isThumbnail != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasMetadata() {
-        return metadata != null && !metadata.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isMainTrue() {
-        return Boolean.TRUE.equals(isMain);
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isThumbnailTrue() {
-        return Boolean.TRUE.equals(isThumbnail);
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedAltText() {
-        return altText != null ? altText.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedCaption() {
-        return caption != null ? caption.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedMediaType() {
-        return mediaType != null ? mediaType.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedMetadata() {
-        return metadata != null ? metadata.trim() : null;
-    }
 }

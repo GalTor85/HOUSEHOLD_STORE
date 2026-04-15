@@ -6,36 +6,47 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
+/**
+ * Generator for batch/lot numbers.
+ */
 @Component
 public class BatchNumberGenerator {
 
-    private static final DateTimeFormatter DATE_FORMAT =
-            DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final String BATCH_PREFIX = "BATCH-";
+    private static final String SEPARATOR = "-";
+    private static final int UUID_LENGTH = 8;
 
     /**
-     * Генерация номера партии на основе даты и случайного числа
+     * Generates batch number based on current date and random UUID.
+     *
+     * @return generated batch number
      */
     public String generateBatchNumber() {
-        String datePart = LocalDateTime.now().format(DATE_FORMAT);
-        String randomPart = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        return "BATCH-" + datePart + "-" + randomPart;
+        return generateBatchNumber(BATCH_PREFIX);
     }
 
     /**
-     * Генерация номера партии с префиксом
+     * Generates batch number with custom prefix.
+     *
+     * @param prefix custom prefix
+     * @return generated batch number
      */
     public String generateBatchNumber(String prefix) {
         String datePart = LocalDateTime.now().format(DATE_FORMAT);
-        String randomPart = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        return prefix + "-" + datePart + "-" + randomPart;
+        String randomPart = UUID.randomUUID().toString().substring(0, UUID_LENGTH).toUpperCase();
+        return prefix + SEPARATOR + datePart + SEPARATOR + randomPart;
     }
 
     /**
-     * Генерация номера партии на основе даты поставки
+     * Generates batch number based on specific date.
+     *
+     * @param date delivery date
+     * @return generated batch number
      */
     public String generateBatchNumber(LocalDateTime date) {
         String datePart = date.format(DATE_FORMAT);
-        String randomPart = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        return "BATCH-" + datePart + "-" + randomPart;
+        String randomPart = UUID.randomUUID().toString().substring(0, UUID_LENGTH).toUpperCase();
+        return BATCH_PREFIX + datePart + SEPARATOR + randomPart;
     }
 }

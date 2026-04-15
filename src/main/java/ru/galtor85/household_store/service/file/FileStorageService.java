@@ -10,6 +10,7 @@ import ru.galtor85.household_store.dto.response.user.SavedFileInfo;
 import ru.galtor85.household_store.entity.product.MediaType;
 import ru.galtor85.household_store.entity.product.ProductMedia;
 import ru.galtor85.household_store.processor.file.FileOperationProcessor;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.util.file.FileSystemHelper;
 import ru.galtor85.household_store.validator.file.FileValidator;
@@ -18,43 +19,54 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.UNKNOWN_FILE_NAME;
+
+/**
+ * Service for storing and managing files on disk.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class FileStorageService {
+
+    private static final String IMAGE_CONTENT_TYPE = "image/";
+    private static final String VIDEO_CONTENT_TYPE = "video/";
 
     private final FileValidator fileValidator;
     private final FileSystemHelper fileSystemHelper;
     private final FileOperationProcessor fileOperationProcessor;
     private final ProductMediaFactory mediaFactory;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
-     * Сохраняет файл на диск и возвращает сущность ProductMedia
+     * Stores file on disk and returns ProductMedia entity.
+     *
+     * @param file file to store
+     * @param productId product ID
+     * @param uploadedBy user ID who uploaded
+     * @return ProductMedia entity
+     * @throws IOException if file storage fails
      */
     public ProductMedia storeFile(MultipartFile file, Long productId, Long uploadedBy)
             throws IOException {
-        String originalFileName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
+        String originalFileName = file.getOriginalFilename() != null
+                ? file.getOriginalFilename()
+                : UNKNOWN_FILE_NAME;
 
         try {
-            // Валидация
             fileValidator.validateFile(file, productId, originalFileName);
 
-            // Создание директории
             Path productUploadPath = fileSystemHelper.createProductDirectory(productId);
-
-            // Генерация имени файла
             String storedFileName = fileSystemHelper.generateUniqueFileName(originalFileName);
             Path targetLocation = productUploadPath.resolve(storedFileName);
 
-            // Сохранение файла
             try (InputStream inputStream = file.getInputStream()) {
                 fileSystemHelper.saveFile(inputStream, targetLocation);
             }
 
-            log.debug(messageService.get("file.storage.upload.success", originalFileName));
+            log.debug(logMsg.get("file.storage.upload.success", originalFileName));
 
-            // Создание сущности через фабрику
             return mediaFactory.createProductMedia(
                     productId,
                     uploadedBy,
@@ -67,10 +79,8 @@ public class FileStorageService {
                     false
             );
 
-        } catch (FileStorageException e) {
-            throw e;
         } catch (IOException e) {
-            log.error(messageService.get("file.storage.upload.error", originalFileName, e.getMessage()), e);
+            log.error(logMsg.get("file.storage.upload.error", originalFileName, e.getMessage()), e);
             throw new FileStorageException(
                     messageService.get("file.storage.upload.error", originalFileName, e.getMessage()),
                     e, originalFileName, productId
@@ -79,37 +89,40 @@ public class FileStorageService {
     }
 
     /**
-     * Удаляет файл с диска
+     * Deletes file from disk.
+     *
+     * @param filePath path to file
+     * @param productId product ID
+     * @throws IOException if deletion fails
      */
     public void deleteFile(String filePath, Long productId) throws IOException {
         fileOperationProcessor.deleteFileAndCleanup(filePath, productId);
     }
 
     /**
-     * Получает файл как Path
-     */
-    public Path getFilePath(String fileName, Long productId) {
-        return fileOperationProcessor.getFilePath(fileName, productId);
-    }
-
-    /**
-     * Сохраняет файл и возвращает SavedFileInfo
+     * Stores file and returns SavedFileInfo.
+     *
+     * @param file file to store
+     * @param productId product ID
+     * @param uploadedBy user ID who uploaded
+     * @return SavedFileInfo DTO
+     * @throws IOException if file storage fails
      */
     public SavedFileInfo storeFileAndGetInfo(MultipartFile file, Long productId, Long uploadedBy)
             throws IOException {
-
         ProductMedia productMedia = storeFile(file, productId, uploadedBy);
         String originalFileName = file.getOriginalFilename();
-
         return mediaFactory.createSavedFileInfo(productMedia, originalFileName);
     }
 
     private MediaType detectMediaType(String contentType) {
-        if (contentType == null) return MediaType.DOCUMENT;
-
-        if (contentType.startsWith("image/")) {
+        if (contentType == null) {
+            return MediaType.DOCUMENT;
+        }
+        if (contentType.startsWith(IMAGE_CONTENT_TYPE)) {
             return MediaType.IMAGE;
-        } else if (contentType.startsWith("video/")) {
+        }
+        if (contentType.startsWith(VIDEO_CONTENT_TYPE)) {
             return MediaType.VIDEO;
         }
         return MediaType.DOCUMENT;

@@ -6,11 +6,15 @@ import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.request.auth.UserCreateRequest;
 import ru.galtor85.household_store.dto.request.user.UserEditRequest;
 import ru.galtor85.household_store.entity.user.User;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.auth.UserValidator;
 
 import java.time.LocalDate;
 
+/**
+ * Mapper for creating and updating User entities from requests.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -18,10 +22,18 @@ public class UserToEntity {
 
     private final MessageService messageService;
     private final UserValidator userValidator;
+    private final LogMessageService logMsg;
 
+    /**
+     * Builds a User entity from the create request.
+     *
+     * @param request the user creation request
+     * @param creator identifier of the creator (e.g., "self-registration" or admin email)
+     * @return User entity
+     */
     public User build(UserCreateRequest request, String creator) {
         if (request == null) {
-            log.warn(messageService.get("user-to-entity.log.mapper.request.null"));
+            log.warn(logMsg.get("user-to-entity.log.mapper.request.null"));
             return null;
         }
 
@@ -32,7 +44,7 @@ public class UserToEntity {
         userValidator.validatePhoneNumberLength(request.getMobileNumber());
         userValidator.validateAddressLength(request.getAddress());
 
-        log.debug(messageService.get("user-to-entity.log.mapper.converting.user", request.getEmail()));
+        log.debug(logMsg.get("user-to-entity.log.mapper.converting.user", request.getEmail()));
 
         return User.builder()
                 .email(request.getEmail())
@@ -46,6 +58,13 @@ public class UserToEntity {
                 .build();
     }
 
+    /**
+     * Parses birth date string to LocalDate.
+     *
+     * @param birthDate birth date as string (YYYY-MM-DD)
+     * @return LocalDate or null if empty
+     * @throws IllegalArgumentException if format is invalid
+     */
     private LocalDate parseBirthDate(String birthDate) {
         if (birthDate == null || birthDate.isBlank()) {
             return null;
@@ -62,12 +81,18 @@ public class UserToEntity {
         }
     }
 
+    /**
+     * Updates an existing User entity from edit request.
+     *
+     * @param user    the existing user entity
+     * @param request the edit request with updated values
+     */
     public void updateUserFromRequest(User user, UserEditRequest request) {
         if (user == null || request == null) {
             return;
         }
 
-        log.debug(messageService.get("user-to-entity.log.mapper.updating.user", user.getId()));
+        log.debug(logMsg.get("user-to-entity.log.mapper.updating.user", user.getId()));
 
         if (request.getEmail() != null) {
             userValidator.validateEmailLength(request.getEmail());

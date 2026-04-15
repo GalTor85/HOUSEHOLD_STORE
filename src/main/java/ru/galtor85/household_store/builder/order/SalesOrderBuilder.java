@@ -2,8 +2,8 @@ package ru.galtor85.household_store.builder.order;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.request.order.SalesOrderCreateRequest;
 import ru.galtor85.household_store.dto.common.SalesOrderItemCreateDto;
+import ru.galtor85.household_store.dto.request.order.SalesOrderCreateRequest;
 import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.entity.order.SalesOrderItem;
 import ru.galtor85.household_store.entity.order.SalesOrderType;
@@ -14,6 +14,9 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Builder for SalesOrder entities and items.
+ */
 @Component
 @RequiredArgsConstructor
 public class SalesOrderBuilder {
@@ -21,7 +24,11 @@ public class SalesOrderBuilder {
     private final NumberGenerator numberGenerator;
 
     /**
-     * Создает сущность заказа на продажу из запроса
+     * Builds a SalesOrder entity from the create request.
+     *
+     * @param request sales order creation request
+     * @param userId  ID of the user placing the order
+     * @return SalesOrder entity
      */
     public SalesOrder buildOrder(SalesOrderCreateRequest request, Long userId) {
         return SalesOrder.builder()
@@ -36,9 +43,14 @@ public class SalesOrderBuilder {
                 .build();
     }
 
-
     /**
-     * Создает позицию заказа на продажу
+     * Builds a single SalesOrderItem.
+     *
+     * @param order   the parent sales order
+     * @param itemDto item data from request
+     * @param product the product entity
+     * @param price   the price for this item
+     * @return SalesOrderItem entity
      */
     public SalesOrderItem buildOrderItem(SalesOrder order,
                                          SalesOrderItemCreateDto itemDto,
@@ -55,7 +67,13 @@ public class SalesOrderBuilder {
     }
 
     /**
-     * Создает список позиций заказа
+     * Builds a list of SalesOrderItems.
+     *
+     * @param order    the parent sales order
+     * @param itemDtos list of item DTOs
+     * @param products list of corresponding products
+     * @param prices   list of corresponding prices
+     * @return list of SalesOrderItem entities
      */
     public List<SalesOrderItem> buildOrderItems(SalesOrder order,
                                                 List<SalesOrderItemCreateDto> itemDtos,
@@ -77,7 +95,10 @@ public class SalesOrderBuilder {
     }
 
     /**
-     * Рассчитывает общую сумму заказа
+     * Calculates the total amount for a list of order items.
+     *
+     * @param items list of sales order items
+     * @return total amount
      */
     public BigDecimal calculateTotalAmount(List<SalesOrderItem> items) {
         return items.stream()

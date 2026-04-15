@@ -8,8 +8,6 @@ import ru.galtor85.household_store.advice.exception.order.WriteOffInsufficientSt
 import ru.galtor85.household_store.builder.stock.StockMovementBuilder;
 import ru.galtor85.household_store.dto.common.StockWriteOffItem;
 import ru.galtor85.household_store.dto.request.stock.StockWriteOffRequest;
-import ru.galtor85.household_store.entity.order.PurchaseOrder;
-import ru.galtor85.household_store.entity.order.PurchaseOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.product.ProductStock;
 import ru.galtor85.household_store.entity.stock.MovementType;
@@ -17,6 +15,7 @@ import ru.galtor85.household_store.entity.stock.StockMovement;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.stock.StockMovementRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.util.entity.EntityFinder;
 import ru.galtor85.household_store.util.generator.NumberGenerator;
@@ -25,6 +24,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_QUANTITY;
+import static ru.galtor85.household_store.constants.TechnicalConstants.WRITE_OFF_REFERENCE_TYPE;
+
+/**
+ * Processor for stock write-off operations.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -37,18 +42,23 @@ public class StockWriteOffProcessor {
     private final StockMovementBuilder movementBuilder;
     private final NumberGenerator numberGenerator;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     // =========================================================================
-    // ОСНОВНОЙ МЕТОД СПИСАНИЯ
+    // MAIN WRITE-OFF METHOD
     // =========================================================================
 
     /**
-     * Обрабатывает списание товаров
+     * Processes stock write-off request.
+     *
+     * @param request   the write-off request
+     * @param managerId the manager ID
+     * @return WriteOffResult with success and failed items
      */
     @Transactional
     public WriteOffResult processWriteOff(StockWriteOffRequest request, Long managerId) {
 
-        log.info(messageService.get("writeoff.processor.start",
+        log.info(logMsg.get("writeoff.processor.start",
                 request.getItems().size(), request.getReason(), managerId));
 
         List<StockMovement> movements = new ArrayList<>();
@@ -59,29 +69,22 @@ public class StockWriteOffProcessor {
 
         for (StockWriteOffItem item : request.getItems()) {
             try {
-                // 1. Проверяем товар
                 Product product = entityFinder.findProductById(item.getProductId());
-
-                // 2. Проверяем остаток
                 validateStockAvailability(product, item.getQuantity());
 
-                // 3. Обновляем остаток в Product
                 int oldQuantity = product.getQuantityInStock();
                 int newQuantity = oldQuantity - item.getQuantity();
                 product.setQuantityInStock(newQuantity);
                 productRepository.save(product);
 
-                // 4. Обновляем остатки по складам (если есть привязка к складу)
                 if (request.getWarehouseId() != null) {
                     updateProductStock(product, item.getQuantity(), request.getWarehouseId());
                 }
 
-                // 5. Создаем движение списания
                 StockMovement movement = createWriteOffMovement(
                         product, item, request, documentNumber, managerId);
                 movements.add(stockMovementRepository.save(movement));
 
-                // 6. Добавляем в успешные
                 successItems.add(new WriteOffSuccessItem(
                         product.getId(),
                         product.getSku(),
@@ -91,11 +94,11 @@ public class StockWriteOffProcessor {
                         newQuantity
                 ));
 
-                log.debug(messageService.get("writeoff.processor.item.processed",
+                log.debug(logMsg.get("writeoff.processor.item.processed",
                         product.getSku(), item.getQuantity(), oldQuantity, newQuantity));
 
             } catch (Exception e) {
-                log.error(messageService.get("writeoff.processor.item.failed",
+                log.error(logMsg.get("writeoff.processor.item.failed",
                         item.getProductId(), e.getMessage()), e);
 
                 failedItems.add(new WriteOffFailedItem(
@@ -106,7 +109,7 @@ public class StockWriteOffProcessor {
             }
         }
 
-        log.info(messageService.get("writeoff.processor.complete",
+        log.info(logMsg.get("writeoff.processor.complete",
                 successItems.size(), movements.size(), failedItems.size()));
 
         return WriteOffResult.builder()
@@ -119,15 +122,19 @@ public class StockWriteOffProcessor {
     }
 
     // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // HELPER METHODS
     // =========================================================================
 
     /**
-     * Проверяет наличие достаточного количества товара
+     * Validates sufficient stock availability.
+     *
+     * @param product           the product
+     * @param requestedQuantity the requested quantity
+     * @throws WriteOffInsufficientStockException if stock is insufficient
      */
     private void validateStockAvailability(Product product, int requestedQuantity) {
         if (product.getQuantityInStock() < requestedQuantity) {
-            log.error(messageService.get("writeoff.processor.insufficient.stock",
+            log.error(logMsg.get("writeoff.processor.insufficient.stock",
                     product.getSku(), product.getQuantityInStock(), requestedQuantity));
             throw new WriteOffInsufficientStockException(
                     product.getId(),
@@ -138,7 +145,11 @@ public class StockWriteOffProcessor {
     }
 
     /**
-     * Обновляет или создает запись в product_stocks
+     * Updates product stock record in product_stocks table.
+     *
+     * @param product     the product
+     * @param quantity    the quantity to subtract
+     * @param warehouseId the warehouse ID
      */
     private void updateProductStock(Product product, int quantity, Long warehouseId) {
         ProductStock stock = productStockRepository
@@ -146,7 +157,7 @@ public class StockWriteOffProcessor {
                 .orElse(null);
 
         if (stock == null) {
-            log.warn(messageService.get("writeoff.processor.stock.not.found",
+            log.warn(logMsg.get("writeoff.processor.stock.not.found",
                     product.getSku(), warehouseId));
             return;
         }
@@ -154,8 +165,8 @@ public class StockWriteOffProcessor {
         int oldQuantity = stock.getQuantity();
         int newQuantity = oldQuantity - quantity;
 
-        if (newQuantity < 0) {
-            log.error(messageService.get("writeoff.processor.stock.negative",
+        if (newQuantity < DEFAULT_QUANTITY) {
+            log.error(logMsg.get("writeoff.processor.stock.negative",
                     product.getSku(), warehouseId, oldQuantity, quantity));
             throw new WriteOffInsufficientStockException(
                     product.getId(), oldQuantity, quantity
@@ -164,17 +175,24 @@ public class StockWriteOffProcessor {
 
         stock.setQuantity(newQuantity);
         stock.setAvailableQuantity(newQuantity -
-                (stock.getReservedQuantity() != null ? stock.getReservedQuantity() : 0));
+                (stock.getReservedQuantity() != null ? stock.getReservedQuantity() : DEFAULT_QUANTITY));
         stock.setUpdatedAt(LocalDateTime.now());
 
         productStockRepository.save(stock);
 
-        log.debug(messageService.get("writeoff.processor.stock.updated",
+        log.debug(logMsg.get("writeoff.processor.stock.updated",
                 product.getSku(), warehouseId, oldQuantity, newQuantity));
     }
 
     /**
-     * Создает движение списания
+     * Creates a stock movement record for write-off.
+     *
+     * @param product        the product
+     * @param item           the write-off item
+     * @param request        the write-off request
+     * @param documentNumber the document number
+     * @param managerId      the manager ID
+     * @return StockMovement entity
      */
     private StockMovement createWriteOffMovement(Product product,
                                                  StockWriteOffItem item,
@@ -189,12 +207,12 @@ public class StockWriteOffProcessor {
 
         return movementBuilder.buildFullMovement(
                 product.getId(),
-                null,                           // fromCellId
-                null,                           // toCellId
-                request.getWarehouseId(),       // warehouseId
+                null,
+                null,
+                request.getWarehouseId(),
                 item.getQuantity(),
                 MovementType.WRITE_OFF,
-                "WRITE_OFF",
+                WRITE_OFF_REFERENCE_TYPE,
                 request.getRelatedOrderId(),
                 documentNumber,
                 managerId,
@@ -205,73 +223,12 @@ public class StockWriteOffProcessor {
     }
 
     // =========================================================================
-    // МЕТОДЫ ДЛЯ ГРУППОВОГО СПИСАНИЯ
+    // INNER CLASSES
     // =========================================================================
 
     /**
-     * Списание всех товаров по заказу
+     * Result of write-off operation.
      */
-    @Transactional
-    public List<StockMovement> writeOffOrderItems(PurchaseOrder order,
-                                                  String reason,
-                                                  Long managerId) {
-
-        List<StockMovement> movements = new ArrayList<>();
-        String documentNumber = numberGenerator.generateWriteOffNumber();
-
-        for (PurchaseOrderItem item : order.getItems()) {
-            Product product = entityFinder.findProductById(item.getProductId());
-
-            int remainingToWriteOff = item.getRemainingQuantity();
-            if (remainingToWriteOff > 0) {
-                StockMovement movement = createWriteOffMovement(
-                        product,
-                        remainingToWriteOff,
-                        reason,
-                        documentNumber,
-                        managerId
-                );
-                movements.add(stockMovementRepository.save(movement));
-
-                // Обновляем остатки
-                product.setQuantityInStock(product.getQuantityInStock() - remainingToWriteOff);
-                productRepository.save(product);
-
-                log.debug(messageService.get("writeoff.processor.order.item.written.off",
-                        product.getSku(), remainingToWriteOff, order.getOrderNumber()));
-            }
-        }
-
-        return movements;
-    }
-
-    private StockMovement createWriteOffMovement(Product product,
-                                                 int quantity,
-                                                 String reason,
-                                                 String documentNumber,
-                                                 Long managerId) {
-
-        String notes = messageService.get("writeoff.processor.movement.notes",
-                reason, reason, documentNumber);
-
-        return movementBuilder.buildFullMovement(
-                product.getId(),
-                null, null, null, quantity,
-                MovementType.WRITE_OFF,
-                "WRITE_OFF",
-                null,
-                documentNumber,
-                managerId,
-                notes,
-                null,
-                documentNumber
-        );
-    }
-
-    // =========================================================================
-    // ВНУТРЕННИЕ КЛАССЫ
-    // =========================================================================
-
     @lombok.Value
     @lombok.Builder
     public static class WriteOffResult {
@@ -282,20 +239,24 @@ public class StockWriteOffProcessor {
         String documentNumber;
     }
 
-    @lombok.Value
-    public static class WriteOffSuccessItem {
-        Long productId;
-        String productSku;
-        String productName;
-        int quantity;
-        int oldStock;
-        int newStock;
-    }
+    /**
+     * Successfully written-off item.
+     */
+    public record WriteOffSuccessItem(
+            Long productId,
+            String productSku,
+            String productName,
+            int quantity,
+            int oldStock,
+            int newStock
+    ) {}
 
-    @lombok.Value
-    public static class WriteOffFailedItem {
-        Long productId;
-        int requestedQuantity;
-        String errorMessage;
-    }
+    /**
+     * Failed write-off item.
+     */
+    public record WriteOffFailedItem(
+            Long productId,
+            int requestedQuantity,
+            String errorMessage
+    ) {}
 }

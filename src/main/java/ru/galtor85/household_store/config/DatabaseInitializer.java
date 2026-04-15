@@ -22,6 +22,7 @@ import ru.galtor85.household_store.repository.user.UserRepository;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
 import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.security.SecurityUserFactory;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
 
@@ -87,22 +88,22 @@ public class DatabaseInitializer {
     private final CurrencyRepository currencyRepository;
     private final CurrencyConfig currencyConfig;
     private final DefaultsUserConfig defaultsUserConfig;
-
+    private final LogMessageService logMsg;
     /**
      * Initializes default data after application is fully ready.
      * This runs after Liquibase migrations are complete.
      */
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        log.info(messageService.get("database-initializer.log.start.ready"));
+        log.info(logMsg.get("database-initializer.log.start.ready"));
 
         if (isDatabaseNotReady()) {
-            log.warn(messageService.get("database-initializer.log.tables.not.ready"));
+            log.warn(logMsg.get("database-initializer.log.tables.not.ready"));
             return;
         }
 
         initializeAll();
-        log.info(messageService.get("database-initializer.log.completed"));
+        log.info(logMsg.get("database-initializer.log.completed"));
     }
 
     /**
@@ -129,7 +130,7 @@ public class DatabaseInitializer {
                     || isTableNotExists("warehouses")
                     || isTableNotExists("currencies");
         } catch (Exception e) {
-            log.debug(messageService.get("database-initializer.log.database.not.ready", e.getMessage()));
+            log.debug(logMsg.get("database-initializer.log.database.not.ready", e.getMessage()));
             return true;
         }
     }
@@ -148,7 +149,7 @@ public class DatabaseInitializer {
             Integer result = jdbcTemplate.queryForObject(query, Integer.class, schema, tableName);
             return result == null;
         } catch (DataAccessException e) {
-            log.debug(messageService.get("database-initializer.log.table.not.exists", tableName));
+            log.debug(logMsg.get("database-initializer.log.table.not.exists", tableName));
             return true;
         }
     }
@@ -224,7 +225,7 @@ public class DatabaseInitializer {
                                        String rawPassword, Role role, UserType userType) {
         try {
             if (userRepository.findByEmail(email).isEmpty()) {
-                log.info(messageService.get("database-initializer.log.creating.user", email));
+                log.info(logMsg.get("database-initializer.log.creating.user", email));
 
                 User user = User.builder()
                         .email(email)
@@ -253,12 +254,12 @@ public class DatabaseInitializer {
                     );
                 }
 
-                log.info(messageService.get("database-initializer.log.user.created", email, role.name()));
+                log.info(logMsg.get("database-initializer.log.user.created", email, role.name()));
             } else {
-                log.debug(messageService.get("database-initializer.log.user.exists", email));
+                log.debug(logMsg.get("database-initializer.log.user.exists", email));
             }
         } catch (Exception e) {
-            log.error(messageService.get("database-initializer.log.user.create.failed", email, e.getMessage()), e);
+            log.error(logMsg.get("database-initializer.log.user.create.failed", email, e.getMessage()), e);
         }
     }
 
@@ -292,7 +293,7 @@ public class DatabaseInitializer {
             String defaultName = messageService.get("warehouse.default.name");
 
             if (!warehouseRepository.existsById(defaultId)) {
-                log.info(messageService.get("database-initializer.log.creating.warehouse", defaultName));
+                log.info(logMsg.get("database-initializer.log.creating.warehouse", defaultName));
 
                 Warehouse defaultWarehouse = Warehouse.builder()
                         .code(warehouseConfig.getDefaultWarehouseCode())
@@ -309,12 +310,12 @@ public class DatabaseInitializer {
 
                 warehouseRepository.save(defaultWarehouse);
 
-                log.info(messageService.get("database-initializer.log.warehouse.created", defaultName, defaultId));
+                log.info(logMsg.get("database-initializer.log.warehouse.created", defaultName, defaultId));
             } else {
-                log.debug(messageService.get("database-initializer.log.warehouse.exists", defaultName, defaultId));
+                log.debug(logMsg.get("database-initializer.log.warehouse.exists", defaultName, defaultId));
             }
         } catch (Exception e) {
-            log.error(messageService.get("database-initializer.log.warehouse.create.failed", e.getMessage()), e);
+            log.error(logMsg.get("database-initializer.log.warehouse.create.failed", e.getMessage()), e);
         }
     }
 
@@ -340,7 +341,7 @@ public class DatabaseInitializer {
             String defaultSymbol = messageService.get("currency.default.symbol");
 
             if (!currencyRepository.existsByCode(defaultCode)) {
-                log.info(messageService.get("database-initializer.log.creating.currency", defaultCode));
+                log.info(logMsg.get("database-initializer.log.creating.currency", defaultCode));
 
                 boolean hasBaseCurrency = currencyRepository.existsByIsBaseTrue();
 
@@ -360,15 +361,15 @@ public class DatabaseInitializer {
                 currencyRepository.save(defaultCurrency);
 
                 if (!hasBaseCurrency) {
-                    log.info(messageService.get("database-initializer.log.currency.created.base", defaultCode));
+                    log.info(logMsg.get("database-initializer.log.currency.created.base", defaultCode));
                 } else {
-                    log.info(messageService.get("database-initializer.log.currency.created.not.base", defaultCode));
+                    log.info(logMsg.get("database-initializer.log.currency.created.not.base", defaultCode));
                 }
             } else {
-                log.debug(messageService.get("database-initializer.log.currency.exists", defaultCode));
+                log.debug(logMsg.get("database-initializer.log.currency.exists", defaultCode));
             }
         } catch (Exception e) {
-            log.error(messageService.get("database-initializer.log.currency.create.failed", e.getMessage()), e);
+            log.error(logMsg.get("database-initializer.log.currency.create.failed", e.getMessage()), e);
         }
     }
 
@@ -399,15 +400,15 @@ public class DatabaseInitializer {
      */
     @Transactional
     public void forceInitialize() {
-        log.info(messageService.get("database-initializer.log.force.start"));
+        log.info(logMsg.get("database-initializer.log.force.start"));
 
         if (isDatabaseNotReady()) {
-            log.error(messageService.get("database-initializer.log.force.not.ready"));
+            log.error(logMsg.get("database-initializer.log.force.not.ready"));
             return;
         }
 
         initializeAll();
 
-        log.info(messageService.get("database-initializer.log.force.completed"));
+        log.info(logMsg.get("database-initializer.log.force.completed"));
     }
 }

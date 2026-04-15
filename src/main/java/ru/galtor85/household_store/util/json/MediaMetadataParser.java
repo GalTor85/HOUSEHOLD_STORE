@@ -6,28 +6,36 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.common.ProductMediaUploadDto;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.util.List;
 
+/**
+ * Parser for media metadata JSON.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class MediaMetadataParser {
 
     private final ObjectMapper objectMapper;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
+    /**
+     * Parses JSON metadata to list of ProductMediaUploadDto.
+     *
+     * @param metadataJson JSON metadata string
+     * @return list of parsed DTOs or null if parsing fails
+     */
     public List<ProductMediaUploadDto> parseMetadata(String metadataJson) {
         if (metadataJson == null || metadataJson.trim().isEmpty()) {
             return null;
         }
         try {
-            log.debug(messageService.get("product.media.service.parse.metadata", metadataJson));
-            return objectMapper.readValue(metadataJson,
-                    new TypeReference<List<ProductMediaUploadDto>>() {});
+            log.debug(logMsg.get("product.media.service.parse.metadata", metadataJson));
+            return objectMapper.readValue(metadataJson, new TypeReference<>() {});
         } catch (Exception e) {
-            log.warn(messageService.get("product.media.service.parse.metadata.error",
+            log.warn(logMsg.get("product.media.service.parse.metadata.error",
                     metadataJson, e.getMessage()), e);
             return null;
         }

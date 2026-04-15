@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import ru.galtor85.household_store.entity.finance.Invoice;
-import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -84,6 +83,10 @@ public class SalesOrder {
 
     @Column(name = "payment_details")
     private String paymentDetails;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status")
+    private OrderPaymentStatus paymentStatus;
 
     // =========================================================================
     // DELIVERY FIELDS
@@ -166,36 +169,6 @@ public class SalesOrder {
     }
 
     /**
-     * Gets total paid amount from all invoices.
-     *
-     * @return total paid amount
-     */
-    public BigDecimal getTotalPaidAmount() {
-        return invoices.stream()
-                .filter(i -> i.getStatus() == InvoiceStatus.PAID)
-                .map(Invoice::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    /**
-     * Gets remaining amount to be paid.
-     *
-     * @return remaining amount
-     */
-    public BigDecimal getRemainingAmount() {
-        return getTotalAmount().subtract(getTotalPaidAmount());
-    }
-
-    /**
-     * Checks if order is fully paid.
-     *
-     * @return true if fully paid
-     */
-    public boolean isFullyPaid() {
-        return getRemainingAmount().compareTo(BigDecimal.ZERO) <= 0;
-    }
-
-    /**
      * Adds an item to the order and recalculates totals.
      *
      * @param item the order item to add
@@ -229,15 +202,6 @@ public class SalesOrder {
                 .add(this.shippingAmount != null ? this.shippingAmount : BigDecimal.ZERO)
                 .add(this.taxAmount != null ? this.taxAmount : BigDecimal.ZERO)
                 .subtract(this.discountAmount != null ? this.discountAmount : BigDecimal.ZERO);
-    }
-
-    /**
-     * Checks if order is retail type.
-     *
-     * @return true if retail
-     */
-    public boolean isRetail() {
-        return orderType == SalesOrderType.RETAIL;
     }
 
     /**

@@ -9,114 +9,79 @@ import ru.galtor85.household_store.dto.response.user.UserTypeAssignmentDto;
 import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.processor.assignment.AssignmentCreationProcessor;
 import ru.galtor85.household_store.processor.assignment.AssignmentQueryProcessor;
-import ru.galtor85.household_store.processor.assignment.AssignmentReactivationProcessor;
 import ru.galtor85.household_store.processor.assignment.PreviousAssignmentDeactivator;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.auth.UserTypeAssignmentValidator;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
+/**
+ * Service for managing user type assignments.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserTypeAssignmentService {
 
     private final MessageService messageService;
-
-    // Валидаторы
+    private final LogMessageService logMsg;
     private final UserTypeAssignmentValidator validator;
-
-    // Процессоры
     private final PreviousAssignmentDeactivator deactivator;
     private final AssignmentCreationProcessor creationProcessor;
     private final AssignmentQueryProcessor queryProcessor;
-    private final AssignmentReactivationProcessor reactivationProcessor;
 
-    // ========== НАЗНАЧЕНИЕ ТИПА ==========
-
+    /**
+     * Assigns a user type to a user.
+     *
+     * @param userId user ID
+     * @param userType user type to assign
+     * @param assignedBy who assigned the type
+     * @param reason reason for assignment
+     * @param validFrom validity start date
+     * @param validTo validity end date
+     * @return created assignment DTO
+     */
     @Transactional
     public UserTypeAssignmentDto assignUserType(Long userId, UserType userType, String assignedBy,
                                                 String reason, LocalDateTime validFrom, LocalDateTime validTo) {
-        log.debug(messageService.get("user-type.log.assignment.start", userId, userType, assignedBy));
+        log.debug(logMsg.get("user-type.log.assignment.start", userId, userType, assignedBy));
 
-        // Валидация дат
         validator.validateDateRange(validFrom, validTo);
 
         try {
-            // Деактивируем предыдущие активные назначения
             deactivator.deactivatePrevious(userId);
-
-            // Создаем новое назначение
             return creationProcessor.createAssignment(
-                    userId, userType, assignedBy, reason, validFrom, validTo
-            );
-
+                    userId, userType, assignedBy, reason, validFrom, validTo);
         } catch (Exception e) {
-            log.error(messageService.get("user-type.log.assignment.error", userId, userType, e.getMessage()), e);
+            log.error(logMsg.get("user-type.log.assignment.error", userId, userType, e.getMessage()), e);
             throw new UserTypeAssignmentException(userId, userType.name(),
                     messageService.get("user-type.error.assignment.failed", e.getMessage()));
         }
     }
 
-    @Transactional
-    public UserTypeAssignmentDto assignUserType(Long userId, UserType userType, String assignedBy) {
-        return assignUserType(userId, userType, assignedBy, null, null, null);
-    }
-
+    /**
+     * Assigns a user type without validity dates.
+     *
+     * @param userId user ID
+     * @param userType user type to assign
+     * @param assignedBy who assigned the type
+     * @param reason reason for assignment
+     * @return created assignment DTO
+     */
     @Transactional
     public UserTypeAssignmentDto assignUserType(Long userId, UserType userType, String assignedBy, String reason) {
         return assignUserType(userId, userType, assignedBy, reason, null, null);
     }
 
-    @Transactional
-    public UserTypeAssignmentDto assignTemporaryUserType(Long userId, UserType userType, String assignedBy,
-                                                         LocalDateTime validTo, String reason) {
-        return assignUserType(userId, userType, assignedBy, reason, LocalDateTime.now(), validTo);
-    }
-
-    // ========== ПОЛУЧЕНИЕ ТЕКУЩЕГО ТИПА ==========
-
+    /**
+     * Gets current user type for a user.
+     *
+     * @param userId user ID
+     * @return current assignment DTO or null
+     */
     @Transactional(readOnly = true)
     public UserTypeAssignmentDto getCurrentUserType(Long userId) {
         return queryProcessor.getCurrentUserType(userId);
-    }
-
-    @Transactional(readOnly = true)
-    public UserTypeAssignmentDto getCurrentUserTypeOrThrow(Long userId) {
-        return queryProcessor.getCurrentUserTypeOrThrow(userId);
-    }
-
-    // ========== ИСТОРИЯ ==========
-
-    @Transactional(readOnly = true)
-    public List<UserTypeAssignmentDto> getUserTypeHistory(Long userId) {
-        return queryProcessor.getUserTypeHistory(userId);
-    }
-
-    // ========== ДЕАКТИВАЦИЯ ==========
-
-    @Transactional
-    public void deactivateCurrentUserType(Long userId) {
-        deactivator.deactivateCurrent(userId);
-    }
-
-    // ========== РЕАКТИВАЦИЯ ==========
-
-    @Transactional
-    public UserTypeAssignmentDto reactivateUserType(Long assignmentId) {
-        return reactivationProcessor.reactivate(assignmentId);
-    }
-
-    // ========== ПРОВЕРКИ И ПОИСК ==========
-
-    @Transactional(readOnly = true)
-    public boolean hasActiveUserType(Long userId, UserType userType) {
-        return queryProcessor.hasActiveUserType(userId, userType);
-    }
-
-    @Transactional(readOnly = true)
-    public List<Long> getUserIdsByUserType(UserType userType) {
-        return queryProcessor.getUserIdsByUserType(userType);
     }
 }

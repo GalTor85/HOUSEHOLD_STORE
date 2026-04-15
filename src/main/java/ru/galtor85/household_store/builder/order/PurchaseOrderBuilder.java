@@ -3,8 +3,9 @@ package ru.galtor85.household_store.builder.order;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.request.order.PurchaseOrderCreateRequest;
 import ru.galtor85.household_store.dto.common.PurchaseOrderItemCreateDto;
+import ru.galtor85.household_store.dto.request.order.PurchaseOrderCreateRequest;
+import ru.galtor85.household_store.entity.order.OrderPaymentStatus;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.order.PurchaseOrderItem;
@@ -15,6 +16,9 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Builder for PurchaseOrder entities and items.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -22,12 +26,12 @@ public class PurchaseOrderBuilder {
 
     private final NumberGenerator numberGenerator;
 
-    // =========================================================================
-    // СОЗДАНИЕ ЗАКАЗА
-    // =========================================================================
-
     /**
-     * Создает сущность заказа на закупку из запроса
+     * Builds a PurchaseOrder entity from the create request.
+     *
+     * @param request   purchase order creation request
+     * @param managerId ID of the manager creating the order
+     * @return PurchaseOrder entity
      */
     public PurchaseOrder buildOrder(PurchaseOrderCreateRequest request, Long managerId) {
         return PurchaseOrder.builder()
@@ -38,18 +42,20 @@ public class PurchaseOrderBuilder {
                 .warehouseLocation(request.getWarehouseLocation())
                 .invoiceNumber(request.getInvoiceNumber())
                 .paymentDue(request.getPaymentDue())
-                .paymentStatus("PENDING")
+                .paymentStatus(OrderPaymentStatus.PENDING)
                 .createdBy(managerId)
                 .notes(request.getNotes())
                 .build();
     }
 
-    // =========================================================================
-    // СОЗДАНИЕ ПОЗИЦИЙ
-    // =========================================================================
-
     /**
-     * Создает одну позицию заказа
+     * Builds a single PurchaseOrderItem.
+     *
+     * @param order   the parent purchase order
+     * @param itemDto item data from request
+     * @param product the product entity
+     * @param price   the price for this item
+     * @return PurchaseOrderItem entity
      */
     public PurchaseOrderItem buildOrderItem(PurchaseOrder order,
                                             PurchaseOrderItemCreateDto itemDto,
@@ -69,7 +75,13 @@ public class PurchaseOrderBuilder {
     }
 
     /**
-     * Создает список позиций заказа
+     * Builds a list of PurchaseOrderItems.
+     *
+     * @param order    the parent purchase order
+     * @param itemDtos list of item DTOs
+     * @param products list of corresponding products
+     * @param prices   list of corresponding prices
+     * @return list of PurchaseOrderItem entities
      */
     public List<PurchaseOrderItem> buildOrderItems(PurchaseOrder order,
                                                    List<PurchaseOrderItemCreateDto> itemDtos,
@@ -90,12 +102,11 @@ public class PurchaseOrderBuilder {
         return items;
     }
 
-    // =========================================================================
-    // РАСЧЕТ СУММ
-    // =========================================================================
-
     /**
-     * Рассчитывает общую сумму заказа
+     * Calculates the total amount for a list of order items.
+     *
+     * @param items list of purchase order items
+     * @return total amount
      */
     public BigDecimal calculateTotalAmount(List<PurchaseOrderItem> items) {
         return items.stream()

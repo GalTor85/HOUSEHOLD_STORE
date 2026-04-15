@@ -4,9 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.builder.stock.StockMovementDtoBuilder;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
-import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.stock.StockMovement;
+import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.entity.warehouse.StorageCell;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.repository.product.ProductRepository;
@@ -15,6 +15,9 @@ import ru.galtor85.household_store.repository.warehouse.StorageCellRepository;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
+/**
+ * Enricher for stock movement DTOs.
+ */
 @Component
 @RequiredArgsConstructor
 public class StockMovementEnricher {
@@ -26,6 +29,12 @@ public class StockMovementEnricher {
     private final StockMovementDtoBuilder movementDtoBuilder;
     private final MessageService messageService;
 
+    /**
+     * Enriches stock movement with related entity data.
+     *
+     * @param movement stock movement entity
+     * @return enriched stock movement DTO
+     */
     public StockMovementDto enrichMovementDto(StockMovement movement) {
         Product product = productRepository.findById(movement.getProductId()).orElse(null);
 

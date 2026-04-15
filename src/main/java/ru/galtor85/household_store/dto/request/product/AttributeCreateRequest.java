@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.dto.request.product;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -9,11 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_ATTRIBUTE_NAME_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_ATTRIBUTE_VALUE_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_ORDER;
-import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_REQUIRED;
-import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_VARIANT;
+import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 /**
  * Request DTO for creating a product attribute.
@@ -50,38 +45,4 @@ public class AttributeCreateRequest {
     @Schema(description = "Whether this attribute is used as a variant attribute for product variations", example = "false")
     @Builder.Default
     private Boolean variant = DEFAULT_VARIANT;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasOrder() {
-        return order != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasRequired() {
-        return required != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasVariant() {
-        return variant != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isRequiredTrue() {
-        return Boolean.TRUE.equals(required);
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isVariantTrue() {
-        return Boolean.TRUE.equals(variant);
-    }
 }

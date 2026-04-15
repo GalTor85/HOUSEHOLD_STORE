@@ -3,10 +3,10 @@ package ru.galtor85.household_store.mapper.product;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.response.product.ProductAttributeDto;
 import ru.galtor85.household_store.dto.request.product.ProductCreateRequest;
-import ru.galtor85.household_store.dto.response.product.ProductDto;
 import ru.galtor85.household_store.dto.request.product.ProductUpdateRequest;
+import ru.galtor85.household_store.dto.response.product.ProductAttributeDto;
+import ru.galtor85.household_store.dto.response.product.ProductDto;
 import ru.galtor85.household_store.entity.product.MediaType;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.product.ProductAttribute;
@@ -16,8 +16,11 @@ import ru.galtor85.household_store.repository.product.ProductMediaRepository;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static ru.galtor85.household_store.constants.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.ApiConstants.MEDIA_PATH;
 
+/**
+ * Mapper for Product entity to/from DTO.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -26,6 +29,13 @@ public class ProductMapper {
     private final ProductMediaRepository mediaRepository;
     private final ProductMediaMapper mediaMapper;
 
+    /**
+     * Converts ProductCreateRequest to Product entity.
+     *
+     * @param request   the creation request
+     * @param creatorId ID of the user creating the product
+     * @return Product entity
+     */
     public Product toEntity(ProductCreateRequest request, Long creatorId) {
         if (request == null) {
             return null;
@@ -56,12 +66,17 @@ public class ProductMapper {
                 .build();
     }
 
+    /**
+     * Updates an existing Product entity from update request.
+     *
+     * @param product the existing product entity
+     * @param request the update request
+     */
     public void updateEntity(Product product, ProductUpdateRequest request) {
         if (product == null || request == null) {
             return;
         }
 
-        // существующие поля
         if (request.getSku() != null) product.setSku(request.getSku());
         if (request.getBarcode() != null) product.setBarcode(request.getBarcode());
         if (request.getBarcodeFormat() != null) product.setBarcodeFormat(request.getBarcodeFormat());
@@ -74,8 +89,6 @@ public class ProductMapper {
         if (request.getImageUrl() != null) product.setImageUrl(request.getImageUrl());
         if (request.getActive() != null) product.setActive(request.getActive());
         if (request.getHasVariants() != null) product.setHasVariants(request.getHasVariants());
-
-        // НОВЫЕ ПОЛЯ
         if (request.getWeightKg() != null) product.setWeightKg(request.getWeightKg());
         if (request.getVolumeM3() != null) product.setVolumeM3(request.getVolumeM3());
         if (request.getRequiresRefrigeration() != null)
@@ -88,6 +101,12 @@ public class ProductMapper {
         if (request.getPalletized() != null) product.setIsPalletized(request.getPalletized());
     }
 
+    /**
+     * Converts Product entity to DTO.
+     *
+     * @param product the product entity
+     * @return ProductDto
+     */
     public ProductDto toDto(Product product) {
         if (product == null) {
             return null;
@@ -98,7 +117,7 @@ public class ProductMapper {
         String mainImageUrl = mediaList.stream()
                 .filter(m -> Boolean.TRUE.equals(m.getIsMain()))
                 .findFirst()
-                .map(m -> API_BASE+"/media/" + m.getId())
+                .map(m -> MEDIA_PATH + m.getId())
                 .orElse(product.getImageUrl());
 
         List<ProductAttributeDto> attributeDtos = product.getAttributes().stream()
@@ -122,7 +141,7 @@ public class ProductMapper {
                 .parentProductId(product.getParentProduct() != null ? product.getParentProduct().getId() : null)
                 .attributes(attributeDtos)
                 .variants(product.getVariants().stream()
-                        .map(v -> toDto(v))
+                        .map(this::toDto)
                         .collect(Collectors.toList()))
                 .media(mediaMapper.toDtoList(mediaList))
                 .mainImageUrl(mainImageUrl)
@@ -137,7 +156,6 @@ public class ProductMapper {
                 .supplierId(product.getSupplierId())
                 .supplierPrice(product.getSupplierPrice())
                 .supplierSku(product.getSupplierSku())
-                // НОВЫЕ ПОЛЯ
                 .weightKg(product.getWeightKg())
                 .volumeM3(product.getVolumeM3())
                 .requiresRefrigeration(product.getRequiresRefrigeration())
@@ -152,6 +170,12 @@ public class ProductMapper {
                 .build();
     }
 
+    /**
+     * Converts ProductAttribute entity to DTO.
+     *
+     * @param attribute the product attribute entity
+     * @return ProductAttributeDto
+     */
     private ProductAttributeDto toAttributeDto(ProductAttribute attribute) {
         return ProductAttributeDto.builder()
                 .id(attribute.getId())

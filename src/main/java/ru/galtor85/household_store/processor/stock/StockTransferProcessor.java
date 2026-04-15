@@ -16,6 +16,7 @@ import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.stock.StockMovementRepository;
 import ru.galtor85.household_store.repository.warehouse.StorageCellRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.stock.StockTransferValidator;
 
@@ -25,14 +26,14 @@ import java.util.List;
 
 /**
  * Processor for stock transfer operations.
- *
- * @author G@LTor85
- * @since 1.0
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class StockTransferProcessor {
+
+    private static final String TRANSFER_OUT = "TRANSFER_OUT";
+    private static final String TRANSFER_IN = "TRANSFER_IN";
 
     private final ProductStockRepository productStockRepository;
     private final StockMovementRepository stockMovementRepository;
@@ -40,24 +41,23 @@ public class StockTransferProcessor {
     private final StockMovementBuilder movementBuilder;
     private final StockTransferValidator validator;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
      * Transfers stock between warehouses or cells.
      *
-     * @param request     transfer request
+     * @param request transfer request
      * @param performedBy ID of user performing the transfer
      * @return transfer response DTO
      */
     @Transactional
     public StockTransferResponseDto transferStock(StockTransferRequest request, Long performedBy) {
-        log.info(messageService.get("stock.transfer.start",
+        log.info(logMsg.get("stock.transfer.start",
                 request.getProductId(), request.getQuantity(),
                 request.getFromWarehouseId(), request.getToWarehouseId()));
 
-        // Validate request
         validator.validateTransferRequest(request);
 
-        // Validate entities
         Product product = validator.validateProductExists(request.getProductId());
         Warehouse fromWarehouse = validator.validateSourceWarehouseExists(request.getFromWarehouseId());
         Warehouse toWarehouse = validator.validateDestinationWarehouseExists(request.getToWarehouseId());
@@ -67,19 +67,34 @@ public class StockTransferProcessor {
         StorageCell toCell = validator.validateDestinationCell(
                 request.getToCellId(), request.getToCellCode(), request.getToWarehouseId());
 
-        // Validate sufficient stock
         validator.validateSufficientStock(product, request.getFromWarehouseId(), request.getQuantity());
 
-        // Decrease stock in source
+        decreaseSourceStock(product, request);
+        increaseDestinationStock(product, request);
+        updateCells(fromCell, toCell, product.getId(), request.getQuantity());
+
+        List<StockMovement> movements = createStockMovements(
+                product, fromWarehouse, toWarehouse, fromCell, toCell, request, performedBy);
+        stockMovementRepository.saveAll(movements);
+
+        log.info(logMsg.get("stock.transfer.complete",
+                product.getId(), request.getQuantity(),
+                fromWarehouse.getName(), toWarehouse.getName()));
+
+        return buildResponse(fromWarehouse, toWarehouse, fromCell, toCell,
+                movements.isEmpty() ? null : movements.getFirst(), request);
+    }
+
+    private void decreaseSourceStock(Product product, StockTransferRequest request) {
         int updated = productStockRepository.decreaseStock(
                 product.getId(), request.getFromWarehouseId(), request.getQuantity());
-
         if (updated == 0) {
             throw new IllegalStateException(
                     messageService.get("stock.transfer.decrease.failed", product.getId()));
         }
+    }
 
-        // Increase stock in destination (create if not exists)
+    private void increaseDestinationStock(Product product, StockTransferRequest request) {
         ProductStock destStock = productStockRepository
                 .findByProductIdAndWarehouseId(product.getId(), request.getToWarehouseId())
                 .orElse(null);
@@ -97,34 +112,17 @@ public class StockTransferProcessor {
             productStockRepository.increaseStock(
                     product.getId(), request.getToWarehouseId(), request.getQuantity());
         }
-
-        // Update source cell if specified
-        if (fromCell != null) {
-            updateSourceCell(fromCell, request.getQuantity());
-        }
-
-        // Update destination cell if specified
-        if (toCell != null) {
-            updateDestinationCell(toCell, product.getId(), request.getQuantity());
-        }
-
-        // Create stock movement records (incoming and outgoing)
-        List<StockMovement> movements = createStockMovements(
-                product, fromWarehouse, toWarehouse, fromCell, toCell, request, performedBy);
-
-        stockMovementRepository.saveAll(movements);
-
-        log.info(messageService.get("stock.transfer.complete",
-                product.getId(), request.getQuantity(),
-                fromWarehouse.getName(), toWarehouse.getName()));
-
-        return buildResponse(fromWarehouse, toWarehouse, fromCell, toCell,
-                movements.isEmpty() ? null : movements.getFirst(), request);
     }
 
-    /**
-     * Updates source cell after stock removal.
-     */
+    private void updateCells(StorageCell fromCell, StorageCell toCell, Long productId, int quantity) {
+        if (fromCell != null) {
+            updateSourceCell(fromCell, quantity);
+        }
+        if (toCell != null) {
+            updateDestinationCell(toCell, productId, quantity);
+        }
+    }
+
     private void updateSourceCell(StorageCell fromCell, int quantity) {
         int currentQuantity = fromCell.getCurrentQuantity() != null ? fromCell.getCurrentQuantity() : 0;
         int newQuantity = currentQuantity - quantity;
@@ -138,13 +136,10 @@ public class StockTransferProcessor {
         }
         storageCellRepository.save(fromCell);
 
-        log.debug(messageService.get("stock.transfer.source.cell.updated",
+        log.debug(logMsg.get("stock.transfer.source.cell.updated",
                 fromCell.getCode(), currentQuantity, newQuantity));
     }
 
-    /**
-     * Updates destination cell after stock addition.
-     */
     private void updateDestinationCell(StorageCell toCell, Long productId, int quantity) {
         int currentQuantity = toCell.getCurrentQuantity() != null ? toCell.getCurrentQuantity() : 0;
         int newQuantity = currentQuantity + quantity;
@@ -154,14 +149,10 @@ public class StockTransferProcessor {
         toCell.setIsOccupied(true);
         storageCellRepository.save(toCell);
 
-        log.debug(messageService.get("stock.transfer.dest.cell.updated",
+        log.debug(logMsg.get("stock.transfer.dest.cell.updated",
                 toCell.getCode(), currentQuantity, newQuantity));
     }
 
-    /**
-     * Creates stock movement records for transfer.
-     * Creates two records: OUTGOING from source warehouse and INCOMING to destination warehouse.
-     */
     private List<StockMovement> createStockMovements(Product product,
                                                      Warehouse fromWarehouse,
                                                      Warehouse toWarehouse,
@@ -169,7 +160,6 @@ public class StockTransferProcessor {
                                                      StorageCell toCell,
                                                      StockTransferRequest request,
                                                      Long performedBy) {
-
         List<StockMovement> movements = new ArrayList<>();
 
         String reason = request.getReason() != null ? request.getReason() :
@@ -177,11 +167,9 @@ public class StockTransferProcessor {
 
         String outgoingNotes = messageService.get("stock.transfer.outgoing.notes",
                 reason, request.getQuantity(), toWarehouse.getName());
-
         String incomingNotes = messageService.get("stock.transfer.incoming.notes",
                 reason, request.getQuantity(), fromWarehouse.getName());
 
-        // 1. OUTGOING movement
         StockMovement outgoing = movementBuilder.buildFullMovement(
                 product.getId(),
                 fromCell != null ? fromCell.getId() : null,
@@ -189,7 +177,7 @@ public class StockTransferProcessor {
                 fromWarehouse.getId(),
                 request.getQuantity(),
                 MovementType.TRANSFER,
-                "TRANSFER_OUT",
+                TRANSFER_OUT,
                 null,
                 null,
                 performedBy,
@@ -199,7 +187,6 @@ public class StockTransferProcessor {
         );
         movements.add(outgoing);
 
-        // 2. INCOMING movement
         StockMovement incoming = movementBuilder.buildFullMovement(
                 product.getId(),
                 null,
@@ -207,7 +194,7 @@ public class StockTransferProcessor {
                 toWarehouse.getId(),
                 request.getQuantity(),
                 MovementType.TRANSFER,
-                "TRANSFER_IN",
+                TRANSFER_IN,
                 null,
                 null,
                 performedBy,
@@ -217,19 +204,15 @@ public class StockTransferProcessor {
         );
         movements.add(incoming);
 
-        // Link the two movements
         outgoing.setReferenceId(incoming.getId());
         incoming.setReferenceId(outgoing.getId());
 
-        log.debug(messageService.get("stock.transfer.movements.created",
+        log.debug(logMsg.get("stock.transfer.movements.created",
                 outgoing.getId(), incoming.getId(), product.getId(), request.getQuantity()));
 
         return movements;
     }
 
-    /**
-     * Builds response DTO for stock transfer.
-     */
     private StockTransferResponseDto buildResponse(Warehouse fromWarehouse,
                                                    Warehouse toWarehouse,
                                                    StorageCell fromCell,

@@ -1,88 +1,46 @@
-// CashTransactionProcessor.java
 package ru.galtor85.household_store.processor.cash;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.advice.exception.cash.CashRegisterClosedException;
-import ru.galtor85.household_store.advice.exception.cash.CashRegisterNotFoundException;
-import ru.galtor85.household_store.advice.exception.cash.InsufficientCashException;
 import ru.galtor85.household_store.dto.request.finance.CashTransactionRequest;
 import ru.galtor85.household_store.entity.finance.*;
-import ru.galtor85.household_store.repository.cash.CashRegisterRepository;
 import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
-import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.service.cash.CashRegisterService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 
+/**
+ * Processor for cash transaction operations.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class CashTransactionProcessor {
 
-    private final CashTransactionRepository transactionRepository;
-    private final CashRegisterRepository cashRegisterRepository;
-    private final InvoiceRepository invoiceRepository;
     private final MessageService messageService;
     private final CashTransactionRepository cashTransactionRepository;
     private final CashRegisterService cashRegisterService;
+    private final LogMessageService logMsg;
 
-    @Transactional
-    public CashTransaction processTransaction(CashTransactionRequest request, Long cashierId) {
-
-        log.info(messageService.get("transaction.processor.start",
-                request.getTransactionType().getLocalizedName(messageService),
-                request.getAmount()));
-
-        // 1. Проверяем кассу
-        CashRegister cashRegister = cashRegisterRepository.findById(request.getCashRegisterId())
-                .orElseThrow(() -> new CashRegisterNotFoundException(request.getCashRegisterId()));
-
-        if (!cashRegister.getIsActive()) {
-            throw new CashRegisterClosedException(cashRegister.getId());
-        }
-
-        // 2. Проверяем баланс для расхода
-        if (request.getTransactionType() == TransactionType.EXPENSE) {
-            BigDecimal currentBalance = cashRegister.getCurrentBalance();
-            if (currentBalance.compareTo(request.getAmount()) < 0) {
-                throw new InsufficientCashException(currentBalance, request.getAmount());
-            }
-        }
-
-        // 3. Создаем операцию
-        CashTransaction transaction = CashTransaction.builder()
-                .cashRegister(cashRegister)
-                .invoice(request.getInvoiceId() != null ?
-                        invoiceRepository.findById(request.getInvoiceId()).orElse(null) : null)
-                .transactionType(request.getTransactionType())
-                .amount(request.getAmount())
-                .paymentMethod(determinePaymentMethod(request))
-                .cashierId(cashierId)
-                .description(request.getDescription())
-                .build();
-
-        CashTransaction saved = transactionRepository.save(transaction);
-
-        log.info(messageService.get("transaction.processor.complete",
-                saved.getId(),
-                transaction.getTransactionType().getLocalizedName(messageService),
-                saved.getAmount()));
-
-        return saved;
-    }
-
-    //Создает кассовую операцию
-
+    /**
+     * Creates a new cash transaction.
+     *
+     * @param request      the transaction request
+     * @param cashRegister the cash register
+     * @param invoice      the associated invoice (optional)
+     * @param cashierId    ID of the cashier performing the transaction
+     * @return created CashTransaction entity
+     */
     @Transactional
     public CashTransaction createTransaction(CashTransactionRequest request,
                                              CashRegister cashRegister,
                                              Invoice invoice,
                                              Long cashierId) {
-        log.info(messageService.get("cash.transaction.processor.create.start",
+        log.info(logMsg.get("cash.transaction.processor.create.start",
                 request.getTransactionType().getLocalizedName(messageService),
                 request.getAmount()));
 
@@ -110,18 +68,23 @@ public class CashTransactionProcessor {
 
         CashTransaction saved = cashTransactionRepository.save(transaction);
 
-        log.info(messageService.get("cash.transaction.processor.created",
+        log.info(logMsg.get("cash.transaction.processor.created",
                 saved.getId(), saved.getAmount()));
 
         return saved;
     }
 
     /**
-     * Создает возвратную операцию
+     * Creates a refund transaction for an existing transaction.
+     *
+     * @param original the original transaction to refund
+     * @param reason   the reason for refund
+     * @param cashierId ID of the cashier performing the refund
+     * @return created refund CashTransaction entity
      */
     @Transactional
     public CashTransaction createRefundTransaction(CashTransaction original, String reason, Long cashierId) {
-        log.info(messageService.get("cash.transaction.processor.refund.start",
+        log.info(logMsg.get("cash.transaction.processor.refund.start",
                 original.getId(), reason));
 
         // Get current balance BEFORE refund
@@ -148,20 +111,9 @@ public class CashTransactionProcessor {
 
         CashTransaction saved = cashTransactionRepository.save(refund);
 
-        log.info(messageService.get("cash.transaction.processor.refund.created",
+        log.info(logMsg.get("cash.transaction.processor.refund.created",
                 saved.getId(), original.getId()));
 
         return saved;
-    }
-
-
-    private PaymentMethod determinePaymentMethod(CashTransactionRequest request) {
-        // Если есть invoice, берем способ оплаты из него
-        if (request.getInvoiceId() != null) {
-            return invoiceRepository.findById(request.getInvoiceId())
-                    .map(Invoice::getPaymentMethod)
-                    .orElse(PaymentMethod.CASH);
-        }
-        return PaymentMethod.CASH;
     }
 }

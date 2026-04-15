@@ -55,7 +55,7 @@ public class InvoiceService {
     private final InvoicePaymentProcessor paymentProcessor;
     private final CashTransactionRepository cashTransactionRepository;
     private final CurrencyConversionService currencyConversionService;
-    private final FinancialConfig financialConfig;  // ← ДОБАВИТЬ
+    private final FinancialConfig financialConfig;
 
     // =========================================================================
     // INVOICE CREATION
@@ -344,16 +344,6 @@ public class InvoiceService {
     // =========================================================================
 
     /**
-     * Gets total amount of pending invoices
-     *
-     * @return total pending amount
-     */
-    @Transactional(readOnly = true)
-    public BigDecimal getTotalPendingAmount() {
-        return invoiceRepository.getTotalPendingAmount();
-    }
-
-    /**
      * Gets total paid amount for a time period
      *
      * @param startDate period start
@@ -363,40 +353,6 @@ public class InvoiceService {
     @Transactional(readOnly = true)
     public BigDecimal getTotalPaidAmountForPeriod(LocalDateTime startDate, LocalDateTime endDate) {
         return invoiceRepository.getTotalPaidAmountForPeriod(startDate, endDate);
-    }
-
-    /**
-     * Gets total amount grouped by invoice status
-     *
-     * @return map of status to total amount
-     */
-    @Transactional(readOnly = true)
-    public Map<InvoiceStatus, BigDecimal> getTotalAmountByStatus() {
-        List<Object[]> results = invoiceRepository.getTotalAmountByStatus();
-        Map<InvoiceStatus, BigDecimal> map = new HashMap<>();
-        for (Object[] row : results) {
-            InvoiceStatus status = (InvoiceStatus) row[0];
-            BigDecimal amount = (BigDecimal) row[1];
-            map.put(status, amount);
-        }
-        return map;
-    }
-
-    /**
-     * Gets total amount grouped by payment method
-     *
-     * @return map of payment method to total amount
-     */
-    @Transactional(readOnly = true)
-    public Map<PaymentMethod, BigDecimal> getTotalAmountByPaymentMethod() {
-        List<Object[]> results = invoiceRepository.getTotalAmountByPaymentMethod();
-        Map<PaymentMethod, BigDecimal> map = new HashMap<>();
-        for (Object[] row : results) {
-            PaymentMethod method = (PaymentMethod) row[0];
-            BigDecimal amount = (BigDecimal) row[1];
-            map.put(method, amount);
-        }
-        return map;
     }
 
     /**
@@ -421,65 +377,6 @@ public class InvoiceService {
                 .build();
     }
 
-    /**
-     * Gets total pending amount for purchase orders only
-     */
-    @Transactional(readOnly = true)
-    public BigDecimal getTotalPendingAmountForPurchase() {
-        BigDecimal amount = invoiceRepository.getTotalPendingAmountForPurchase();
-        return amount != null ? amount : BigDecimal.ZERO;
-    }
-
-    /**
-     * Gets total pending amount for sales orders only
-     */
-    @Transactional(readOnly = true)
-    public BigDecimal getTotalPendingAmountForSales() {
-        BigDecimal amount = invoiceRepository.getTotalPendingAmountForSales();
-        return amount != null ? amount : BigDecimal.ZERO;
-    }
-
-    // =========================================================================
-    // OVERDUE INVOICES
-    // =========================================================================
-
-    /**
-     * Gets all overdue invoices
-     *
-     * @return list of overdue invoice DTOs
-     */
-    @Transactional(readOnly = true)
-    public List<InvoiceDto> getOverdueInvoices() {
-        List<Invoice> invoices = invoiceRepository.findOverdueInvoices(LocalDateTime.now());
-        return getInvoiceDtos(invoices);
-    }
-
-    /**
-     * Gets invoices due in the next N days
-     *
-     * @param days number of days to look ahead (from configuration or request)
-     * @return list of upcoming invoice DTOs
-     */
-    @Transactional(readOnly = true)
-    public List<InvoiceDto> getUpcomingInvoices(int days) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endDate = now.plusDays(days);
-        List<Invoice> invoices = invoiceRepository.findUpcomingInvoices(now, endDate);
-
-        return getInvoiceDtos(invoices);
-    }
-
-    /**
-     * Gets default upcoming invoices based on configuration
-     *
-     * @return list of upcoming invoice DTOs using default days from config
-     */
-    @Transactional(readOnly = true)
-    public List<InvoiceDto> getDefaultUpcomingInvoices() {
-        Integer defaultDays = financialConfig.getInvoice().getRetailDueDays();
-        int days = defaultDays != null ? defaultDays : 7;
-        return getUpcomingInvoices(days);
-    }
 
     // =========================================================================
     // HELPER METHODS
@@ -545,8 +442,7 @@ public class InvoiceService {
                 else if (tx.getTransactionType() == TransactionType.REFUND) {
                     totalPaid = totalPaid.subtract(tx.getAmount());
                 }
-            }
-            else if (invoice.isSalesOrder()) {
+            } else if (invoice.isSalesOrder()) {
                 // For sales orders: INCOME = payment from customer
                 if (tx.getTransactionType() == TransactionType.INCOME) {
                     totalPaid = totalPaid.add(tx.getAmount());

@@ -22,14 +22,17 @@ import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.finance.TransactionType;
 import ru.galtor85.household_store.entity.order.OrderType;
 import ru.galtor85.household_store.entity.order.SalesOrder;
-import ru.galtor85.household_store.entity.payment.*;
+import ru.galtor85.household_store.entity.payment.PaymentMethod;
+import ru.galtor85.household_store.entity.payment.PaymentProvider;
+import ru.galtor85.household_store.entity.payment.PaymentTransaction;
+import ru.galtor85.household_store.entity.payment.PaymentTransactionStatus;
 import ru.galtor85.household_store.entity.user.Role;
+import ru.galtor85.household_store.repository.auth.SecurityUserRepository;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.repository.payment.PaymentMethodRepository;
 import ru.galtor85.household_store.repository.payment.PaymentMethodUserTypeRepository;
 import ru.galtor85.household_store.repository.payment.PaymentTransactionRepository;
-import ru.galtor85.household_store.repository.auth.SecurityUserRepository;
 import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.cash.CashRegisterService;
 import ru.galtor85.household_store.service.cash.CashTransactionService;
@@ -103,7 +106,7 @@ public class PaymentService {
      * Routes to specific handler based on request fields.
      *
      * @param request the payment request containing all necessary data
-     * @param userId the ID of the user performing the payment
+     * @param userId  the ID of the user performing the payment
      * @return payment transaction DTO with status and details
      * @throws IllegalArgumentException if payment type is unsupported
      */
@@ -138,7 +141,7 @@ public class PaymentService {
      * Customer pays for their sales order.
      *
      * @param request the payment request with order ID and payment method
-     * @param userId the ID of the customer
+     * @param userId  the ID of the customer
      * @return completed payment transaction DTO
      */
     @Transactional
@@ -238,7 +241,7 @@ public class PaymentService {
      * Customer pays an invoice directly.
      *
      * @param request the payment request with invoice ID
-     * @param userId the ID of the user
+     * @param userId  the ID of the user
      * @return payment transaction DTO
      */
     @Transactional
@@ -268,7 +271,7 @@ public class PaymentService {
     /**
      * Manager pays supplier from company bank account.
      *
-     * @param request the payment request with purchase order ID and bank account ID
+     * @param request   the payment request with purchase order ID and bank account ID
      * @param managerId the ID of the manager
      * @return completed payment transaction DTO
      */
@@ -302,8 +305,7 @@ public class PaymentService {
                         .accountId(bankAccountId)
                         .amount(amount)
                         .description(messageService.get("payment.supplier.payment.description", purchaseOrderId))
-                        .build(),
-                managerId
+                        .build()
         );
 
         PaymentTransaction transaction = createSupplierPaymentTransaction(invoice, amount, BANK_ACCOUNT_TYPE, bankAccountId.toString(), managerId);
@@ -318,7 +320,7 @@ public class PaymentService {
     /**
      * Manager pays supplier from cash register.
      *
-     * @param request the payment request with purchase order ID and cash register ID
+     * @param request   the payment request with purchase order ID and cash register ID
      * @param managerId the ID of the manager
      * @return completed payment transaction DTO
      */
@@ -381,13 +383,11 @@ public class PaymentService {
 
         validateManagerRole(managerId);
 
-        // 2. Проверка кассы
         CashRegisterDto cashRegister = cashRegisterService.getCashRegisterById(request.getCashRegisterId());
         if (!cashRegister.getIsActive()) {
             throw new IllegalStateException(messageService.get("cash.register.closed", request.getCashRegisterId()));
         }
 
-        // 3. Находим заказ и счёт
         SalesOrder order;
         InvoiceDto invoice;
 
@@ -408,7 +408,6 @@ public class PaymentService {
 
         Long customerId = order.getUserId();
 
-        // 4. Проверка счёта
         if (invoice.getStatus() == InvoiceStatus.PAID) {
             throw new IllegalStateException(messageService.get("invoice.already.paid", invoice.getInvoiceNumber()));
         }
@@ -416,7 +415,6 @@ public class PaymentService {
             throw new IllegalStateException(messageService.get("invoice.cancelled", invoice.getInvoiceNumber()));
         }
 
-        // 5. Проверка суммы
         BigDecimal amount = request.getAmount();
         if (amount.compareTo(invoice.getRemainingAmount()) > 0) {
             throw new IllegalArgumentException(
@@ -428,7 +426,6 @@ public class PaymentService {
             currency = financialConfig.getDefaultCurrency();
         }
 
-        // 6. Создаём INCOME транзакцию в кассу
         CashTransactionRequest incomeRequest = CashTransactionRequest.builder()
                 .paymentMethod(request.getPaymentMethod())
                 .cashRegisterId(request.getCashRegisterId())
@@ -444,7 +441,6 @@ public class PaymentService {
                 .build();
         cashTransactionService.createTransaction(incomeRequest, managerId);
 
-        // 7. Создаём платёжную транзакцию
         PaymentTransaction transaction = createCustomerPaymentTransaction(
                 invoice, amount, request.getCashRegisterId().toString(),
                 customerId);
@@ -461,7 +457,7 @@ public class PaymentService {
     /**
      * Manager processes cash refund to customer.
      *
-     * @param request the payment request with original transaction ID and refund reason
+     * @param request   the payment request with original transaction ID and refund reason
      * @param managerId the ID of the manager
      * @return refund payment transaction DTO
      */

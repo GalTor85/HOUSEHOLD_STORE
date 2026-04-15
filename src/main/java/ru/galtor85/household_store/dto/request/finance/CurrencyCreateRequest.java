@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 import static ru.galtor85.household_store.constants.FinancialConstants.*;
-import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_ACTIVE_STATUS;
 
 @Data

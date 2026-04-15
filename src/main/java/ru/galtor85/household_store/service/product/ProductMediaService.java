@@ -8,22 +8,25 @@ import org.springframework.web.multipart.MultipartFile;
 import ru.galtor85.household_store.advice.exception.product.ProductMediaException;
 import ru.galtor85.household_store.advice.exception.product.ProductMediaNotFoundException;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
-import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
 import ru.galtor85.household_store.dto.common.ProductMediaUploadDto;
+import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.product.ProductMedia;
-import ru.galtor85.household_store.mapper.product.ProductMediaMapper;
 import ru.galtor85.household_store.processor.media.MainImageProcessor;
 import ru.galtor85.household_store.processor.media.MediaDeleteProcessor;
 import ru.galtor85.household_store.processor.media.MediaUploadProcessor;
 import ru.galtor85.household_store.repository.product.ProductMediaRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.util.json.MediaMetadataParser;
 
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Service for managing product media.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -31,56 +34,57 @@ public class ProductMediaService {
 
     private final ProductMediaRepository mediaRepository;
     private final ProductRepository productRepository;
-    private final ProductMediaMapper mediaMapper;
     private final MessageService messageService;
-
-    // Процессоры
+    private final LogMessageService logMsg;
     private final MediaUploadProcessor uploadProcessor;
     private final MediaDeleteProcessor deleteProcessor;
     private final MainImageProcessor mainImageProcessor;
-
-    // Утилиты
     private final MediaMetadataParser metadataParser;
 
-    // ========== UPLOAD MEDIA ==========
-
+    /**
+     * Uploads media files for a product.
+     *
+     * @param productId product ID
+     * @param files media files to upload
+     * @param metadataJson JSON metadata for files
+     * @param uploadedBy user ID who uploaded
+     * @return list of uploaded media DTOs
+     */
     @Transactional
     public List<ProductMediaDto> uploadMedia(Long productId, List<MultipartFile> files,
                                              String metadataJson, Long uploadedBy) {
-        log.info(messageService.get("product.media.service.upload.start", productId, files.size()));
+        log.info(logMsg.get("product.media.service.upload.start", productId, files.size()));
 
-        // Проверяем существование продукта
         Product product = findProductById(productId);
-
-        // Парсим метаданные
         List<ProductMediaUploadDto> metadataList = metadataParser.parseMetadata(metadataJson);
-
-        // Загружаем файлы
         MediaUploadProcessor.UploadResult uploadResult = uploadProcessor.processUpload(
                 productId, files, metadataList, uploadedBy);
 
-        // Обновляем главное изображение
-        mainImageProcessor.updateMainImage(product, uploadResult.getSuccessful());
+        mainImageProcessor.updateMainImage(product, uploadResult.successful());
 
-        log.info(messageService.get("product.media.service.upload.complete",
-                uploadResult.getSuccessful().size(), productId, uploadedBy));
+        log.info(logMsg.get("product.media.service.upload.complete",
+                uploadResult.successful().size(), productId, uploadedBy));
 
-        return uploadResult.getSuccessful();
+        return uploadResult.successful();
     }
 
-    // ========== DELETE MEDIA ==========
-
+    /**
+     * Deletes a media file.
+     *
+     * @param mediaId media ID
+     * @param deletedBy user ID who deleted
+     */
     @Transactional
     public void deleteMedia(Long mediaId, Long deletedBy) {
-        log.info(messageService.get("product.media.service.delete.start", mediaId, deletedBy));
+        log.info(logMsg.get("product.media.service.delete.start", mediaId, deletedBy));
 
         ProductMedia media = findMediaById(mediaId);
 
         try {
             deleteProcessor.deleteMedia(media, deletedBy);
-            log.info(messageService.get("product.media.service.delete.success", mediaId, deletedBy));
+            log.info(logMsg.get("product.media.service.delete.success", mediaId, deletedBy));
         } catch (IOException e) {
-            log.error(messageService.get("product.media.service.delete.error", mediaId, e.getMessage()), e);
+            log.error(logMsg.get("product.media.service.delete.error", mediaId, e.getMessage()), e);
             throw new ProductMediaException(
                     messageService.get("product.media.service.error.delete", mediaId, e.getMessage()),
                     e, media.getProductId(), null
@@ -88,40 +92,59 @@ public class ProductMediaService {
         }
     }
 
-    // ========== SET MAIN MEDIA ==========
-
+    /**
+     * Sets media as main product image.
+     *
+     * @param mediaId media ID
+     * @param setBy user ID who set
+     */
     @Transactional
     public void setMainMedia(Long mediaId, Long setBy) {
-        log.info(messageService.get("product.media.service.setmain.start", mediaId, setBy));
+        log.info(logMsg.get("product.media.service.setmain.start", mediaId, setBy));
 
         try {
-            mainImageProcessor.setMainImage(mediaId, setBy);
-            log.info(messageService.get("product.media.service.setmain.success", mediaId, setBy));
+            mainImageProcessor.setMainImage(mediaId);
+            log.info(logMsg.get("product.media.service.setmain.success", mediaId, setBy));
         } catch (Exception e) {
-            log.error(messageService.get("product.media.service.setmain.error", mediaId, e.getMessage()), e);
+            log.error(logMsg.get("product.media.service.setmain.error", mediaId, e.getMessage()), e);
             throw e;
         }
     }
 
-    // ========== GET PRODUCT MEDIA ==========
-
+    /**
+     * Gets all media for a product.
+     *
+     * @param productId product ID
+     * @return list of media DTOs
+     */
     @Transactional(readOnly = true)
     public List<ProductMediaDto> getProductMedia(Long productId) {
-        log.debug(messageService.get("product.media.service.getmedia.start", productId));
-
+        log.debug(logMsg.get("product.media.service.getmedia.start", productId));
         List<ProductMedia> mediaList = mediaRepository.findByProductIdOrdered(productId);
-
-        log.debug(messageService.get("product.media.service.getmedia.found", productId, mediaList.size()));
-
-        return mediaMapper.toDtoList(mediaList);
+        log.debug(logMsg.get("product.media.service.getmedia.found", productId, mediaList.size()));
+        return mediaList.stream()
+                .map(m -> ProductMediaDto.builder()
+                        .id(m.getId())
+                        .mediaType(m.getMediaType())
+                        .fileName(m.getFileName())
+                        .fileUrl(m.getFilePath())
+                        .fileSize(m.getFileSize())
+                        .mimeType(m.getMimeType())
+                        .altText(m.getAltText())
+                        .caption(m.getCaption())
+                        .sortOrder(m.getSortOrder())
+                        .isMain(m.getIsMain())
+                        .width(m.getWidth())
+                        .height(m.getHeight())
+                        .duration(m.getDuration())
+                        .build())
+                .toList();
     }
-
-    // ========== PRIVATE HELPER METHODS ==========
 
     private Product findProductById(Long productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("product.media.service.product.not.found", productId));
+                    log.error(logMsg.get("product.media.service.product.not.found", productId));
                     return new ProductNotFoundException(productId);
                 });
     }
@@ -129,7 +152,7 @@ public class ProductMediaService {
     private ProductMedia findMediaById(Long mediaId) {
         return mediaRepository.findById(mediaId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("product.media.service.media.not.found", mediaId));
+                    log.error(logMsg.get("product.media.service.media.not.found", mediaId));
                     return new ProductMediaNotFoundException(
                             messageService.get("product.media.service.error.not.found", mediaId),
                             mediaId

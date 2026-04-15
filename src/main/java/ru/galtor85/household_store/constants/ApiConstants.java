@@ -21,9 +21,9 @@ public final class ApiConstants {
     public static final String API_BASE = "/app";
 
     /**
-     * Base path for API version 2 (reserved for future use).
-     */
-    public static final String API_V2 = "/app/v2";
+     * Base path for Media API endpoints.     */
+
+    public static final String MEDIA_PATH = API_BASE + "/media/";
 
     /**
      * Private constructor to prevent instantiation.

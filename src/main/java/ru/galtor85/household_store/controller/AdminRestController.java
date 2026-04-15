@@ -12,10 +12,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import ru.galtor85.household_store.dto.response.order.RollbackApprovalDto;
+import ru.galtor85.household_store.dto.request.auth.UserCreateRequest;
 import ru.galtor85.household_store.dto.request.user.UpdateRoleRequest;
 import ru.galtor85.household_store.dto.request.user.UpdateStatusRequest;
-import ru.galtor85.household_store.dto.request.auth.UserCreateRequest;
+import ru.galtor85.household_store.dto.response.order.RollbackApprovalDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.dto.response.user.UserResponse;
 import ru.galtor85.household_store.dto.response.user.UserStatistics;
@@ -23,6 +23,7 @@ import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.mapper.user.UserMapper;
 import ru.galtor85.household_store.mapper.user.UserToEntity;
 import ru.galtor85.household_store.service.auth.AdminUserCreationService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.rollback.RollbackService;
 import ru.galtor85.household_store.service.user.UserDeletedService;
@@ -75,7 +76,7 @@ public class AdminRestController extends BaseController {
     private final UserMapper userMapper;
     private final MessageService messageService;
     private final RollbackService rollbackService;
-
+    private final LogMessageService logMsg;
 
     private boolean hasSearchCriteria(String mobileNumber, String email,
                                       String firstName, String lastName) {
@@ -108,25 +109,25 @@ public class AdminRestController extends BaseController {
             @RequestParam(defaultValue = DEFAULT_SORT_FIELD) String sortBy) {
 
         User currentAdmin = getCurrentUser();
-        log.info(messageService.get("admin-rest-controller.log.admin.fetching.users",
+        log.info(logMsg.get("admin-rest-controller.log.admin.fetching.users",
                 currentAdmin.getEmail(), currentAdmin.getId()));
 
         List<User> users;
 
         if (hasSearchCriteria(mobileNumber, email, firstName, lastName)) {
             users = userSearchService.searchUsersByCriteria(mobileNumber, email, firstName, lastName, sortBy);
-            log.debug(messageService.get("admin-rest-controller.log.searching.users.with.criteria",
+            log.debug(logMsg.get("admin-rest-controller.log.searching.users.with.criteria",
                     email, mobileNumber, firstName, lastName));
         } else {
             users = userSearchService.getAllUsers(sortBy);
-            log.debug(messageService.get("admin-rest-controller.log.getting.all.users", sortBy));
+            log.debug(logMsg.get("admin-rest-controller.log.getting.all.users", sortBy));
         }
 
         List<UserResponse> userResponses = users.stream()
                 .map(userMapper::build)
                 .collect(Collectors.toList());
 
-        log.info(messageService.get("admin-rest-controller.log.returning.users", userResponses.size()));
+        log.info(logMsg.get("admin-rest-controller.log.returning.users", userResponses.size()));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("admin-rest-controller.user.fetched"),
@@ -146,7 +147,7 @@ public class AdminRestController extends BaseController {
             @RequestParam(defaultValue = DEFAULT_SORT_FIELD) String sort) {
 
         User currentAdmin = getCurrentUser();
-        log.info(messageService.get("admin-rest-controller.log.admin.searching.users",
+        log.info(logMsg.get("admin-rest-controller.log.admin.searching.users",
                 currentAdmin.getEmail(), identify));
 
         List<User> users = userSearchService.searchUsersByCriteria(identify, identify, null, null, sort);
@@ -170,7 +171,7 @@ public class AdminRestController extends BaseController {
             @Parameter(description = "User ID", example = "1", required = true)
             @PathVariable Long userId) {
 
-        log.debug(messageService.get("admin-rest-controller.log.getting.user.by.id", userId));
+        log.debug(logMsg.get("admin-rest-controller.log.getting.user.by.id", userId));
 
         User user = userSearchService.getUserById(userId);
 
@@ -193,7 +194,7 @@ public class AdminRestController extends BaseController {
             @Valid @RequestBody UserCreateRequest request) {
 
         User currentAdmin = getCurrentUser();
-        log.info(messageService.get("admin-rest-controller.log.admin.creating.user",
+        log.info(logMsg.get("admin-rest-controller.log.admin.creating.user",
                 currentAdmin.getEmail(), request.getEmail()));
 
         String creator = currentAdmin.getEmail() + " " + currentAdmin.getMobileNumber();
@@ -202,7 +203,7 @@ public class AdminRestController extends BaseController {
         User createdUser = adminUserCreationService.createUserWithRole(
                 currentAdmin, newUser, request.getPassword(), request.getRole());
 
-        log.info(messageService.get("admin-rest-controller.log.user.created.success", createdUser.getEmail()));
+        log.info(logMsg.get("admin-rest-controller.log.user.created.success", createdUser.getEmail()));
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
@@ -226,7 +227,7 @@ public class AdminRestController extends BaseController {
             @Valid @RequestBody UpdateRoleRequest request) {
 
         User currentAdmin = getCurrentUser();
-        log.info(messageService.get("admin-rest-controller.log.admin.changing.role",
+        log.info(logMsg.get("admin-rest-controller.log.admin.changing.role",
                 currentAdmin.getEmail(), userId, request.getNewRole()));
 
         User updatedUser = userRoleService.changeUserRole(currentAdmin, userId, request.getNewRole());
@@ -256,7 +257,7 @@ public class AdminRestController extends BaseController {
                 messageService.get("admin-rest-controller.user.status.active") :
                 messageService.get("admin-rest-controller.user.status.inactive");
 
-        log.info(messageService.get("admin-rest-controller.log.admin.changing.status",
+        log.info(logMsg.get("admin-rest-controller.log.admin.changing.status",
                 currentAdmin.getEmail(), userId, statusText));
 
         User updatedUser = userStatusService.toggleUserActive(currentAdmin, userId, request.isActive());
@@ -281,12 +282,12 @@ public class AdminRestController extends BaseController {
             @PathVariable Long userId) {
 
         User currentAdmin = getCurrentUser();
-        log.info(messageService.get("admin-rest-controller.log.admin.deleting.user",
+        log.info(logMsg.get("admin-rest-controller.log.admin.deleting.user",
                 currentAdmin.getEmail(), userId));
 
         userDeletedService.deleteUserWithCheck(userId, currentAdmin);
 
-        log.info(messageService.get("admin-rest-controller.log.user.deleted.success", userId));
+        log.info(logMsg.get("admin-rest-controller.log.user.deleted.success", userId));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("admin-rest-controller.user.deleted"),
@@ -306,7 +307,7 @@ public class AdminRestController extends BaseController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getStats() {
 
         User currentAdmin = getCurrentUser();
-        log.info(messageService.get("admin-rest-controller.log.admin.getting.stats", currentAdmin.getEmail()));
+        log.info(logMsg.get("admin-rest-controller.log.admin.getting.stats", currentAdmin.getEmail()));
 
         UserStatistics stats = userSearchService.getUserStatistics();
 
@@ -347,7 +348,7 @@ public class AdminRestController extends BaseController {
         int effectivePage = getPage(page);
         int effectiveSize = getSize(size);
 
-        log.debug(messageService.get("admin-rest-controller.log.pagination",
+        log.debug(logMsg.get("admin-rest-controller.log.pagination",
                 effectivePage, effectiveSize));
 
         Page<RollbackApprovalDto> approvals = rollbackService.getPendingRollbacks(effectivePage, effectiveSize);

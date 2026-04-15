@@ -181,7 +181,7 @@ public class StockService {
     public WarehouseStockSummaryDto getWarehouseSummary(Long warehouseId) {
         validator.validateWarehouseExists(warehouseId);
         var summary = warehouseStockProcessor.getWarehouseSummary(warehouseId);
-        return summaryProcessor.buildSummary(summary.getWarehouse(), summary.getStocks());
+        return summaryProcessor.buildSummary(summary.warehouse(), summary.stocks());
     }
 
     // =========================================================================

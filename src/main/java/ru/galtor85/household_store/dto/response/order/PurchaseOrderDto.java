@@ -42,7 +42,6 @@ public class PurchaseOrderDto {
     @Schema(description = "SalesOrder items")
     private List<PurchaseOrderItemDto> items;
 
-    // Поля для закупки
     @Schema(description = "Expected delivery date", example = "2024-03-25")
     private LocalDate expectedDelivery;
 
@@ -67,14 +66,15 @@ public class PurchaseOrderDto {
     @Schema(description = "Payment status", example = "PENDING")
     private String paymentStatus;
 
-    // Финансовые поля
+    @Schema(description = "Localized payment status", example = "Awaiting payment")
+    private String localizedPaymentStatus;
+
     @Schema(description = "Subtotal", example = "85000.00")
     private BigDecimal subtotal;
 
     @Schema(description = "Total amount", example = "85000.00")
     private BigDecimal totalAmount;
 
-    // Административные поля
     @Schema(description = "Created by manager ID", example = "1")
     private Long createdBy;
 
@@ -86,12 +86,6 @@ public class PurchaseOrderDto {
 
     @Schema(description = "Updated at")
     private LocalDateTime updatedAt;
-
-    @Schema(description = "Total received items count", example = "50")
-    private Integer totalReceivedItems;
-
-    @Schema(description = "Total received amount", example = "42500.00")
-    private BigDecimal totalReceivedAmount;
 
     @Schema(description = "Failed product IDs during receiving")
     private List<Long> failedItems;

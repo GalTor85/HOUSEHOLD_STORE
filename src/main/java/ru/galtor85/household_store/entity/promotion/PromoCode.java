@@ -7,14 +7,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.entity.product.DiscountType;
+import ru.galtor85.household_store.entity.user.UserType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Entity representing a promo code for discounts.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -40,14 +43,14 @@ public class PromoCode {
     private BigDecimal discountValue;
 
     @Column(name = "max_uses")
-    private Integer maxUses; // Максимальное количество использований
+    private Integer maxUses;
 
     @Column(name = "used_count")
     @Builder.Default
     private Integer usedCount = 0;
 
     @Column(name = "per_user_limit")
-    private Integer perUserLimit; // Лимит на одного пользователя
+    private Integer perUserLimit;
 
     @Column(name = "min_order_amount", precision = 10, scale = 2)
     private BigDecimal minOrderAmount;
@@ -73,28 +76,27 @@ public class PromoCode {
 
     @Column(name = "is_combined")
     @Builder.Default
-    private boolean combined = false; // Можно ли комбинировать с другими скидками
+    private boolean combined = false;
 
-    @Column(name = "created_at")
     @CreationTimestamp
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    /**
+     * Checks if the promo code is currently valid.
+     *
+     * @return true if active, within date range, and usage limits not exceeded
+     */
     public boolean isValid() {
         if (!active) return false;
         if (maxUses != null && usedCount >= maxUses) return false;
 
         LocalDateTime now = LocalDateTime.now();
         if (startDate != null && now.isBefore(startDate)) return false;
-        if (endDate != null && now.isAfter(endDate)) return false;
-
-        return true;
-    }
-
-    public void incrementUsed() {
-        usedCount++;
+        return endDate == null || !now.isAfter(endDate);
     }
 }

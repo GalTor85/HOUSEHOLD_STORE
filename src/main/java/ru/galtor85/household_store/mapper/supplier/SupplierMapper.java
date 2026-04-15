@@ -4,21 +4,30 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.request.supplier.SupplierCreateRequest;
-import ru.galtor85.household_store.dto.response.supplier.SupplierDto;
 import ru.galtor85.household_store.dto.request.supplier.SupplierUpdateRequest;
+import ru.galtor85.household_store.dto.response.supplier.SupplierDto;
 import ru.galtor85.household_store.entity.supplier.Supplier;
 import ru.galtor85.household_store.entity.supplier.SupplierStatus;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
+/**
+ * Mapper for Supplier entity to/from DTO.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class SupplierMapper {
 
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
-     * Преобразование запроса на создание в сущность Supplier
+     * Converts SupplierCreateRequest to Supplier entity.
+     *
+     * @param request   the creation request
+     * @param creatorId ID of the user creating the supplier
+     * @return Supplier entity
      */
     public Supplier toEntity(SupplierCreateRequest request, Long creatorId) {
         if (request == null) {
@@ -49,7 +58,10 @@ public class SupplierMapper {
     }
 
     /**
-     * Обновление сущности из запроса на обновление
+     * Updates an existing Supplier entity from update request.
+     *
+     * @param supplier the existing supplier entity
+     * @param request  the update request
      */
     public void updateEntity(Supplier supplier, SupplierUpdateRequest request) {
         if (supplier == null || request == null) {
@@ -102,7 +114,7 @@ public class SupplierMapper {
             try {
                 supplier.setStatus(SupplierStatus.valueOf(request.getStatus()));
             } catch (IllegalArgumentException e) {
-                log.warn(messageService.get("supplier.mapper.invalid.status", request.getStatus()));
+                log.warn(logMsg.get("supplier.mapper.invalid.status", request.getStatus()));
             }
         }
         if (request.getDeliveryTime() != null) {
@@ -117,7 +129,10 @@ public class SupplierMapper {
     }
 
     /**
-     * Преобразование сущности в DTO
+     * Converts Supplier entity to DTO.
+     *
+     * @param supplier the supplier entity
+     * @return SupplierDto
      */
     public SupplierDto toDto(Supplier supplier) {
         if (supplier == null) {

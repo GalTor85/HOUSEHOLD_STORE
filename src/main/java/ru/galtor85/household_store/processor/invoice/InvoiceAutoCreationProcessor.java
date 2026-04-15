@@ -9,6 +9,7 @@ import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.util.generator.NumberGenerator;
 
@@ -18,6 +19,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Processor for automatic invoice creation when orders are created.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -28,6 +32,7 @@ public class InvoiceAutoCreationProcessor {
     private final MessageService messageService;
     private final PurchaseOrderInvoiceCreator purchaseOrderInvoiceCreator;
     private final SalesOrderInvoiceCreator salesOrderInvoiceCreator;
+    private final LogMessageService logMsg;
 
     private final Map<Class<?>, InvoiceCreator<?>> creators = new HashMap<>();
 
@@ -35,26 +40,34 @@ public class InvoiceAutoCreationProcessor {
     public void init() {
         registerCreator(PurchaseOrder.class, purchaseOrderInvoiceCreator);
         registerCreator(SalesOrder.class, salesOrderInvoiceCreator);
-        log.info(messageService.get("invoice.creator.initialized"));
+        log.info(logMsg.get("invoice.creator.initialized"));
     }
 
     /**
-     * Регистрирует создателей счетов для разных типов заказов
+     * Registers an invoice creator for a specific order type.
+     *
+     * @param orderClass the order class
+     * @param creator    the invoice creator
      */
     public void registerCreator(Class<?> orderClass, InvoiceCreator<?> creator) {
         creators.put(orderClass, creator);
-        log.debug(messageService.get("invoice.creator.registered", orderClass.getSimpleName()));
+        log.debug(logMsg.get("invoice.creator.registered", orderClass.getSimpleName()));
     }
 
     /**
-     * Создает счет для заказа (общий метод)
+     * Creates an invoice for an order.
+     *
+     * @param order     the order entity
+     * @param createdBy ID of the user creating the invoice
+     * @param <T>       the order type
+     * @return created Invoice entity or null if not needed
+     * @throws IllegalArgumentException if order is null or no creator registered
      */
     @SuppressWarnings("unchecked")
     @Transactional
     public <T> Invoice createInvoiceForOrder(T order, Long createdBy) {
         if (order == null) {
-            throw new IllegalArgumentException(
-                    messageService.get("invoice.creator.order.null"));
+            throw new IllegalArgumentException(messageService.get("invoice.creator.order.null"));
         }
 
         InvoiceCreator<T> creator = (InvoiceCreator<T>) creators.get(order.getClass());
@@ -64,14 +77,13 @@ public class InvoiceAutoCreationProcessor {
         }
 
         if (!creator.shouldCreateInvoice(order)) {
-            log.info(messageService.get("invoice.creator.skip",
-                    order.getClass().getSimpleName()));
+            log.info(logMsg.get("invoice.creator.skip", order.getClass().getSimpleName()));
             return null;
         }
 
-        // Проверяем, не создан ли уже счет
+        // Check if invoice already exists
         if (hasExistingInvoice(order)) {
-            log.warn(messageService.get("invoice.creator.already.exists"));
+            log.warn(logMsg.get("invoice.creator.already.exists"));
             return getExistingInvoice(order);
         }
 
@@ -81,18 +93,24 @@ public class InvoiceAutoCreationProcessor {
         Invoice saved = invoiceRepository.save(invoice);
         linkInvoiceToOrder(saved, order);
 
-        log.info(messageService.get("invoice.creator.created",
+        log.info(logMsg.get("invoice.creator.created",
                 saved.getInvoiceNumber(), order.getClass().getSimpleName()));
 
         return saved;
     }
 
     /**
-     * Обновляет сумму счета при изменении заказа
+     * Updates the amount of an existing invoice.
+     *
+     * @param invoice    the invoice to update
+     * @param newAmount  the new amount
+     * @param reason     the reason for update
+     * @param updatedBy  ID of the user performing the update
+     * @return updated Invoice entity
      */
     @Transactional
     public Invoice updateInvoiceAmount(Invoice invoice, BigDecimal newAmount, String reason, Long updatedBy) {
-        log.info(messageService.get("invoice.creator.update.start",
+        log.info(logMsg.get("invoice.creator.update.start",
                 invoice.getInvoiceNumber(), invoice.getAmount(), newAmount));
 
         BigDecimal oldAmount = invoice.getAmount();
@@ -111,14 +129,14 @@ public class InvoiceAutoCreationProcessor {
 
         Invoice updated = invoiceRepository.save(invoice);
 
-        log.info(messageService.get("invoice.creator.updated",
+        log.info(logMsg.get("invoice.creator.updated",
                 updated.getInvoiceNumber(), oldAmount, newAmount));
 
         return updated;
     }
 
     // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // HELPER METHODS
     // =========================================================================
 
     private boolean hasExistingInvoice(Object order) {
@@ -132,19 +150,17 @@ public class InvoiceAutoCreationProcessor {
 
     private Invoice getExistingInvoice(Object order) {
         if (order instanceof PurchaseOrder) {
-            return invoiceRepository.findByPurchaseOrderId(((PurchaseOrder) order).getId()).get(0);
+            return invoiceRepository.findByPurchaseOrderId(((PurchaseOrder) order).getId()).getFirst();
         } else if (order instanceof SalesOrder) {
-            return invoiceRepository.findBySalesOrderId(((SalesOrder) order).getId()).get(0);
+            return invoiceRepository.findBySalesOrderId(((SalesOrder) order).getId()).getFirst();
         }
         return null;
     }
 
     private void linkInvoiceToOrder(Invoice invoice, Object order) {
-        if (order instanceof PurchaseOrder) {
-            PurchaseOrder purchaseOrder = (PurchaseOrder) order;
+        if (order instanceof PurchaseOrder purchaseOrder) {
             purchaseOrder.addInvoice(invoice);
-        } else if (order instanceof SalesOrder) {
-            SalesOrder salesOrder = (SalesOrder) order;
+        } else if (order instanceof SalesOrder salesOrder) {
             salesOrder.addInvoice(invoice);
         }
     }

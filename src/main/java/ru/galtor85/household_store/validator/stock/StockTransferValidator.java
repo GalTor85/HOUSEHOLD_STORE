@@ -16,6 +16,7 @@ import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.warehouse.StorageCellRepository;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 /**
@@ -35,6 +36,7 @@ public class StockTransferValidator {
     private final StorageCellRepository storageCellRepository;
     private final ProductStockRepository productStockRepository;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
      * Validates that a product exists and returns it.
@@ -46,7 +48,7 @@ public class StockTransferValidator {
     public Product validateProductExists(Long productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("product.not.found", productId));
+                    log.error(logMsg.get("product.not.found", productId));
                     return new ProductNotFoundException(productId);
                 });
     }
@@ -65,7 +67,7 @@ public class StockTransferValidator {
         }
         return warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("warehouse.not.found", warehouseId));
+                    log.error(logMsg.get("warehouse.not.found", warehouseId));
                     return new WarehouseNotFoundException(warehouseId);
                 });
     }
@@ -80,7 +82,7 @@ public class StockTransferValidator {
     public Warehouse validateDestinationWarehouseExists(Long warehouseId) {
         return warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("warehouse.not.found", warehouseId));
+                    log.error(logMsg.get("warehouse.not.found", warehouseId));
                     return new WarehouseNotFoundException(warehouseId);
                 });
     }
@@ -123,7 +125,7 @@ public class StockTransferValidator {
         if (cellId != null) {
             return storageCellRepository.findById(cellId)
                     .orElseThrow(() -> {
-                        log.error(messageService.get("cell.not.found.id", cellId));
+                        log.error(logMsg.get("cell.not.found.id", cellId));
                         return new IllegalArgumentException(
                                 messageService.get("cell.not.found.id", cellId));
                     });
@@ -131,7 +133,7 @@ public class StockTransferValidator {
         if (cellCode != null && warehouseId != null) {
             return storageCellRepository.findByCodeAndWarehouseId(cellCode, warehouseId)
                     .orElseThrow(() -> {
-                        log.error(messageService.get("cell.not.found.code", cellCode, warehouseId));
+                        log.error(logMsg.get("cell.not.found.code", cellCode, warehouseId));
                         return new IllegalArgumentException(
                                 messageService.get("cell.not.found.code", cellCode, warehouseId));
                     });
@@ -154,7 +156,7 @@ public class StockTransferValidator {
 
         if (stock == null || stock.getQuantity() < quantity) {
             int available = stock != null ? stock.getQuantity() : 0;
-            log.error(messageService.get("stock.transfer.insufficient.stock",
+            log.error(logMsg.get("stock.transfer.insufficient.stock",
                     product.getId(), warehouseId, available, quantity));
             throw new InsufficientStockException(product.getName(), available);
         }

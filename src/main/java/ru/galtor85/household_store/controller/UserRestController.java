@@ -33,6 +33,7 @@ import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.mapper.user.UserMapper;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.security.SecurityUser;
+import ru.galtor85.household_store.service.auth.UserService;
 import ru.galtor85.household_store.service.cart.CartService;
 import ru.galtor85.household_store.service.finance.InvoiceService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
@@ -42,7 +43,6 @@ import ru.galtor85.household_store.service.payment.PaymentMethodService;
 import ru.galtor85.household_store.service.payment.PaymentService;
 import ru.galtor85.household_store.service.stock.StockDisplayService;
 import ru.galtor85.household_store.service.user.UserSearchService;
-import ru.galtor85.household_store.service.auth.UserService;
 import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
 
 import java.util.List;

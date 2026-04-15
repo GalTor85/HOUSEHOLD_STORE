@@ -7,8 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.entity.product.DiscountType;
+import ru.galtor85.household_store.entity.user.UserType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,7 +28,7 @@ public class PriceRule {
     private Long id;
 
     @Column(nullable = false)
-    private String name; // Название правила
+    private String name;
 
     private String description;
 
@@ -37,16 +37,16 @@ public class PriceRule {
     private DiscountType discountType;
 
     @Column(name = "discount_value", nullable = false, precision = 10, scale = 2)
-    private BigDecimal discountValue; // Значение скидки
+    private BigDecimal discountValue;
 
     @Column(name = "min_quantity")
-    private Integer minQuantity; // Минимальное количество для скидки
+    private Integer minQuantity;
 
     @Column(name = "max_quantity")
-    private Integer maxQuantity; // Максимальное количество
+    private Integer maxQuantity;
 
     @Column(name = "min_order_amount", precision = 10, scale = 2)
-    private BigDecimal minOrderAmount; // Минимальная сумма заказа
+    private BigDecimal minOrderAmount;
 
     @Column(name = "start_date")
     private LocalDateTime startDate;
@@ -68,7 +68,7 @@ public class PriceRule {
     private boolean active = true;
 
     @Column(name = "priority")
-    private Integer priority; // Приоритет применения (меньше = выше)
+    private Integer priority;
 
     @Column(name = "created_at")
     @CreationTimestamp
@@ -78,13 +78,4 @@ public class PriceRule {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    public boolean isApplicableForUser(UserType userType) {
-        return applicableUserTypes.isEmpty() || applicableUserTypes.contains(userType);
-    }
-
-    public boolean isValidNow() {
-        LocalDateTime now = LocalDateTime.now();
-        return (startDate == null || now.isAfter(startDate)) &&
-                (endDate == null || now.isBefore(endDate));
-    }
 }

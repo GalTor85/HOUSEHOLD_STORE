@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.dto.request.price;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -14,8 +13,8 @@ import ru.galtor85.household_store.dto.response.cart.CartItemDto;
 
 import java.util.List;
 
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_PROMO_CODE_LENGTH;
 import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_ADDRESS_LENGTH;
+import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_PROMO_CODE_LENGTH;
 
 /**
  * Request DTO for price calculation.
@@ -40,9 +39,6 @@ public class PriceCalculationRequest {
     @Schema(description = "Promo code", example = "WELCOME10")
     private String promoCode;
 
-    @Schema(description = "User type ID (overrides user's current type)", example = "1")
-    private Long userTypeId;
-
     @Size(max = MAX_ADDRESS_LENGTH, message = "{price.validation.shipping.address.max}")
     @Schema(description = "Shipping address for delivery cost calculation", example = "123 Main St, Moscow")
     private String shippingAddress;
@@ -61,74 +57,4 @@ public class PriceCalculationRequest {
     @Schema(description = "Apply price rules", example = "true", defaultValue = "true")
     @Builder.Default
     private boolean applyPriceRules = true;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasPromoCode() {
-        return promoCode != null && !promoCode.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasUserTypeId() {
-        return userTypeId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasShippingAddress() {
-        return shippingAddress != null && !shippingAddress.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasCurrency() {
-        return currency != null && !currency.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasItems() {
-        return items != null && !items.isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public int getTotalItems() {
-        return items != null ? items.size() : 0;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedPromoCode() {
-        return promoCode != null ? promoCode.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedCurrency() {
-        return currency != null ? currency.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean shouldApplyUserTypeDiscounts() {
-        return applyUserTypeDiscounts;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean shouldApplyPromoCode() {
-        return applyPromoCode && hasPromoCode();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean shouldApplyPriceRules() {
-        return applyPriceRules;
-    }
 }

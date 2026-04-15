@@ -1,18 +1,26 @@
 package ru.galtor85.household_store.builder.category;
 
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.request.warehouse.BulkCategoryWarehouseRequest;
+import ru.galtor85.household_store.dto.request.warehouse.CategoryWarehouseRequest;
 import ru.galtor85.household_store.dto.response.warehouse.CategoryAssignmentDto;
 import ru.galtor85.household_store.dto.response.warehouse.CategoryWarehouseListDto;
-import ru.galtor85.household_store.dto.request.warehouse.CategoryWarehouseRequest;
 import ru.galtor85.household_store.entity.warehouse.CategoryWarehouse;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Builder for category-warehouse assignment entities and DTOs.
+ */
 @Component
 public class CategoryWarehouseBuilder {
 
+    /**
+     * Builds a CategoryWarehouse entity from the request.
+     *
+     * @param request the category warehouse request
+     * @return CategoryWarehouse entity
+     */
     public CategoryWarehouse buildFromRequest(CategoryWarehouseRequest request) {
         return CategoryWarehouse.builder()
                 .category(request.getCategory())
@@ -22,17 +30,14 @@ public class CategoryWarehouseBuilder {
                 .build();
     }
 
-    public List<CategoryWarehouse> buildFromBulkRequest(BulkCategoryWarehouseRequest request) {
-        return request.getCategories().stream()
-                .map(category -> CategoryWarehouse.builder()
-                        .category(category)
-                        .warehouseId(request.getWarehouseId())
-                        .isDefault(request.getIsDefault())
-                        .priority(request.getPriority())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
+    /**
+     * Builds a CategoryWarehouseListDto from warehouse data and assignments.
+     *
+     * @param warehouseId   warehouse ID
+     * @param warehouseName warehouse name
+     * @param assignments   list of category-warehouse assignments
+     * @return CategoryWarehouseListDto
+     */
     public CategoryWarehouseListDto buildCategoryWarehouseListDto(Long warehouseId,
                                                                   String warehouseName,
                                                                   List<CategoryWarehouse> assignments) {
@@ -48,6 +53,12 @@ public class CategoryWarehouseBuilder {
                 .build();
     }
 
+    /**
+     * Builds a CategoryAssignmentDto from a CategoryWarehouse entity.
+     *
+     * @param assignment the category-warehouse assignment entity
+     * @return CategoryAssignmentDto
+     */
     private CategoryAssignmentDto buildCategoryAssignmentDto(CategoryWarehouse assignment) {
         return CategoryAssignmentDto.builder()
                 .id(assignment.getId())

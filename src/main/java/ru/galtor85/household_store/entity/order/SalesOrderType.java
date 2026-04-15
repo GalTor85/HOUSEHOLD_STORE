@@ -40,4 +40,13 @@ public enum SalesOrderType {
     public String getDescription(MessageService messageService) {
         return messageService.get("sales.order.type.description." + this.name());
     }
+
+    /**
+     * Gets the order type key for localization.
+     *
+     * @return "wholesale" for WHOLESALE, "retail" otherwise
+     */
+    public String getKey() {
+        return this == WHOLESALE ? "wholesale" : "retail";
+    }
 }

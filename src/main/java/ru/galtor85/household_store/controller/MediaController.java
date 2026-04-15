@@ -8,10 +8,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
 import ru.galtor85.household_store.service.file.MediaService;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.util.List;
 
@@ -39,7 +42,7 @@ import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_ME
 public class MediaController {
 
     private final MediaService mediaService;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
      * Retrieves a media file by its ID.
@@ -55,7 +58,7 @@ public class MediaController {
             @Parameter(description = "Media ID", example = "1", required = true)
             @PathVariable Long mediaId) {
 
-        log.info(messageService.get("media.controller.log.request.file", mediaId));
+        log.info(logMsg.get("media.controller.log.request.file", mediaId));
 
         Resource resource = mediaService.getMediaFile(mediaId);
 
@@ -78,7 +81,7 @@ public class MediaController {
             @Parameter(description = "Media ID", example = "1", required = true)
             @PathVariable Long mediaId) {
 
-        log.info(messageService.get("media.controller.log.request.info", mediaId));
+        log.info(logMsg.get("media.controller.log.request.info", mediaId));
 
         ProductMediaDto mediaInfo = mediaService.getMediaInfo(mediaId);
 
@@ -98,7 +101,7 @@ public class MediaController {
             @Parameter(description = "Product ID", example = "1", required = true)
             @PathVariable Long productId) {
 
-        log.info(messageService.get("media.controller.log.request.product", productId));
+        log.info(logMsg.get("media.controller.log.request.product", productId));
 
         List<ProductMediaDto> mediaList = mediaService.getProductMedia(productId);
 
@@ -118,7 +121,7 @@ public class MediaController {
             @Parameter(description = "Product ID", example = "1", required = true)
             @PathVariable Long productId) {
 
-        log.info(messageService.get("media.controller.log.request.main", productId));
+        log.info(logMsg.get("media.controller.log.request.main", productId));
 
         ProductMediaDto mainImage = mediaService.getProductMainImage(productId);
 
@@ -141,7 +144,7 @@ public class MediaController {
             @Parameter(description = "File name", example = "product-image.jpg", required = true)
             @PathVariable String fileName) {
 
-        log.info(messageService.get("media.controller.log.request.file.by.name",
+        log.info(logMsg.get("media.controller.log.request.file.by.name",
                 fileName, productId));
 
         Resource resource = mediaService.getMediaFileByName(productId, fileName);

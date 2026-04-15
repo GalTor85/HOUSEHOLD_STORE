@@ -4,39 +4,28 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-/**
- * Configuration for financial settings.
- *
- * <p>This class holds all financial configuration including currency defaults,
- * invoice payment terms, and discount percentages for different user types.</p>
- *
- * <p>All values are loaded from application.properties with prefix 'app.financial'.</p>
- *
- * @author G@LTor85
- * @since 1.0
- */
 @Data
 @Component
 @ConfigurationProperties(prefix = "app.financial")
 public class FinancialConfig {
 
-    private String defaultCurrency;
-    private Integer defaultDecimalPlaces;
+    private String defaultCurrency = "RUB";
+    private Integer defaultDecimalPlaces = 2;
     private InvoiceConfig invoice = new InvoiceConfig();
     private DiscountsConfig discounts = new DiscountsConfig();
 
     @Data
     public static class InvoiceConfig {
-        private Integer purchaseDueDays;
-        private Integer retailDueDays;
-        private Integer wholesaleDueDays;
+        private Integer purchaseDueDays = 30;
+        private Integer retailDueDays = 7;
+        private Integer wholesaleDueDays = 30;
     }
 
     @Data
     public static class DiscountsConfig {
-        private Double wholesale;
-        private Double vip;
-        private Double partner;
-        private Double employee;
+        private Double wholesale = 5.0;
+        private Double vip = 10.0;
+        private Double partner = 7.0;
+        private Double employee = 15.0;
     }
 }

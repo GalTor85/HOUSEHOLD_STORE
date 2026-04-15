@@ -1,5 +1,6 @@
 package ru.galtor85.household_store.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +25,8 @@ import ru.galtor85.household_store.advice.exception.auth.AuthenticationManagerEx
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.security.JwtAuthenticationFilter;
 import ru.galtor85.household_store.security.JwtTokenCleanupFilter;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Arrays;
 import java.util.List;
@@ -58,6 +59,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtTokenCleanupFilter jwtTokenCleanupFilter;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final ObjectMapper objectMapper;
 
     @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:8080}")
@@ -109,7 +111,7 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) {
         try {
-            log.debug(messageService.get("security-config.log.creating.authentication.manager"));
+            log.debug(logMsg.get("security-config.log.creating.authentication.manager"));
             return authConfig.getAuthenticationManager();
         } catch (Exception e) {
             throw new AuthenticationManagerException(
@@ -144,7 +146,7 @@ public class SecurityConfig {
                 .addFilterAfter(jwtTokenCleanupFilter, JwtAuthenticationFilter.class)
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, authException) -> {
-                            log.warn(messageService.get("security-config.log.error.authentication.failed",
+                            log.warn(logMsg.get("security-config.log.error.authentication.failed",
                                     request.getRequestURI(), authException.getMessage()));
 
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -160,7 +162,7 @@ public class SecurityConfig {
                             response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            log.warn(messageService.get("security-config.log.error.access.denied",
+                            log.warn(logMsg.get("security-config.log.error.access.denied",
                                     request.getRequestURI(), accessDeniedException.getMessage()));
 
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -177,7 +179,7 @@ public class SecurityConfig {
                         })
                 );
 
-        log.debug(messageService.get("security-config.log.security.filter.chain.configured"));
+        log.debug(logMsg.get("security-config.log.security.filter.chain.configured"));
         return http.build();
     }
 
@@ -197,14 +199,14 @@ public class SecurityConfig {
         configuration.setMaxAge(corsMaxAge);
         configuration.setExposedHeaders(EXPOSED_HEADERS);
 
-        log.debug(messageService.get("security-config.log.cors.allowed.headers", configuration.getAllowedHeaders()));
-        log.debug(messageService.get("security-config.log.cors.allowed.methods", configuration.getAllowedMethods()));
-        log.debug(messageService.get("security-config.log.cors.allowed.origins", configuration.getAllowedOrigins()));
+        log.debug(logMsg.get("security-config.log.cors.allowed.headers", configuration.getAllowedHeaders()));
+        log.debug(logMsg.get("security-config.log.cors.allowed.methods", configuration.getAllowedMethods()));
+        log.debug(logMsg.get("security-config.log.cors.allowed.origins", configuration.getAllowedOrigins()));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration(CORS_URL_PATTERN, configuration);
 
-        log.debug(messageService.get("security-config.log.cors.configuration.source.configured"));
+        log.debug(logMsg.get("security-config.log.cors.configuration.source.configured"));
 
         return source;
     }

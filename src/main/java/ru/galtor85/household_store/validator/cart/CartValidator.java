@@ -9,6 +9,7 @@ import ru.galtor85.household_store.advice.exception.stock.InsufficientStockExcep
 import ru.galtor85.household_store.config.BusinessConfig;
 import ru.galtor85.household_store.entity.cart.Cart;
 import ru.galtor85.household_store.entity.product.Product;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 /**
@@ -28,6 +29,7 @@ public class CartValidator {
 
     private final MessageService messageService;
     private final BusinessConfig businessConfig;
+    private final LogMessageService logMsg;
 
     /**
      * Validates that a cart is not empty.
@@ -37,7 +39,7 @@ public class CartValidator {
      */
     public void validateCartNotEmpty(Cart cart) {
         if (cart == null || cart.getItems() == null || cart.getItems().isEmpty()) {
-            log.warn(messageService.get("cart.validation.empty"));
+            log.warn(logMsg.get("cart.validation.empty"));
             throw new CartEmptyException();
         }
     }
@@ -50,7 +52,7 @@ public class CartValidator {
      */
     public void validateProductActive(Product product) {
         if (!product.isActive()) {
-            log.warn(messageService.get("cart.validation.product.inactive", product.getId()));
+            log.warn(logMsg.get("cart.validation.product.inactive", product.getId()));
             throw new ProductInactiveException(product.getId());
         }
     }
@@ -64,7 +66,7 @@ public class CartValidator {
      */
     public void validateStockAvailability(Product product, int requestedQuantity) {
         if (product.getQuantityInStock() < requestedQuantity) {
-            log.warn(messageService.get("cart.validation.insufficient.stock",
+            log.warn(logMsg.get("cart.validation.insufficient.stock",
                     product.getName(), product.getQuantityInStock(), requestedQuantity));
             throw new InsufficientStockException(product.getName(), product.getQuantityInStock());
         }
@@ -91,7 +93,7 @@ public class CartValidator {
         }
 
         if (currentItems + additionalItems > maxItems) {
-            log.warn(messageService.get("cart.validation.max.items.exceeded", maxItems));
+            log.warn(logMsg.get("cart.validation.max.items.exceeded", maxItems));
             throw new IllegalArgumentException(
                     messageService.get("cart.validation.max.items.exceeded", maxItems)
             );
@@ -123,7 +125,7 @@ public class CartValidator {
         }
 
         if (quantity > maxQuantityPerItem) {
-            log.warn(messageService.get("cart.validation.max.quantity.per.item.exceeded",
+            log.warn(logMsg.get("cart.validation.max.quantity.per.item.exceeded",
                     maxQuantityPerItem, quantity));
             throw new IllegalArgumentException(
                     messageService.get("cart.validation.max.quantity.per.item.exceeded",

@@ -7,7 +7,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.galtor85.household_store.entity.order.OrderStatus;
-import ru.galtor85.household_store.entity.order.SalesOrderType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -46,12 +45,6 @@ public class SalesOrderDto {
     // =========================================================================
     // ORDER TYPE & STATUS
     // =========================================================================
-
-    @Schema(description = "Order type", example = "RETAIL")
-    private SalesOrderType orderType;
-
-    @Schema(description = "Localized order type", example = "Розничный заказ")
-    private String localizedOrderType;
 
     @Schema(description = "Order status")
     private OrderStatus status;
@@ -97,6 +90,12 @@ public class SalesOrderDto {
 
     @Schema(description = "Payment summary for the order")
     private PaymentSummaryDto paymentSummary;
+
+    @Schema(description = "Payment status", example = "PAID")
+    private String paymentStatus;
+
+    @Schema(description = "Localized payment status", example = "Paid")
+    private String localizedPaymentStatus;
 
     // =========================================================================
     // DELIVERY FIELDS
@@ -155,17 +154,4 @@ public class SalesOrderDto {
 
     @Schema(description = "Last update timestamp")
     private LocalDateTime updatedAt;
-
-    // =========================================================================
-    // EXTENDED FIELDS (for convenience)
-    // =========================================================================
-
-    @Schema(description = "Customer name", example = "Иван Иванов")
-    private String customerName;
-
-    @Schema(description = "Customer email", example = "ivan@example.com")
-    private String customerEmail;
-
-    @Schema(description = "Item count", example = "3")
-    private Integer itemCount;
 }

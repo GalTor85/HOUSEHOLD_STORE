@@ -8,9 +8,8 @@ import ru.galtor85.household_store.advice.exception.warehouse.WarehouseNotFoundE
 import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
-
-import static ru.galtor85.household_store.constants.ApiConstants.API_BASE;
 
 /**
  * Validator for warehouse operations
@@ -26,6 +25,7 @@ public class WarehouseValidator {
 
     private final WarehouseRepository warehouseRepository;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     // =========================================================================
     // WAREHOUSE EXISTENCE VALIDATION
@@ -41,7 +41,7 @@ public class WarehouseValidator {
      */
     public Warehouse validateWarehouseExists(Long warehouseId) {
         if (warehouseId == null) {
-            log.error(messageService.get("receive.validation.warehouse.id.null"));
+            log.error(logMsg.get("receive.validation.warehouse.id.null"));
             throw new IllegalArgumentException(
                     messageService.get("receive.validation.warehouse.id.null")
             );
@@ -49,21 +49,9 @@ public class WarehouseValidator {
 
         return warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("warehouse.error.not.found.id", warehouseId));
+                    log.error(logMsg.get("warehouse.error.not.found.id", warehouseId));
                     return new WarehouseNotFoundException(warehouseId);
                 });
-    }
-
-    /**
-     * Validates that at least one warehouse exists in the system
-     *
-     * @throws WarehouseNotFoundException if no warehouses exist
-     */
-    public void validateAnyWarehouseExists() {
-        if (warehouseRepository.count() == 0) {
-            log.error(messageService.get("warehouse.error.no.warehouses"),API_BASE);
-            throw new WarehouseNotFoundException();
-        }
     }
 
     // =========================================================================
@@ -78,7 +66,7 @@ public class WarehouseValidator {
      */
     public void validateWarehouseCodeUnique(String code) {
         if (warehouseRepository.existsByCode(code)) {
-            log.warn(messageService.get("warehouse.log.code.exists", code));
+            log.warn(logMsg.get("warehouse.log.code.exists", code));
             throw new WarehouseAlreadyExistsException("code", code);
         }
     }
@@ -91,7 +79,7 @@ public class WarehouseValidator {
      */
     public void validateWarehouseBarcodeUnique(String barcode) {
         if (warehouseRepository.existsByBarcode(barcode)) {
-            log.warn(messageService.get("warehouse.log.barcode.exists", barcode));
+            log.warn(logMsg.get("warehouse.log.barcode.exists", barcode));
             throw new WarehouseAlreadyExistsException("barcode", barcode);
         }
     }
@@ -109,7 +97,7 @@ public class WarehouseValidator {
      */
     public void validateWarehouseSearchResult(boolean hasResults, String search) {
         if (!hasResults) {
-            log.warn(messageService.get("warehouse.search.not.found", search));
+            log.warn(logMsg.get("warehouse.search.not.found", search));
             throw new WarehouseNotFoundException(search);
         }
     }
@@ -126,7 +114,7 @@ public class WarehouseValidator {
      */
     public void validateOrderHasItems(SalesOrder salesOrder) {
         if (salesOrder.getItems() == null || salesOrder.getItems().isEmpty()) {
-            log.warn(messageService.get("warehouse.resolver.no.items", salesOrder.getId()));
+            log.warn(logMsg.get("warehouse.resolver.no.items", salesOrder.getId()));
 
             throw new IllegalArgumentException(
                  messageService.get("warehouse.resolver.no.items.error", salesOrder.getId())

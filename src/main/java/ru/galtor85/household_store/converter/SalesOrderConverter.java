@@ -51,6 +51,10 @@ public class SalesOrderConverter {
 
         String localizedReservationStatus = buildLocalizedReservationStatus(order);
 
+        String localizedPaymentStatus = order.getPaymentStatus() != null
+                ? messageService.get("order.payment.status." + order.getPaymentStatus().name())
+                : null;
+
         return SalesOrderDto.builder()
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
@@ -78,6 +82,8 @@ public class SalesOrderConverter {
                 .updatedAt(order.getUpdatedAt())
                 .reservationStatus(order.getReservationStatus() != null ? order.getReservationStatus().name() : null)
                 .reservedUntil(order.getReservedUntil())
+                .paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null)
+                .localizedPaymentStatus(localizedPaymentStatus)
                 .localizedReservationStatus(localizedReservationStatus)
                 .build();
     }
@@ -126,50 +132,6 @@ public class SalesOrderConverter {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Converts SalesOrder entity to DTO with customer details.
-     *
-     * @param order the sales order entity
-     * @param customerName customer full name
-     * @param customerEmail customer email
-     * @return sales order DTO with customer info
-     */
-    public SalesOrderDto toDtoWithDetails(SalesOrder order,
-                                          String customerName,
-                                          String customerEmail) {
-        SalesOrderDto dto = toDto(order);
-
-        if (dto != null) {
-            dto.setCustomerName(customerName);
-            dto.setCustomerEmail(customerEmail);
-            dto.setItemCount(order.getItems() != null ? order.getItems().size() : 0);
-        }
-
-        return dto;
-    }
-
-    /**
-     * Converts SalesOrder entity to DTO with statistics.
-     *
-     * @param order the sales order entity
-     * @param totalItemsCount total number of items in order
-     * @param totalDiscount total discount amount
-     * @return sales order DTO with statistics
-     */
-    public SalesOrderDto toDtoWithStatistics(SalesOrder order,
-                                             Integer totalItemsCount,
-                                             BigDecimal totalDiscount) {
-        SalesOrderDto dto = toDto(order);
-
-        if (dto != null) {
-            dto.setItemCount(totalItemsCount);
-            if (totalDiscount != null) {
-                dto.setDiscountAmount(totalDiscount);
-            }
-        }
-
-        return dto;
-    }
 
     // =========================================================================
     // PRIVATE HELPER METHODS
@@ -212,7 +174,7 @@ public class SalesOrderConverter {
     /**
      * Calculates discounted price for an order item.
      *
-     * @param item the order item
+     * @param item       the order item
      * @param totalPrice the total price
      * @return discounted price or null if no discount
      */

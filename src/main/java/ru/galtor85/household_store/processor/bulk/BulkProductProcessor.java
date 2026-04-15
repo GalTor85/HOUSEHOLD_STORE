@@ -9,6 +9,7 @@ import ru.galtor85.household_store.dto.response.product.ProductDto;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.mapper.product.ProductMapper;
 import ru.galtor85.household_store.repository.product.ProductRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.product.ProductValidator;
 
@@ -16,6 +17,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Processor for bulk product operations.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -25,7 +29,17 @@ public class BulkProductProcessor {
     private final ProductMapper productMapper;
     private final ProductValidator validator;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
+    /**
+     * Updates prices for multiple products in bulk.
+     *
+     * @param productIds list of product IDs to update
+     * @param newPrice   the new price for all specified products
+     * @param reason     the reason for the bulk price update
+     * @return list of updated product DTOs
+     * @throws BulkOperationException if some products were not found
+     */
     @Transactional
     public List<ProductDto> bulkUpdatePrices(List<Long> productIds, BigDecimal newPrice,
                                              String reason) {
@@ -45,7 +59,7 @@ public class BulkProductProcessor {
         String reasonText = reason != null ? reason :
                 messageService.get("manager.price.reason.default");
 
-        log.info(messageService.get(
+        log.info(logMsg.get(
                 "manager.bulk.price.updated.log",
                 updatedProducts.size(),
                 reasonText
@@ -56,6 +70,14 @@ public class BulkProductProcessor {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Toggles active status for multiple products in bulk.
+     *
+     * @param productIds list of product IDs to update
+     * @param active     the new active status for all specified products
+     * @return list of updated product DTOs
+     * @throws BulkOperationException if some products were not found
+     */
     @Transactional
     public List<ProductDto> bulkToggleActive(List<Long> productIds, boolean active) {
         List<Product> products = productRepository.findAllById(productIds);
@@ -69,7 +91,7 @@ public class BulkProductProcessor {
 
         checkBulkOperationResult(updatedProducts, productIds);
 
-        log.info(messageService.get(
+        log.info(logMsg.get(
                 active ? "manager.bulk.activated.log" : "manager.bulk.deactivated.log",
                 updatedProducts.size()
         ));
@@ -79,9 +101,16 @@ public class BulkProductProcessor {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Checks the result of bulk operation and throws exception if partial.
+     *
+     * @param updatedProducts list of successfully updated products
+     * @param requestedIds    list of originally requested product IDs
+     * @throws BulkOperationException if not all products were updated
+     */
     private void checkBulkOperationResult(List<Product> updatedProducts, List<Long> requestedIds) {
         if (updatedProducts.size() < requestedIds.size()) {
-            log.warn(messageService.get(
+            log.warn(logMsg.get(
                     "manager.bulk.log.partial",
                     updatedProducts.size(),
                     requestedIds.size()

@@ -1,14 +1,42 @@
 package ru.galtor85.household_store.entity.payment;
 
 /**
- * Payment transaction status
+ * Payment transaction status.
  */
 public enum PaymentTransactionStatus {
-    PENDING,        // Pending processing
-    PROCESSING,     // In progress
-    COMPLETED,      // Completed
-    FAILED,         // Failed
-    REFUNDED,       // Refunded
-    CANCELLED,      // Cancelled
-    PENDING_VERIFICATION  // Pending verification
+
+    /**
+     * Pending processing
+     */
+    PENDING,
+
+    /**
+     * In progress
+     */
+    PROCESSING,
+
+    /**
+     * Completed successfully
+     */
+    COMPLETED,
+
+    /**
+     * Failed
+     */
+    FAILED,
+
+    /**
+     * Refunded
+     */
+    REFUNDED,
+
+    /**
+     * Cancelled
+     */
+    CANCELLED,
+
+    /**
+     * Pending verification (e.g., bank transfer)
+     */
+    PENDING_VERIFICATION
 }

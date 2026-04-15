@@ -13,12 +13,15 @@ import ru.galtor85.household_store.entity.product.ProductStock;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.util.stock.StockDtoEnricher;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Processor for product stock operations.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -28,13 +31,19 @@ public class ProductStockProcessor {
     private final WarehouseRepository warehouseRepository;
     private final StockCalculator stockCalculator;
     private final StockDtoEnricher dtoEnricher;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
+    /**
+     * Gets stock information for a product across all warehouses.
+     *
+     * @param product the product
+     * @return list of ProductStockDto
+     */
     @Transactional(readOnly = true)
     public List<ProductStockDto> getProductStockAcrossAllWarehouses(Product product) {
         List<ProductStock> stocks = stockRepository.findByProductId(product.getId());
 
-        log.debug(messageService.get("stock.by.product.all.warehouses",
+        log.debug(logMsg.get("stock.by.product.all.warehouses",
                 stocks.size(), product.getId()));
 
         return stocks.stream()
@@ -42,16 +51,28 @@ public class ProductStockProcessor {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Gets total stock quantity for a product across all warehouses.
+     *
+     * @param product the product
+     * @return total quantity
+     */
     @Transactional(readOnly = true)
     public Integer getTotalStockForProduct(Product product) {
         Integer total = stockRepository.getTotalStockForProduct(product.getId());
         total = total != null ? total : 0;
 
-        log.debug(messageService.get("stock.product.total", product.getId(), total));
+        log.debug(logMsg.get("stock.product.total", product.getId(), total));
 
         return total;
     }
 
+    /**
+     * Gets stock distribution for a product across all warehouses.
+     *
+     * @param product the product
+     * @return ProductStockDistributionDto
+     */
     @Transactional(readOnly = true)
     public ProductStockDistributionDto getProductStockDistribution(Product product) {
         List<ProductStock> stocks = stockRepository.findByProductId(product.getId());
@@ -78,6 +99,13 @@ public class ProductStockProcessor {
                 .build();
     }
 
+    /**
+     * Gets stock information for a product at a specific warehouse.
+     *
+     * @param product   the product
+     * @param warehouse the warehouse
+     * @return ProductStock entity (empty if not found)
+     */
     @Transactional(readOnly = true)
     public ProductStock getProductStockAtWarehouse(Product product, Warehouse warehouse) {
         return stockRepository.findByProductIdAndWarehouseId(product.getId(), warehouse.getId())

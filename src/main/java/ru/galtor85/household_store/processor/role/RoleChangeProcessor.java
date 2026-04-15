@@ -9,8 +9,11 @@ import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.repository.auth.SecurityUserRepository;
 import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.security.SecurityUserFactory;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
+/**
+ * Processor for changing user roles.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -18,8 +21,17 @@ public class RoleChangeProcessor {
 
     private final SecurityUserRepository securityUserRepository;
     private final SecurityUserFactory securityUserFactory;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
+    /**
+     * Changes the role of a user.
+     *
+     * @param targetUser     the target user entity
+     * @param targetSecurity the target security user
+     * @param newRole        the new role
+     * @param adminUser      the admin performing the change
+     * @return updated SecurityUser
+     */
     @Transactional
     public SecurityUser changeRole(User targetUser, SecurityUser targetSecurity,
                                    Role newRole, User adminUser) {
@@ -33,7 +45,7 @@ public class RoleChangeProcessor {
 
         SecurityUser saved = securityUserRepository.save(updatedSecurityUser);
 
-        log.info(messageService.get(
+        log.info(logMsg.get(
                 "user-role-service.log.role.changed",
                 adminUser.getEmail(),
                 targetUser.getEmail(),

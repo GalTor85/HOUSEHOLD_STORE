@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,7 +32,7 @@ public class BankAccountCreateRequest {
 
     @NotBlank(message = "{bank.account.validation.name.empty}")
     @Schema(description = "Account display name", example = "Main Operating Account")
-    private String name;;
+    private String name;
 
     @NotBlank(message = "{bank.account.validation.bank.name.empty}")
     @Schema(description = "Bank name", example = "Sberbank")

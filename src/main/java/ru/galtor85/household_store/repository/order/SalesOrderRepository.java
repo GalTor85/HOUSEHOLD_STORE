@@ -93,4 +93,12 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
             "WHERE so.createdAt BETWEEN :startDate AND :endDate")
     BigDecimal sumTotalAmountByCreatedAtBetween(@Param("startDate") LocalDateTime startDate,
                                                 @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Counts the number of sales orders for a specific user.
+     *
+     * @param userId the user identifier
+     * @return total count of orders for the user
+     */
+    long countByUserId(Long userId);
 }

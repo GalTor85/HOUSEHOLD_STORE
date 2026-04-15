@@ -6,11 +6,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.converter.CurrencyConverter;
 import ru.galtor85.household_store.dto.request.finance.CurrencyCreateRequest;
-import ru.galtor85.household_store.dto.response.finance.CurrencyDto;
 import ru.galtor85.household_store.dto.request.finance.CurrencyUpdateRequest;
+import ru.galtor85.household_store.dto.response.finance.CurrencyDto;
 import ru.galtor85.household_store.entity.finance.Currency;
 import ru.galtor85.household_store.processor.currency.CurrencyProcessor;
 import ru.galtor85.household_store.repository.currency.CurrencyRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.currency.CurrencyValidator;
 
@@ -28,6 +29,7 @@ public class CurrencyService {
     private final CurrencyProcessor processor;
     private final CurrencyConverter converter;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     // =========================================================================
     // CREATION
@@ -38,7 +40,7 @@ public class CurrencyService {
      */
     @Transactional
     public CurrencyDto createCurrency(CurrencyCreateRequest request, Long createdBy) {
-        log.info(messageService.get("currency.service.create.start", request.getCode()));
+        log.info(logMsg.get("currency.service.create.start", request.getCode()));
 
         validator.validateCode(request.getCode());
         validator.validateCodeUnique(request.getCode());
@@ -47,7 +49,7 @@ public class CurrencyService {
         Currency currency = converter.toEntity(request, createdBy);
         Currency saved = processor.createCurrency(currency);
 
-        log.info(messageService.get("currency.service.created", saved.getCode()));
+        log.info(logMsg.get("currency.service.created", saved.getCode()));
 
         return converter.toDto(saved);
     }
@@ -108,7 +110,7 @@ public class CurrencyService {
      */
     @Transactional
     public CurrencyDto updateCurrency(String code, CurrencyUpdateRequest request) {
-        log.info(messageService.get("currency.service.update.start", code));
+        log.info(logMsg.get("currency.service.update.start", code));
 
         validator.validateCode(code);
         Currency existing = validator.validateExists(code);
@@ -120,7 +122,7 @@ public class CurrencyService {
         Currency updated = processor.updateCurrency(
                 converter.updateEntity(existing, request));
 
-        log.info(messageService.get("currency.service.updated", updated.getCode()));
+        log.info(logMsg.get("currency.service.updated", updated.getCode()));
 
         return converter.toDto(updated);
     }
@@ -130,14 +132,14 @@ public class CurrencyService {
      */
     @Transactional
     public CurrencyDto setBaseCurrency(String code) {
-        log.info(messageService.get("currency.service.set.base.start", code));
+        log.info(logMsg.get("currency.service.set.base.start", code));
 
         validator.validateCode(code);
         validator.validateExists(code);
 
         Currency currency = processor.setBaseCurrency(code);
 
-        log.info(messageService.get("currency.service.set.base.complete", currency.getCode()));
+        log.info(logMsg.get("currency.service.set.base.complete", currency.getCode()));
 
         return converter.toDto(currency);
     }
@@ -147,7 +149,7 @@ public class CurrencyService {
      */
     @Transactional
     public CurrencyDto updateExchangeRate(String code, BigDecimal rate) {
-        log.info(messageService.get("currency.service.update.rate.start", code, rate));
+        log.info(logMsg.get("currency.service.update.rate.start", code, rate));
 
         validator.validateCode(code);
         validator.validateExists(code);
@@ -155,7 +157,7 @@ public class CurrencyService {
 
         Currency currency = processor.updateExchangeRate(code, rate);
 
-        log.info(messageService.get("currency.service.update.rate.complete",
+        log.info(logMsg.get("currency.service.update.rate.complete",
                 currency.getCode(), rate));
 
         return converter.toDto(currency);
@@ -166,14 +168,14 @@ public class CurrencyService {
      */
     @Transactional
     public CurrencyDto toggleActive(String code, boolean active) {
-        log.info(messageService.get("currency.service.toggle.start", code, active));
+        log.info(logMsg.get("currency.service.toggle.start", code, active));
 
         validator.validateCode(code);
         validator.validateExists(code);
 
         Currency currency = processor.toggleActive(code, active);
 
-        log.info(messageService.get("currency.service.toggle.complete",
+        log.info(logMsg.get("currency.service.toggle.complete",
                 currency.getCode(), active));
 
         return converter.toDto(currency);
@@ -197,27 +199,6 @@ public class CurrencyService {
 
         BigDecimal inBase = from.convertToBase(amount);
         return to.convertFromBase(inBase);
-    }
-
-    /**
-     * Converts amount to base currency for storage
-     *
-     * @param amount       amount to convert
-     * @param currencyCode source currency code
-     * @return amount in base currency
-     */
-    public BigDecimal convertToBaseCurrency(BigDecimal amount, String currencyCode) {
-        try {
-            CurrencyDto baseCurrency = getBaseCurrency();
-            if (baseCurrency.getCode().equals(currencyCode)) {
-                return amount;
-            }
-            return convert(amount, currencyCode, baseCurrency.getCode());
-        } catch (Exception e) {
-            log.warn(messageService.get("currency.conversion.to.base.failed",
-                    currencyCode, e.getMessage()));
-            return amount;
-        }
     }
 
     /**

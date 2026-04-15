@@ -7,24 +7,34 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.entity.rollback.ApprovalStatus;
 import ru.galtor85.household_store.entity.rollback.RollbackApproval;
 import ru.galtor85.household_store.repository.rollback.RollbackApprovalRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.time.LocalDateTime;
 
+/**
+ * Processor for rollback approval decisions.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class RollbackDecisionProcessor {
 
     private final RollbackApprovalRepository approvalRepository;
-    private final RollbackExecutionProcessor executionProcessor;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
+    /**
+     * Approves a rollback request.
+     *
+     * @param approval      the rollback approval
+     * @param adminComments admin comments
+     * @param adminId       admin ID
+     * @return updated RollbackApproval
+     */
     @Transactional
     public RollbackApproval approve(RollbackApproval approval, String adminComments,
                                     Long adminId) {
 
-        log.info(messageService.get("rollback.decision.approve.start",
+        log.info(logMsg.get("rollback.decision.approve.start",
                 approval.getId(), adminId));
 
         approval.setApprovalStatus(ApprovalStatus.APPROVED);
@@ -34,17 +44,25 @@ public class RollbackDecisionProcessor {
 
         RollbackApproval updated = approvalRepository.save(approval);
 
-        log.info(messageService.get("rollback.decision.approve.success",
+        log.info(logMsg.get("rollback.decision.approve.success",
                 approval.getId(), adminId));
 
         return updated;
     }
 
+    /**
+     * Rejects a rollback request.
+     *
+     * @param approval      the rollback approval
+     * @param adminComments admin comments
+     * @param adminId       admin ID
+     * @return updated RollbackApproval
+     */
     @Transactional
     public RollbackApproval reject(RollbackApproval approval, String adminComments,
                                    Long adminId) {
 
-        log.info(messageService.get("rollback.decision.reject.start",
+        log.info(logMsg.get("rollback.decision.reject.start",
                 approval.getId(), adminId));
 
         approval.setApprovalStatus(ApprovalStatus.REJECTED);
@@ -54,7 +72,7 @@ public class RollbackDecisionProcessor {
 
         RollbackApproval updated = approvalRepository.save(approval);
 
-        log.info(messageService.get("rollback.decision.reject.success",
+        log.info(logMsg.get("rollback.decision.reject.success",
                 approval.getId(), adminId));
 
         return updated;

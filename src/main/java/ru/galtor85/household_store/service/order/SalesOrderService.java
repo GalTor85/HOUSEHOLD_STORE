@@ -10,14 +10,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.cart.CartNotFoundException;
 import ru.galtor85.household_store.advice.exception.order.OrderNotFoundException;
-import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.advice.exception.rollback.RollbackNotAllowedException;
 import ru.galtor85.household_store.converter.SalesOrderConverter;
 import ru.galtor85.household_store.dto.request.order.SalesOrderCreateRequest;
 import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
 import ru.galtor85.household_store.dto.response.order.PaymentSummaryDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
-import ru.galtor85.household_store.dto.response.order.SalesOrderStatisticsDto;
 import ru.galtor85.household_store.entity.cart.Cart;
 import ru.galtor85.household_store.entity.cart.CartStatus;
 import ru.galtor85.household_store.entity.finance.CashTransaction;
@@ -27,13 +25,12 @@ import ru.galtor85.household_store.entity.finance.TransactionType;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.entity.order.SalesOrderItem;
-import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.processor.sales.SalesOrderProcessor;
 import ru.galtor85.household_store.repository.cart.CartRepository;
 import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
-import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
+import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.service.cart.CartService;
 import ru.galtor85.household_store.service.finance.InvoiceService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
@@ -114,8 +111,8 @@ public class SalesOrderService {
         // Create order via processor
         SalesOrder order = salesOrderProcessor.createSalesOrder(
                 request,
-                validationResult.getProducts(),
-                validationResult.getPrices(),
+                validationResult.products(),
+                validationResult.prices(),
                 userId
         );
 
@@ -308,26 +305,6 @@ public class SalesOrderService {
     }
 
     /**
-     * Cancels an order after validating it can be cancelled.
-     *
-     * @param orderId order identifier
-     * @param reason  cancellation reason
-     * @param userId  ID of user cancelling the order
-     * @return cancelled order DTO
-     */
-    @Transactional
-    public SalesOrderDto cancelOrderWithValidation(Long orderId, String reason, Long userId) {
-        log.info(logMsg.get("order.cancel.service.start", orderId, userId));
-
-        SalesOrderDto order = getSalesOrderById(orderId);
-
-        // Validate cancellation is allowed
-        orderCancellationValidator.validateCancellable(order);
-
-        return cancelOrder(orderId, reason, userId);
-    }
-
-    /**
      * Cancels order with ownership check.
      *
      * @param orderId     order identifier
@@ -354,20 +331,6 @@ public class SalesOrderService {
         orderCancellationValidator.validateCancellable(order);
 
         return cancelOrder(orderId, reason, userId);
-    }
-
-    /**
-     * Checks if order can be cancelled.
-     */
-    @Transactional(readOnly = true)
-    public boolean canCancelOrder(Long orderId) {
-        try {
-            SalesOrderDto order = getSalesOrderById(orderId);
-            return orderCancellationValidator.isCancellable(order);
-        } catch (Exception e) {
-            log.debug(logMsg.get("order.cancel.service.check.failed", orderId, e.getMessage()));
-            return false;
-        }
     }
 
     // =========================================================================
@@ -477,130 +440,6 @@ public class SalesOrderService {
         return salesOrderConverter.toDto(updatedOrder);
     }
 
-    /**
-     * Updates the quantity of an order item.
-     *
-     * @param orderId     the order ID
-     * @param itemId      the order item ID
-     * @param newQuantity the new quantity
-     * @param reason      the reason for the quantity change
-     * @param managerId   ID of the manager making the change
-     * @return the updated order as a DTO
-     */
-    @Transactional
-    public SalesOrderDto updateOrderItemQuantity(Long orderId,
-                                                 Long itemId,
-                                                 Integer newQuantity,
-                                                 String reason,
-                                                 Long managerId) {
-
-        salesOrderValidator.validateQuantity(newQuantity);
-
-        SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
-        salesOrderValidator.validateOrderModifiable(order, OrderStatus.PENDING);
-
-        SalesOrderItem item = salesOrderValidator.validateOrderItemExists(order, itemId);
-        int oldQuantity = item.getQuantity();
-        int quantityDiff = newQuantity - oldQuantity;
-
-        if (quantityDiff > 0) {
-            Product product = productRepository.findById(item.getProductId())
-                    .orElseThrow(() -> new ProductNotFoundException(item.getProductId()));
-            salesOrderValidator.validateProductAvailability(product, quantityDiff);
-        }
-
-        item.setQuantity(newQuantity);
-        item.calculateTotal();
-
-        if (newQuantity == 0) {
-            order.removeItem(item);
-        }
-
-        order.recalculateTotals();
-        SalesOrder updatedOrder = salesOrderRepository.save(order);
-
-        log.info(logMsg.get("sales.order.quantity.updated.log",
-                orderId, itemId, oldQuantity, newQuantity, managerId, reason));
-
-        return salesOrderConverter.toDto(updatedOrder);
-    }
-
-    /**
-     * Adds a new item to an existing order.
-     *
-     * @param orderId     the order ID
-     * @param productId   the product ID to add
-     * @param quantity    the quantity to add
-     * @param customPrice optional custom price (overrides product price)
-     * @param managerId   ID of the manager making the change
-     * @return the updated order as a DTO
-     */
-    @Transactional
-    public SalesOrderDto addItemToOrder(Long orderId,
-                                        Long productId,
-                                        Integer quantity,
-                                        BigDecimal customPrice,
-                                        Long managerId) {
-
-        salesOrderValidator.validatePositiveQuantity(quantity);
-
-        SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
-        salesOrderValidator.validateOrderModifiable(order, OrderStatus.PENDING);
-        salesOrderValidator.validateItemNotExists(order, productId);
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ProductNotFoundException(productId));
-        salesOrderValidator.validateProductAvailability(product, quantity);
-
-        BigDecimal price = customPrice != null ? customPrice : product.getPrice();
-
-        SalesOrderItem item = SalesOrderItem.builder()
-                .salesOrder(order)
-                .productId(productId)
-                .quantity(quantity)
-                .price(price)
-                .productName(product.getName())
-                .productSku(product.getSku())
-                .build();
-
-        order.addItem(item);
-        order.recalculateTotals();
-
-        SalesOrder updatedOrder = salesOrderRepository.save(order);
-
-        log.info(logMsg.get("sales.order.item.added.log",
-                orderId, productId, quantity, managerId));
-
-        return salesOrderConverter.toDto(updatedOrder);
-    }
-
-    /**
-     * Removes an item from an existing order.
-     *
-     * @param orderId   the order ID
-     * @param itemId    the order item ID
-     * @param managerId ID of the manager making the change
-     * @return the updated order as a DTO
-     */
-    @Transactional
-    public SalesOrderDto removeItemFromOrder(Long orderId, Long itemId, Long managerId) {
-
-        SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
-        salesOrderValidator.validateOrderModifiable(order, OrderStatus.PENDING);
-
-        SalesOrderItem item = salesOrderValidator.validateOrderItemExists(order, itemId);
-
-        order.removeItem(item);
-        order.recalculateTotals();
-
-        SalesOrder updatedOrder = salesOrderRepository.save(order);
-
-        log.info(logMsg.get("sales.order.item.removed.log",
-                orderId, itemId, managerId));
-
-        return salesOrderConverter.toDto(updatedOrder);
-    }
-
     // =========================================================================
     // ROLLBACK OPERATIONS
     // =========================================================================
@@ -677,28 +516,6 @@ public class SalesOrderService {
     // =========================================================================
     // STATISTICS
     // =========================================================================
-
-    /**
-     * Retrieves order statistics for dashboard reporting.
-     *
-     * @return statistics DTO with totals for today, week, and month
-     */
-    @Transactional(readOnly = true)
-    public SalesOrderStatisticsDto getOrderStatistics() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startOfDay = now.withHour(0).withMinute(0).withSecond(0);
-        LocalDateTime startOfWeek = now.minusWeeks(1);
-        LocalDateTime startOfMonth = now.minusMonths(1);
-
-        return SalesOrderStatisticsDto.builder()
-                .totalOrdersToday(salesOrderRepository.countByCreatedAtBetween(startOfDay, now))
-                .totalOrdersWeek(salesOrderRepository.countByCreatedAtBetween(startOfWeek, now))
-                .totalOrdersMonth(salesOrderRepository.countByCreatedAtBetween(startOfMonth, now))
-                .revenueToday(salesOrderRepository.sumTotalAmountByCreatedAtBetween(startOfDay, now))
-                .revenueWeek(salesOrderRepository.sumTotalAmountByCreatedAtBetween(startOfWeek, now))
-                .revenueMonth(salesOrderRepository.sumTotalAmountByCreatedAtBetween(startOfMonth, now))
-                .build();
-    }
 
     @Transactional(readOnly = true)
     public SalesOrder getSalesOrderEntityByNumber(String orderNumber) {
@@ -785,41 +602,54 @@ public class SalesOrderService {
         }
     }
 
+    /**
+     * Reverses payment during order rollback.
+     *
+     * @param order the sales order
+     */
     private void reversePayment(SalesOrder order) {
         log.debug(logMsg.get("sales.order.rollback.payment.reversed", order.getId()));
     }
 
+    /**
+     * Releases reserved stock during order rollback.
+     *
+     * @param order the sales order
+     */
     private void releaseReservedStock(SalesOrder order) {
         log.debug(logMsg.get("sales.order.rollback.stock.released", order.getId()));
     }
 
+    /**
+     * Cancels shipment during order rollback.
+     *
+     * @param order the sales order
+     */
     private void cancelShipment(SalesOrder order) {
         log.debug(logMsg.get("sales.order.rollback.shipment.cancelled", order.getId()));
     }
 
+    /**
+     * Calculates total amount spent by user on all orders.
+     *
+     * @param userId the user ID
+     * @return total spent amount
+     */
     @Transactional(readOnly = true)
     public BigDecimal getUserTotalSpent(Long userId) {
-        // Получаем все заказы пользователя
         List<SalesOrder> orders = salesOrderRepository.findByUserId(userId);
-
         BigDecimal totalSpent = BigDecimal.ZERO;
 
         for (SalesOrder order : orders) {
-            // Получаем все счета для заказа
             List<Invoice> invoices = invoiceRepository.findBySalesOrderId(order.getId());
-
             for (Invoice invoice : invoices) {
-                // Суммируем оплаченные суммы (INCOME транзакции)
                 BigDecimal paid = cashTransactionRepository.findByInvoiceId(invoice.getId()).stream()
                         .filter(tx -> tx.getTransactionType() == TransactionType.INCOME)
                         .map(CashTransaction::getAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
-
                 totalSpent = totalSpent.add(paid);
             }
         }
-
         return totalSpent;
     }
-
 }

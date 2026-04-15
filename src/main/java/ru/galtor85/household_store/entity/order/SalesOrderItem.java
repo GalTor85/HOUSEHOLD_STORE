@@ -31,25 +31,25 @@ public class SalesOrderItem {
     private Integer quantity;
 
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal price; // Цена на момент заказа
+    private BigDecimal price; // Price at order time
 
     @Column(name = "product_name")
-    private String productName; // Название на момент заказа
+    private String productName; // Name at order time
 
     @Column(name = "product_sku")
-    private String productSku; // Артикул на момент заказа
+    private String productSku; // SKU at order time
 
     @Column(name = "discount_amount", precision = 10, scale = 2)
     private BigDecimal discountAmount;
 
     @Column(name = "total_price", precision = 10, scale = 2)
-    private BigDecimal totalPrice; // Итоговая цена позиции
+    private BigDecimal totalPrice; // Final item price
 
     @Column(name = "notes", length = 500)
     private String notes;
 
     /**
-     * Рассчитывает итоговую цену позиции
+     * Calculates the total price of the item.
      */
     @PrePersist
     @PreUpdate
@@ -62,36 +62,5 @@ public class SalesOrderItem {
                 this.totalPrice = subtotal;
             }
         }
-    }
-
-    /**
-     * Получает цену со скидкой
-     */
-    public BigDecimal getDiscountedPrice() {
-        if (price == null) {
-            return BigDecimal.ZERO;
-        }
-        if (discountAmount != null) {
-            return price.subtract(discountAmount.divide(BigDecimal.valueOf(quantity),
-                    BigDecimal.ROUND_HALF_UP));
-        }
-        return price;
-    }
-
-    /**
-     * Получает сумму скидки на позицию
-     */
-    public BigDecimal getTotalDiscount() {
-        if (discountAmount != null) {
-            return discountAmount;
-        }
-        return BigDecimal.ZERO;
-    }
-
-    /**
-     * Проверяет, есть ли скидка на позицию
-     */
-    public boolean hasDiscount() {
-        return discountAmount != null && discountAmount.compareTo(BigDecimal.ZERO) > 0;
     }
 }

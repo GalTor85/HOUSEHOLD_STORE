@@ -5,11 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.entity.order.SalesOrder;
-import ru.galtor85.household_store.entity.order.SalesOrderItem;
 import ru.galtor85.household_store.entity.order.SalesOrder.ReservationStatus;
+import ru.galtor85.household_store.entity.order.SalesOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ public class ReservationService {
     private final SalesOrderRepository salesOrderRepository;
     private final ProductRepository productRepository;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
      * Reserves products for an order.
@@ -39,12 +41,12 @@ public class ReservationService {
      */
     @Transactional
     public SalesOrder reserveOrder(SalesOrder order) {
-        log.info(messageService.get("reservation.start", order.getId()));
+        log.info(logMsg.get("reservation.start", order.getId()));
 
 
         // Check if already reserved
         if (order.getReservationStatus() == ReservationStatus.ACTIVE) {
-            log.debug(messageService.get("reservation.already.active", order.getId()));
+            log.debug(logMsg.get("reservation.already.active", order.getId()));
             return order;
         }
 
@@ -72,7 +74,7 @@ public class ReservationService {
 
         SalesOrder savedOrder = salesOrderRepository.save(order);
 
-        log.info(messageService.get("reservation.complete", order.getId(), DEFAULT_RESERVATION_DAYS));
+        log.info(logMsg.get("reservation.complete", order.getId(), DEFAULT_RESERVATION_DAYS));
 
         return savedOrder;
     }
@@ -85,11 +87,11 @@ public class ReservationService {
     @Transactional
     public void releaseReservation(SalesOrder order) {
         if (order.getReservationStatus() != ReservationStatus.ACTIVE) {
-            log.debug(messageService.get("reservation.not.active", order.getId()));
+            log.debug(logMsg.get("reservation.not.active", order.getId()));
             return;
         }
 
-        log.info(messageService.get("reservation.release.start", order.getId()));
+        log.info(logMsg.get("reservation.release.start", order.getId()));
 
         // Return products to stock
         for (SalesOrderItem item : order.getItems()) {
@@ -104,7 +106,7 @@ public class ReservationService {
         order.setReservationStatus(ReservationStatus.EXPIRED);
         salesOrderRepository.save(order);
 
-        log.info(messageService.get("reservation.release.complete", order.getId()));
+        log.info(logMsg.get("reservation.release.complete", order.getId()));
     }
 
     /**
@@ -115,15 +117,15 @@ public class ReservationService {
     @Transactional
     public void completeReservation(SalesOrder order) {
         if (order.getReservationStatus() != ReservationStatus.ACTIVE) {
-            log.debug(messageService.get("reservation.not.active", order.getId()));
+            log.debug(logMsg.get("reservation.not.active", order.getId()));
             return;
         }
 
-        log.info(messageService.get("reservation.complete.status", order.getId()));
+        log.info(logMsg.get("reservation.complete.status", order.getId()));
 
         order.setReservationStatus(ReservationStatus.COMPLETED);
         salesOrderRepository.save(order);
 
-        log.info(messageService.get("reservation.complete.status.done", order.getId()));
+        log.info(logMsg.get("reservation.complete.status.done", order.getId()));
     }
 }

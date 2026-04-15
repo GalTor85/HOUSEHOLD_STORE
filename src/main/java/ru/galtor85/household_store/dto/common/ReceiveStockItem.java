@@ -1,8 +1,6 @@
 package ru.galtor85.household_store.dto.common;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -13,12 +11,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_BATCH_NUMBER_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_CELL_CODE_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_NOTES_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_SERIAL_NUMBER_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_QUALITY_CERTIFICATE_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MIN_QUANTITY;
+import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 /**
  * DTO for receive stock item.
@@ -77,104 +70,4 @@ public class ReceiveStockItem {
     @Size(max = MAX_NOTES_LENGTH, message = "{receive.validation.notes.max}")
     @Schema(description = "Additional notes", example = "Fragile items, handle with care")
     private String notes;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasProductId() {
-        return productId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasQuantity() {
-        return quantity != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasCellId() {
-        return cellId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasCellCode() {
-        return cellCode != null && !cellCode.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasBatchNumber() {
-        return batchNumber != null && !batchNumber.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasExpiryDate() {
-        return expiryDate != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasManufacturingDate() {
-        return manufacturingDate != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasSerialNumber() {
-        return serialNumber != null && !serialNumber.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasQualityCertificateNumber() {
-        return qualityCertificateNumber != null && !qualityCertificateNumber.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasNotes() {
-        return notes != null && !notes.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isValidQuantity() {
-        return quantity != null && quantity > 0;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedCellCode() {
-        return cellCode != null ? cellCode.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedBatchNumber() {
-        return batchNumber != null ? batchNumber.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedSerialNumber() {
-        return serialNumber != null ? serialNumber.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedQualityCertificateNumber() {
-        return qualityCertificateNumber != null ? qualityCertificateNumber.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedNotes() {
-        return notes != null ? notes.trim() : null;
-    }
 }

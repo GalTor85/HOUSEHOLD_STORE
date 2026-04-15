@@ -6,8 +6,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.builder.stock.StockMovementBuilder;
-import ru.galtor85.household_store.dto.request.order.ReceiveAndStockRequest;
+import ru.galtor85.household_store.calculator.ReceivingQuantityCalculator;
 import ru.galtor85.household_store.dto.common.ReceiveStockItem;
+import ru.galtor85.household_store.dto.request.order.ReceiveAndStockRequest;
 import ru.galtor85.household_store.dto.request.order.ReverseReceiptItem;
 import ru.galtor85.household_store.dto.request.order.ReverseReceiptRequest;
 import ru.galtor85.household_store.entity.order.OrderType;
@@ -18,12 +19,16 @@ import ru.galtor85.household_store.entity.stock.MovementType;
 import ru.galtor85.household_store.entity.stock.StockMovement;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.stock.StockMovementRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.stock.StockService;
 import ru.galtor85.household_store.service.warehouse.WarehouseService;
 import ru.galtor85.household_store.util.batch.BatchNumberGenerator;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -43,8 +48,10 @@ public class PurchaseReceivingProcessor {
     private final StockMovementBuilder movementBuilder;
     private final BatchNumberGenerator batchNumberGenerator;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final StockService stockService;
     private final WarehouseService warehouseService;
+    private final ReceivingQuantityCalculator quantityCalculator;
 
     // =========================================================================
     // RECEIVE PURCHASE ORDER
@@ -63,7 +70,7 @@ public class PurchaseReceivingProcessor {
                                             ReceiveAndStockRequest request,
                                             Long managerId) {
 
-        log.info(messageService.get("purchase.receiving.processor.start",
+        log.info(logMsg.get("purchase.receiving.processor.start",
                 order.getOrderNumber(), request.getItems().size(), managerId));
 
         List<StockMovement> movements = new ArrayList<>();
@@ -78,40 +85,27 @@ public class PurchaseReceivingProcessor {
                     .orElse(null);
 
             if (orderItem == null) {
-                log.warn(messageService.get("purchase.receiving.processor.product.not.found",
+                log.warn(logMsg.get("purchase.receiving.processor.product.not.found",
                         item.getProductId(), order.getId()));
                 missingProducts.add(item.getProductId());
                 continue;
             }
 
-            Product product = productRepository.findById(orderItem.getProductId())
-                    .orElseThrow(() -> new ProductNotFoundException(orderItem.getProductId()));
+            ReceivingQuantityCalculator.ReceivingResult result = quantityCalculator.calculate(orderItem, item);
 
-            // Calculate received quantity
-            int alreadyReceived = orderItem.getReceivedQuantity() != null ?
-                    orderItem.getReceivedQuantity() : 0;
-            int orderedQuantity = orderItem.getQuantity();
-            int remainingToReceive = orderedQuantity - alreadyReceived;
-
-            int receivingQuantity = item.getQuantity();
-
-            // Check if quantity exceeds remaining
-            if (receivingQuantity > remainingToReceive) {
-                log.warn(messageService.get("purchase.receiving.processor.quantity.exceeds.remaining",
-                        product.getSku(), receivingQuantity, remainingToReceive));
-                receivingQuantity = remainingToReceive;
-            }
-
-            if (receivingQuantity <= 0) {
-                log.info(messageService.get("purchase.receiving.processor.already.received",
-                        product.getSku()));
+            if (result.hasNoQuantity()) {
                 continue;
             }
+
+            Product product = result.product();
+            int receivingQuantity = result.receivingQuantity();
+            int alreadyReceived = result.alreadyReceived();
+            int orderedQuantity = orderItem.getQuantity();
 
             // Check for partial receipt
             boolean isPartial = (alreadyReceived + receivingQuantity) < orderedQuantity;
             if (isPartial) {
-                log.debug(messageService.get("purchase.receiving.processor.partial.receipt",
+                log.debug(logMsg.get("purchase.receiving.processor.partial.receipt",
                         product.getSku(), alreadyReceived + receivingQuantity, orderedQuantity));
                 partiallyReceived.add(orderItem);
             }
@@ -125,7 +119,7 @@ public class PurchaseReceivingProcessor {
             product.setQuantityInStock(newQuantity);
             productRepository.save(product);
 
-            log.debug(messageService.get("purchase.receiving.processor.stock.updated",
+            log.debug(logMsg.get("purchase.receiving.processor.stock.updated",
                     product.getSku(), oldQuantity, newQuantity));
 
             // Update product_stocks
@@ -133,7 +127,7 @@ public class PurchaseReceivingProcessor {
 
             // Create stock movement
             StockMovement movement = createStockMovement(
-                    product, orderItem, order, request.getWarehouseId(), managerId,
+                    product, order, request.getWarehouseId(), managerId,
                     item.getBatchNumber(), receivingQuantity
             );
             movements.add(stockMovementRepository.save(movement));
@@ -142,7 +136,7 @@ public class PurchaseReceivingProcessor {
         boolean isFullyReceived = isFullyReceived(order);
         List<PurchaseOrderItem> unreceivedItems = getUnreceivedItems(order);
 
-        log.info(messageService.get("purchase.receiving.processor.complete",
+        log.info(logMsg.get("purchase.receiving.processor.complete",
                 order.getOrderNumber(), movements.size(), isFullyReceived));
 
         return ReceivingResult.builder()
@@ -158,7 +152,6 @@ public class PurchaseReceivingProcessor {
      * Creates a stock movement record for receiving
      */
     private StockMovement createStockMovement(Product product,
-                                              PurchaseOrderItem item,
                                               PurchaseOrder order,
                                               Long warehouseId,
                                               Long performedBy,
@@ -167,7 +160,7 @@ public class PurchaseReceivingProcessor {
 
         if (batchNumber == null || batchNumber.isEmpty()) {
             batchNumber = batchNumberGenerator.generateBatchNumber();
-            log.debug(messageService.get("purchase.receiving.processor.batch.generated",
+            log.debug(logMsg.get("purchase.receiving.processor.batch.generated",
                     batchNumber));
         }
 
@@ -205,7 +198,7 @@ public class PurchaseReceivingProcessor {
             int remaining = item.getQuantity() - received;
 
             if (remaining > 0) {
-                log.debug(messageService.get("purchase.receiving.processor.remaining.quantity",
+                log.debug(logMsg.get("purchase.receiving.processor.remaining.quantity",
                         item.getProductId(), remaining));
                 unreceived.add(item);
             }
@@ -232,7 +225,7 @@ public class PurchaseReceivingProcessor {
                                                ReverseReceiptRequest request,
                                                Long managerId) {
 
-        log.info(messageService.get("purchase.receiving.reverse.start",
+        log.info(logMsg.get("purchase.receiving.reverse.start",
                 order.getOrderNumber(), request.getReason(), managerId));
 
         List<StockMovement> movements = new ArrayList<>();
@@ -285,7 +278,7 @@ public class PurchaseReceivingProcessor {
                     orderItem.getProductId(), Collections.emptyList());
 
             if (productReceipts.isEmpty()) {
-                log.warn(messageService.get("purchase.receiving.reverse.no.receipts.for.product",
+                log.warn(logMsg.get("purchase.receiving.reverse.no.receipts.for.product",
                         orderItem.getProductId(), order.getId()));
                 continue;
             }
@@ -327,7 +320,7 @@ public class PurchaseReceivingProcessor {
 
                     // Create reverse movement
                     StockMovement reverseMovement = createReverseMovementFromReceipt(
-                            product, orderItem, order, receipt, managerId,
+                            product, order, receipt, managerId,
                             reverseFromThisReceipt, request.getReason()
                     );
                     reversedMovements.add(stockMovementRepository.save(reverseMovement));
@@ -335,9 +328,6 @@ public class PurchaseReceivingProcessor {
 
                     // Update product stock (decrease)
                     stockService.updateProductStock(product, reverseFromThisReceipt, warehouseId, false);
-
-                    // Update receipt transaction
-                    updateReceiptTransaction(receipt, reverseFromThisReceipt);
 
                     // Clear cell if it becomes empty
                     if (cellId != null && reverseFromThisReceipt == receiptQuantity) {
@@ -365,11 +355,11 @@ public class PurchaseReceivingProcessor {
                         .newReceivedQuantity(receivedQuantity - quantityToReverse)
                         .build());
 
-                log.debug(messageService.get("purchase.receiving.reverse.item.processed",
+                log.debug(logMsg.get("purchase.receiving.reverse.item.processed",
                         product.getSku(), quantityToReverse, reversedMovements.size()));
 
             } catch (Exception e) {
-                log.error(messageService.get("purchase.receiving.reverse.item.failed",
+                log.error(logMsg.get("purchase.receiving.reverse.item.failed",
                         product.getId(), e.getMessage()), e);
                 failedItems.add(product.getId());
             }
@@ -378,7 +368,7 @@ public class PurchaseReceivingProcessor {
         boolean allReversed = order.getItems().stream()
                 .allMatch(item -> item.getReceivedQuantity() == null || item.getReceivedQuantity() == 0);
 
-        log.info(messageService.get("purchase.receiving.reverse.complete",
+        log.info(logMsg.get("purchase.receiving.reverse.complete",
                 order.getOrderNumber(), movements.size(), allReversed));
 
         return ReverseReceiptResult.builder()
@@ -394,7 +384,6 @@ public class PurchaseReceivingProcessor {
      * Creates a reverse movement from a receipt transaction
      */
     private StockMovement createReverseMovementFromReceipt(Product product,
-                                                           PurchaseOrderItem item,
                                                            PurchaseOrder order,
                                                            StockMovement receipt,
                                                            Long performedBy,
@@ -422,12 +411,6 @@ public class PurchaseReceivingProcessor {
                 .build();
     }
 
-    /**
-     * Updates receipt transaction after partial return
-     */
-    private void updateReceiptTransaction(StockMovement receipt, int returnedQuantity) {
-        // TODO: Implement tracking of returned quantities
-    }
 
     // =========================================================================
     // INNER CLASSES

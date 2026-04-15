@@ -9,11 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.galtor85.household_store.entity.warehouse.CellType;
 
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_NOTES_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_POSITION_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_RACK_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_SECTION_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_SHELF_LENGTH;
+import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 /**
  * Request DTO for updating a storage cell.
@@ -114,42 +110,6 @@ public class StorageCellUpdateRequest {
     @Schema(hidden = true)
     public boolean hasNotes() {
         return notes != null && !notes.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isActiveTrue() {
-        return Boolean.TRUE.equals(isActive);
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedSection() {
-        return section != null ? section.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedRack() {
-        return rack != null ? rack.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedShelf() {
-        return shelf != null ? shelf.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedPosition() {
-        return position != null ? position.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedNotes() {
-        return notes != null ? notes.trim() : null;
     }
 
     @JsonIgnore

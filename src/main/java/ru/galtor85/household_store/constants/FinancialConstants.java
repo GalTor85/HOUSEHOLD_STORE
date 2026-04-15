@@ -1,8 +1,5 @@
 package ru.galtor85.household_store.constants;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-
 /**
  * Financial constants for the application.
  *

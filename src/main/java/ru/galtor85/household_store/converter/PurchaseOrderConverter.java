@@ -21,7 +21,7 @@ public class PurchaseOrderConverter {
     private final MessageService messageService;
 
     /**
-     * Конвертирует сущность заказа в DTO
+     * Converts PurchaseOrder entity to DTO.
      */
     public PurchaseOrderDto toDto(PurchaseOrder order, String supplierName) {
         if (order == null) {
@@ -31,8 +31,12 @@ public class PurchaseOrderConverter {
         List<PurchaseOrderItemDto> itemDtos = toItemDtoList(order.getItems());
 
         String localizedStatus = messageService.get(
-                "salesOrder.status." + order.getStatus().name()
+                "order.status." + order.getStatus().name()
         );
+
+        String localizedPaymentStatus = order.getPaymentStatus() != null
+                ? messageService.get("order.payment.status." + order.getPaymentStatus().name())
+                : null;
 
         return PurchaseOrderDto.builder()
                 .id(order.getId())
@@ -49,7 +53,8 @@ public class PurchaseOrderConverter {
                 .qualityCheck(order.getQualityCheck())
                 .invoiceNumber(order.getInvoiceNumber())
                 .paymentDue(order.getPaymentDue())
-                .paymentStatus(order.getPaymentStatus())
+                .paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null)
+                .localizedPaymentStatus(localizedPaymentStatus)
                 .subtotal(order.getSubtotal())
                 .totalAmount(order.getTotalAmount())
                 .createdBy(order.getCreatedBy())
@@ -60,7 +65,7 @@ public class PurchaseOrderConverter {
     }
 
     /**
-     * Конвертирует сущность позиции в DTO
+     * Converts PurchaseOrderItem entity to DTO.
      */
     public PurchaseOrderItemDto toItemDto(PurchaseOrderItem item) {
         if (item == null) {
@@ -87,7 +92,7 @@ public class PurchaseOrderConverter {
     }
 
     /**
-     * Конвертирует список позиций в список DTO
+     * Converts a list of PurchaseOrderItem entities to a list of DTOs.
      */
     public List<PurchaseOrderItemDto> toItemDtoList(List<PurchaseOrderItem> items) {
         if (items == null) {
@@ -97,30 +102,5 @@ public class PurchaseOrderConverter {
         return items.stream()
                 .map(this::toItemDto)
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * Конвертирует сущность заказа в DTO без имени поставщика
-     */
-    public PurchaseOrderDto toDto(PurchaseOrder order) {
-        return toDto(order, null);
-    }
-
-    /**
-     * Конвертирует сущность заказа в DTO с дополнительной информацией
-     */
-    public PurchaseOrderDto toDtoWithDetails(PurchaseOrder order,
-                                             String supplierName,
-                                             int totalReceivedItems,
-                                             BigDecimal totalReceivedAmount) {
-        PurchaseOrderDto dto = toDto(order, supplierName);
-
-        // Добавляем дополнительную информацию
-        if (dto != null) {
-            dto.setTotalReceivedItems(totalReceivedItems);
-            dto.setTotalReceivedAmount(totalReceivedAmount);
-        }
-
-        return dto;
     }
 }

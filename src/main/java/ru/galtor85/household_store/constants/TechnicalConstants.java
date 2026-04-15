@@ -51,6 +51,16 @@ public final class TechnicalConstants {
      */
     public static final int MAX_BARCODE_LENGTH = 20;
 
+    /**
+     * Prefix for cell barcode
+     */
+    public static final String CELL_BARCODE_PREFIX = "CELL-";
+
+    /**
+     * Separator for cell barcode
+     */
+    public static final String CELL_BARCODE_SEPARATOR = "-";
+
     // =========================================================================
     // PRODUCT
     // =========================================================================
@@ -248,8 +258,24 @@ public final class TechnicalConstants {
      */
     public static final int MAX_METADATA_LENGTH = 2000;
 
+    /**
+     * Default unknown file name
+     */
+    public static final String UNKNOWN_FILE_NAME = "unknown";
+
+    /**
+     * Size constants for file operations
+     */
     public static final long BYTES_IN_KB = 1024L;
+
+    /**
+     * Size constants for file operations
+     */
     public static final long BYTES_IN_MB = BYTES_IN_KB * 1024L;
+
+    /**
+     * Size constants for file operations
+     */
     public static final long BYTES_IN_GB = BYTES_IN_MB * 1024L;
 
     // =========================================================================
@@ -404,6 +430,8 @@ public final class TechnicalConstants {
      * JWT token type
      */
     public static final String TOKEN_TYPE = "Bearer";
+
+    public static final String EMAIL_ANONYMIZED_PREFIX = "deleted_";
 
     // =========================================================================
     // JWT CLAIMS
@@ -786,6 +814,11 @@ public final class TechnicalConstants {
      * Maximum reason length for write-off
      */
     public static final int MAX_REASON_WRITEOFF_LENGTH = 100;
+
+    /**
+     * Reference type for stock write-off
+     */
+    public static final String WRITE_OFF_REFERENCE_TYPE = "WRITE_OFF";
 
     // =========================================================================
     // PROMO & PRICE

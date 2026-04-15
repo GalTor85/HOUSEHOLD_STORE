@@ -5,72 +5,68 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.builder.order.SalesOrderBuilder;
-import ru.galtor85.household_store.dto.response.cart.CartItemDto;
-import ru.galtor85.household_store.dto.request.price.PriceCalculationRequest;
-import ru.galtor85.household_store.dto.response.finance.PriceCalculationResult;
 import ru.galtor85.household_store.dto.request.order.SalesOrderCreateRequest;
+import ru.galtor85.household_store.dto.request.price.PriceCalculationRequest;
+import ru.galtor85.household_store.dto.response.cart.CartItemDto;
+import ru.galtor85.household_store.dto.response.finance.PriceCalculationResult;
+import ru.galtor85.household_store.dto.response.user.UserTypeAssignmentDto;
 import ru.galtor85.household_store.entity.cart.Cart;
 import ru.galtor85.household_store.entity.cart.CartItem;
 import ru.galtor85.household_store.entity.finance.Invoice;
-import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.entity.order.SalesOrderItem;
 import ru.galtor85.household_store.entity.order.SalesOrderType;
 import ru.galtor85.household_store.entity.product.Product;
+import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.processor.invoice.InvoiceAutoCreationProcessor;
+import ru.galtor85.household_store.processor.price.PriceCalculationProcessor;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
-import ru.galtor85.household_store.service.price.PriceCalculationService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
+import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
 import ru.galtor85.household_store.validator.order.SalesOrderValidator;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Processor for sales order operations.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class SalesOrderProcessor {
 
-    // Репозитории
     private final SalesOrderRepository salesOrderRepository;
-
-    // Билдеры
     private final SalesOrderBuilder builder;
-
-    // Сервисы
-    private final PriceCalculationService priceCalculationService;
-    private final MessageService messageService;
-
-    // Процессоры
+    private final LogMessageService logMsg;
     private final InvoiceAutoCreationProcessor invoiceAutoCreationProcessor;
-
-    // Валидаторы
     private final SalesOrderValidator validator;
-
+    private final UserTypeAssignmentService userTypeAssignmentService;
+    private final PriceCalculationProcessor priceCalculationProcessor;
 
     // =========================================================================
-    // СОЗДАНИЕ ЗАКАЗА ИЗ КОРЗИНЫ
+    // CREATE ORDER FROM CART
     // =========================================================================
 
     /**
-     * Создает заказ на продажу из корзины
+     * Creates a sales order from a shopping cart.
+     *
+     * @param cart            the shopping cart
+     * @param shippingAddress the shipping address
+     * @param userId          the user ID
+     * @return created SalesOrder entity
      */
     @Transactional
     public SalesOrder createOrderFromCart(Cart cart, String shippingAddress, Long userId) {
+        log.info(logMsg.get("sales.order.processor.create.from.cart.start", userId));
 
-        log.info(messageService.get("sales.order.processor.create.from.cart.start", userId));
-
-        // 1. Валидация корзины
         validator.validateCartNotEmpty(cart);
         validator.validateCartItems(cart);
 
-        // 2. Конвертируем товары корзины в DTO для расчета
         List<CartItemDto> items = convertCartItemsToDto(cart.getItems());
 
-        // 3. Рассчитываем цены со скидками
         PriceCalculationRequest priceRequest = PriceCalculationRequest.builder()
                 .userId(userId)
                 .items(items)
@@ -80,118 +76,83 @@ public class SalesOrderProcessor {
                 .applyPriceRules(true)
                 .build();
 
-        PriceCalculationResult priceResult = priceCalculationService.calculatePrice(priceRequest);
+        PriceCalculationResult priceResult = priceCalculationProcessor.calculatePrice(priceRequest);
 
-        // 4. Создаем запрос для билдера
         SalesOrderCreateRequest createRequest = SalesOrderCreateRequest.builder()
                 .userId(userId)
                 .orderType(determineOrderType(userId))
                 .shippingAddress(shippingAddress)
                 .build();
 
-        // 5. Создаем заказ через билдер
-        SalesOrder order = builder.buildOrder(createRequest, userId);
+        SalesOrder savedOrder = createAndSaveOrder(createRequest, priceResult, userId, cart.getItems(), null);
 
-        // 6. Устанавливаем рассчитанные суммы
-        order.setStatus(OrderStatus.PENDING);
-        order.setSubtotal(priceResult.getOriginalTotal());
-        order.setDiscountAmount(priceResult.getTotalDiscount());
-        order.setTotalAmount(priceResult.getFinalTotal());
-
-        // 7. Добавляем позиции заказа
-        addOrderItems(order, cart.getItems());
-
-        // 8. Сохраняем заказ
-        SalesOrder savedOrder = salesOrderRepository.save(order);
-
-        // 9. ✅ АВТОМАТИЧЕСКОЕ СОЗДАНИЕ СЧЕТА (через процессор)
-        Invoice invoice = invoiceAutoCreationProcessor.createInvoiceForOrder(order, userId);
-        if (invoice != null) {
-            savedOrder.addInvoice(invoice);
-            salesOrderRepository.save(savedOrder);
-            log.info(messageService.get("sales.order.processor.invoice.created",
-                    invoice.getInvoiceNumber(), savedOrder.getOrderNumber()));
-        }
-
-        log.info(messageService.get("sales.order.processor.create.from.cart.complete",
+        log.info(logMsg.get("sales.order.processor.create.from.cart.complete",
                 savedOrder.getOrderNumber(), userId, priceResult.getFinalTotal()));
 
         return savedOrder;
     }
 
     // =========================================================================
-    // ПРЯМОЕ СОЗДАНИЕ ЗАКАЗА (МЕНЕДЖЕРОМ)
+    // DIRECT ORDER CREATION (BY MANAGER)
     // =========================================================================
 
     /**
-     * Создает заказ на продажу из запроса
+     * Creates a sales order directly from a request.
+     *
+     * @param request  the creation request
+     * @param products list of products
+     * @param prices   list of prices
+     * @param userId   the user ID
+     * @return created SalesOrder entity
      */
     @Transactional
     public SalesOrder createSalesOrder(SalesOrderCreateRequest request,
                                        List<Product> products,
                                        List<BigDecimal> prices,
                                        Long userId) {
+        log.info(logMsg.get("sales.order.processor.create.start", userId));
 
-        log.info(messageService.get("sales.order.processor.create.start", userId));
-
-        // Валидация запроса
         validator.validateCreateRequest(request);
         validator.validateProducts(request.getItems());
 
-        // Создаем заказ через билдер
         SalesOrder order = builder.buildOrder(request, userId);
+        List<SalesOrderItem> items = builder.buildOrderItems(order, request.getItems(), products, prices);
 
-        // Создаем позиции через билдер
-        List<SalesOrderItem> items = builder.buildOrderItems(
-                order,
-                request.getItems(),
-                products,
-                prices
-        );
-
-        // Рассчитываем сумму
         BigDecimal subtotal = builder.calculateTotalAmount(items);
-
-        // Рассчитываем итоговую сумму с учетом скидки, доставки и налогов
         BigDecimal discountAmount = request.getEffectiveDiscountAmount();
         BigDecimal shippingAmount = request.getEffectiveShippingAmount();
         BigDecimal taxAmount = request.getEffectiveTaxAmount();
+        BigDecimal totalAmount = subtotal.add(shippingAmount).add(taxAmount).subtract(discountAmount);
 
-        BigDecimal totalAmount = subtotal
-                .add(shippingAmount)
-                .add(taxAmount)
-                .subtract(discountAmount);
+        PriceCalculationResult priceResult = PriceCalculationResult.builder()
+                .originalTotal(subtotal)
+                .finalTotal(totalAmount)
+                .totalDiscount(discountAmount)
+                .build();
 
-        // Устанавливаем позиции и суммы
-        order.setItems(items);order.setSubtotal(subtotal);
-        order.setDiscountAmount(discountAmount);
-        order.setShippingAmount(shippingAmount);
-        order.setTaxAmount(taxAmount);
-        order.setTotalAmount(totalAmount);
-        order.setStatus(OrderStatus.PENDING);
+        SalesOrder savedOrder = createAndSaveOrder(request, priceResult, userId, null, items);
+        savedOrder.setShippingAmount(shippingAmount);
+        savedOrder.setTaxAmount(taxAmount);
 
-        // Сохраняем заказ
-        SalesOrder savedOrder = salesOrderRepository.save(order);
-
-        // АВТОМАТИЧЕСКОЕ СОЗДАНИЕ СЧЕТА (через процессор)
-        Invoice invoice = invoiceAutoCreationProcessor.createInvoiceForOrder(order, userId);
-        if (invoice != null) {
-            savedOrder.addInvoice(invoice);
-            salesOrderRepository.save(savedOrder);
-            log.info(messageService.get("sales.order.processor.invoice.created",
-                    invoice.getInvoiceNumber(), savedOrder.getOrderNumber()));
-        }
-
-        log.info(messageService.get("sales.order.processor.create.complete",
+        log.info(logMsg.get("sales.order.processor.create.complete",
                 savedOrder.getOrderNumber(), userId, items.size(), totalAmount));
 
         return savedOrder;
     }
 
+    /**
+     * Creates a sales order from cart with promo code.
+     *
+     * @param cart            the shopping cart
+     * @param shippingAddress the shipping address
+     * @param promoCode       the promo code
+     * @param userId          the user ID
+     * @return created SalesOrder entity
+     */
     @Transactional
     public SalesOrder createOrderFromCartWithPromo(Cart cart, String shippingAddress,
                                                    String promoCode, Long userId) {
-        log.info(messageService.get("sales.order.processor.create.from.cart.promo.start", userId, promoCode));
+        log.info(logMsg.get("sales.order.processor.create.from.cart.promo.start", userId, promoCode));
 
         validator.validateCartNotEmpty(cart);
         validator.validateCartItems(cart);
@@ -208,7 +169,7 @@ public class SalesOrderProcessor {
                 .applyPriceRules(true)
                 .build();
 
-        PriceCalculationResult priceResult = priceCalculationService.calculatePrice(priceRequest);
+        PriceCalculationResult priceResult = priceCalculationProcessor.calculatePrice(priceRequest);
 
         SalesOrderCreateRequest createRequest = SalesOrderCreateRequest.builder()
                 .userId(userId)
@@ -216,112 +177,13 @@ public class SalesOrderProcessor {
                 .shippingAddress(shippingAddress)
                 .build();
 
-        SalesOrder order = builder.buildOrder(createRequest, userId);
-        order.setStatus(OrderStatus.PENDING);
-        order.setSubtotal(priceResult.getOriginalTotal());
-        order.setDiscountAmount(priceResult.getTotalDiscount());
-        order.setTotalAmount(priceResult.getFinalTotal());
-
-        addOrderItems(order, cart.getItems());
-        SalesOrder savedOrder = salesOrderRepository.save(order);
-
-        Invoice invoice = invoiceAutoCreationProcessor.createInvoiceForOrder(order, userId);
-        if (invoice != null) {
-            savedOrder.addInvoice(invoice);
-            salesOrderRepository.save(savedOrder);
-        }
-
-        return savedOrder;
+        return createAndSaveOrder(createRequest, priceResult, userId, cart.getItems(), null);
     }
 
     // =========================================================================
-    // ОБНОВЛЕНИЕ ЗАКАЗА
+    // HELPER METHODS
     // =========================================================================
 
-    /**
-     * Обновляет заказ (позиции, суммы)
-     */
-    @Transactional
-    public SalesOrder updateOrder(SalesOrder order, List<SalesOrderItem> newItems, Long updatedBy) {
-        log.info(messageService.get("sales.order.processor.update.start", order.getOrderNumber()));
-
-        // 1. Валидация возможности изменения
-        validator.validateOrderModifiable(order);
-
-        // 2. Обновляем позиции
-        order.getItems().clear();
-        for (SalesOrderItem item : newItems) {
-            order.addItem(item);
-        }
-
-        // 3. Пересчитываем суммы
-        order.recalculateTotals();
-
-        // 4. Сохраняем
-        SalesOrder updated = salesOrderRepository.save(order);
-
-        // 5. ✅ Обновляем сумму счета, если он существует
-        if (!order.getInvoices().isEmpty()) {
-            Invoice invoice = order.getInvoices().get(0);
-            if (invoice.getStatus() == InvoiceStatus.PENDING) {
-                invoiceAutoCreationProcessor.updateInvoiceAmount(
-                        invoice,
-                        order.getTotalAmount(),
-                        messageService.get("sales.order.processor.update.reason", updatedBy),
-                        updatedBy
-                );
-            }
-        }
-
-        log.info(messageService.get("sales.order.processor.update.complete",
-                order.getOrderNumber(), order.getTotalAmount()));
-
-        return updated;
-    }
-
-    // =========================================================================
-    // ОТМЕНА ЗАКАЗА
-    // =========================================================================
-
-    /**
-     * Отменяет заказ
-     */
-    @Transactional
-    public SalesOrder cancelOrder(SalesOrder order, String reason, Long cancelledBy) {
-        log.info(messageService.get("sales.order.processor.cancel.start",
-                order.getOrderNumber(), reason));
-
-        // 1. Проверка возможности отмены
-        validator.validateOrderCancellable(order);
-
-        // 2. Обновляем статус
-        order.setStatus(OrderStatus.CANCELLED);
-        order.setCancelledAt(LocalDateTime.now());
-        order.setCancellationReason(reason);
-
-        // 3. Отменяем все неоплаченные счета
-        for (Invoice invoice : order.getInvoices()) {
-            if (invoice.getStatus() == InvoiceStatus.PENDING) {
-                invoice.setStatus(InvoiceStatus.CANCELLED);
-            }
-        }
-
-        // 4. Сохраняем
-        SalesOrder cancelled = salesOrderRepository.save(order);
-
-        log.info(messageService.get("sales.order.processor.cancel.complete",
-                order.getOrderNumber(), cancelledBy));
-
-        return cancelled;
-    }
-
-    // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-    // =========================================================================
-
-    /**
-     * Конвертирует CartItem в CartItemDto
-     */
     private List<CartItemDto> convertCartItemsToDto(List<CartItem> cartItems) {
         return cartItems.stream()
                 .map(item -> CartItemDto.builder()
@@ -336,9 +198,6 @@ public class SalesOrderProcessor {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Добавляет позиции в заказ
-     */
     private void addOrderItems(SalesOrder order, List<CartItem> cartItems) {
         for (CartItem cartItem : cartItems) {
             SalesOrderItem orderItem = SalesOrderItem.builder()
@@ -354,11 +213,69 @@ public class SalesOrderProcessor {
     }
 
     /**
-     * Определяет тип заказа (розничный или оптовый)
+     * Determines the order type based on user's assigned type.
+     *
+     * @param userId the user ID
+     * @return SalesOrderType (WHOLESALE for WHOLESALE/VIP/PARTNER, RETAIL otherwise)
      */
     private SalesOrderType determineOrderType(Long userId) {
-        // TODO: Реализовать логику определения типа пользователя
-        // Например, проверить UserTypeAssignment через UserTypeAssignmentService
-        return SalesOrderType.RETAIL;
+        UserTypeAssignmentDto userTypeAssignment = userTypeAssignmentService.getCurrentUserType(userId);
+
+        if (userTypeAssignment == null) {
+            log.debug(logMsg.get("sales.order.type.default.retail", userId));
+            return SalesOrderType.RETAIL;
+        }
+
+        UserType userType = userTypeAssignment.getUserType();
+
+        SalesOrderType orderType = switch (userType) {
+            case WHOLESALE, VIP, PARTNER, CORPORATE -> SalesOrderType.WHOLESALE;
+            default -> SalesOrderType.RETAIL;
+        };
+
+        log.debug(logMsg.get("sales.order.type.determined", userId, userType, orderType));
+
+        return orderType;
+    }
+
+    /**
+     * Creates and saves a sales order with calculated prices.
+     *
+     * @param createRequest the order creation request
+     * @param priceResult   the calculated price result
+     * @param userId        the user ID
+     * @param cartItems     the cart items (null for direct creation)
+     * @param orderItems    pre-built order items (null for cart creation)
+     * @return saved SalesOrder entity
+     */
+    private SalesOrder createAndSaveOrder(SalesOrderCreateRequest createRequest,
+                                          PriceCalculationResult priceResult,
+                                          Long userId,
+                                          List<CartItem> cartItems,
+                                          List<SalesOrderItem> orderItems) {
+
+        SalesOrder order = builder.buildOrder(createRequest, userId);
+        order.setStatus(OrderStatus.PENDING);
+        order.setSubtotal(priceResult.getOriginalTotal());
+        order.setDiscountAmount(priceResult.getTotalDiscount());
+        order.setTotalAmount(priceResult.getFinalTotal());
+
+        if (cartItems != null) {
+            addOrderItems(order, cartItems);
+        } else if (orderItems != null) {
+            order.setItems(orderItems);
+        }
+
+        SalesOrder savedOrder = salesOrderRepository.save(order);
+
+        Invoice invoice = invoiceAutoCreationProcessor.createInvoiceForOrder(order, userId);
+        if (invoice != null) {
+            savedOrder.addInvoice(invoice);
+            salesOrderRepository.save(savedOrder);
+            log.info(logMsg.get("sales.order.processor.invoice.created",
+                    invoice.getInvoiceNumber(), savedOrder.getOrderNumber()));
+        }
+
+        return savedOrder;
     }
 }

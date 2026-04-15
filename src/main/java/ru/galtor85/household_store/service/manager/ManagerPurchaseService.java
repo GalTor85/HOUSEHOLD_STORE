@@ -10,16 +10,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.order.PurchaseOrderReverseException;
 import ru.galtor85.household_store.converter.PurchaseOrderConverter;
-import ru.galtor85.household_store.dto.request.order.ReverseReceiptRequest;
-import ru.galtor85.household_store.dto.response.order.PurchaseOrderDto;
 import ru.galtor85.household_store.dto.request.order.PurchaseOrderCreateRequest;
 import ru.galtor85.household_store.dto.request.order.ReceiveAndStockRequest;
+import ru.galtor85.household_store.dto.request.order.ReverseReceiptRequest;
 import ru.galtor85.household_store.dto.request.stock.StockWriteOffRequest;
 import ru.galtor85.household_store.dto.request.supplier.SupplierCreateRequest;
 import ru.galtor85.household_store.dto.request.supplier.SupplierProductRequest;
 import ru.galtor85.household_store.dto.request.supplier.SupplierUpdateRequest;
+import ru.galtor85.household_store.dto.response.order.PurchaseOrderDto;
 import ru.galtor85.household_store.dto.response.supplier.SupplierDto;
 import ru.galtor85.household_store.dto.response.supplier.SupplierProductDto;
+import ru.galtor85.household_store.entity.order.OrderPaymentStatus;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.supplier.Supplier;
@@ -32,11 +33,12 @@ import ru.galtor85.household_store.processor.stock.StockWriteOffProcessor;
 import ru.galtor85.household_store.processor.supplier.SupplierProductProcessor;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.supplier.SupplierRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.util.date.DateParser;
+import ru.galtor85.household_store.validator.common.ValidationHelper;
 import ru.galtor85.household_store.validator.order.PurchaseOrderValidator;
 import ru.galtor85.household_store.validator.supplier.SupplierValidator;
-import ru.galtor85.household_store.validator.common.ValidationHelper;
 import ru.galtor85.household_store.validator.warehouse.WarehouseValidator;
 
 import java.time.LocalDate;
@@ -70,6 +72,10 @@ public class ManagerPurchaseService {
     private final SupplierMapper supplierMapper;
     private final MessageService messageService;
     private final DateParser dateParser;
+    private final LogMessageService logMsg;
+
+    private static final String NOTES_SEPARATOR = " | ";
+    private static final String NOTES_HEADER = "-- ";
 
 // =========================================================================
     // PURCHASE ORDER CREATION
@@ -85,7 +91,7 @@ public class ManagerPurchaseService {
     @Transactional
     public PurchaseOrderDto createPurchaseOrder(PurchaseOrderCreateRequest request, Long managerId) {
 
-        log.info(messageService.get("manager.purchase.create.start",
+        log.info(logMsg.get("manager.purchase.create.start",
                 request.getSupplierId(), managerId));
 
         // Validate request
@@ -98,15 +104,15 @@ public class ManagerPurchaseService {
         PurchaseOrder order = purchaseOrderProcessor.createPurchaseOrder(
                 request,
                 supplier,
-                validationResult.getProducts(),
-                validationResult.getPrices(),
+                validationResult.products(),
+                validationResult.prices(),
                 managerId
         );
 
         // Convert to DTO
         PurchaseOrderDto result = purchaseOrderConverter.toDto(order, supplier.getName());
 
-        log.info(messageService.get("manager.purchase.created.log",
+        log.info(logMsg.get("manager.purchase.created.log",
                 order.getOrderNumber(),
                 request.getSupplierId(),
                 managerId,
@@ -130,7 +136,7 @@ public class ManagerPurchaseService {
      */
     @Transactional
     public PurchaseOrderDto cancelPurchaseOrder(Long orderId, String reason, Long managerId) {
-        log.info(messageService.get("manager.purchase.cancel.start", orderId, reason, managerId));
+        log.info(logMsg.get("manager.purchase.cancel.start", orderId, reason, managerId));
 
         // 1. Validate order exists
         PurchaseOrder order = purchaseOrderValidator.validatePurchaseOrderExists(orderId);
@@ -148,7 +154,7 @@ public class ManagerPurchaseService {
 
         PurchaseOrderDto result = purchaseOrderConverter.toDto(cancelledOrder, supplierName);
 
-        log.info(messageService.get("manager.purchase.cancel.complete", orderId, managerId));
+        log.info(logMsg.get("manager.purchase.cancel.complete", orderId, managerId));
 
         return result;
     }
@@ -170,7 +176,7 @@ public class ManagerPurchaseService {
                                                  ReceiveAndStockRequest request,
                                                  Long managerId) {
 
-        log.info(messageService.get("manager.purchase.receive.start", orderId, managerId));
+        log.info(logMsg.get("manager.purchase.receive.start", orderId, managerId));
 
         // Validate order
         PurchaseOrder order = purchaseOrderValidator.validatePurchaseOrderExists(orderId);
@@ -188,7 +194,7 @@ public class ManagerPurchaseService {
         // Save order
         PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
 
-        log.info(messageService.get("manager.purchase.received.log",
+        log.info(logMsg.get("manager.purchase.received.log",
                 orderId, managerId, result.getMovements().size(),
                 result.isFullyReceived() ? "FULLY" : "PARTIALLY"));
 
@@ -216,7 +222,7 @@ public class ManagerPurchaseService {
                                                           ReceiveAndStockRequest request,
                                                           Long managerId) {
 
-        log.info(messageService.get("manager.purchase.receive.with.stock.start",
+        log.info(logMsg.get("manager.purchase.receive.with.stock.start",
                 orderId, managerId, request.getWarehouseId()));
 
         // Validate order
@@ -236,7 +242,7 @@ public class ManagerPurchaseService {
         updateOrderStatusAfterCellBasedReceiving(order, result, request, managerId);
 
         // Update receiving information
-        updatePurchaseOrderReceivingInfo(order, request, managerId, result);
+        updatePurchaseOrderReceivingInfo(order, request, managerId);
 
         // Add receiving note
         addCellBasedReceivingNote(order, request, result, managerId);
@@ -252,11 +258,11 @@ public class ManagerPurchaseService {
         orderDto.setErrorMessages(result.getErrorMessages());
 
         if (!result.isAllSuccess()) {
-            log.warn(messageService.get("purchase.order.partially.received.warn",
+            log.warn(logMsg.get("purchase.order.partially.received.warn",
                     orderId, result.getFailedItems().size(), result.getFailedItems()));
         }
 
-        log.info(messageService.get("manager.purchase.received.with.stock.log",
+        log.info(logMsg.get("manager.purchase.received.with.stock.log",
                 orderId, managerId, result.getMovements().size(),
                 result.getPlacements().size(), result.isFullyReceived()));
 
@@ -276,7 +282,7 @@ public class ManagerPurchaseService {
      */
     @Transactional
     public PurchaseOrderDto reverseReceipt(ReverseReceiptRequest request, Long managerId) {
-        log.info(messageService.get("manager.purchase.reverse.start",
+        log.info(logMsg.get("manager.purchase.reverse.start",
                 request.getOrderId(), request.getReason(), managerId));
 
         // Validate order exists
@@ -297,10 +303,10 @@ public class ManagerPurchaseService {
             order.setQualityCheck(null);
             order.setWarehouseLocation(null);
 
-            log.info(messageService.get("manager.purchase.reverse.all.items", order.getId()));
+            log.info(logMsg.get("manager.purchase.reverse.all.items", order.getId()));
         } else if (result.isAllSuccess() && !result.getReversedItems().isEmpty()) {
             order.setStatus(OrderStatus.PARTIALLY_RECEIVED);
-            log.info(messageService.get("manager.purchase.reverse.partial", order.getId()));
+            log.info(logMsg.get("manager.purchase.reverse.partial", order.getId()));
         }
 
         // Add note about reversal
@@ -314,7 +320,7 @@ public class ManagerPurchaseService {
                 .map(Supplier::getName)
                 .orElse(null);
 
-        log.info(messageService.get("manager.purchase.reverse.complete",
+        log.info(logMsg.get("manager.purchase.reverse.complete",
                 request.getOrderId(), result.getReversedItems().size(), managerId));
 
         return purchaseOrderConverter.toDto(savedOrder, supplierName);
@@ -355,24 +361,24 @@ public class ManagerPurchaseService {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         StringBuilder note = new StringBuilder();
 
-        note.append("-- ").append(messageService.get("purchase.reverse.note.header", timestamp, managerId)).append(" --");
-        note.append("-- ").append(messageService.get("purchase.reverse.note.reason", request.getReason()));
+        note.append(NOTES_HEADER).append(messageService.get("purchase.reverse.note.header", timestamp, managerId)).append(" --");
+        note.append(NOTES_HEADER).append(messageService.get("purchase.reverse.note.reason", request.getReason()));
 
         if (request.getComments() != null && !request.getComments().isEmpty()) {
-            note.append("-- ").append(messageService.get("purchase.reverse.note.comments", request.getComments())).append(" --");
+            note.append(NOTES_HEADER).append(messageService.get("purchase.reverse.note.comments", request.getComments())).append(" --");
         }
 
-        note.append(("-- ")).append(messageService.get("purchase.reverse.note.items", result.getReversedItems().size())).append(" --");
+        note.append((NOTES_HEADER)).append(messageService.get("purchase.reverse.note.items", result.getReversedItems().size())).append(" --");
 
         if (!result.isAllSuccess()) {
-            note.append(("-- ")).append(messageService.get("purchase.reverse.note.failed", result.getFailedItems().size())).append(" --");
+            note.append((NOTES_HEADER)).append(messageService.get("purchase.reverse.note.failed", result.getFailedItems().size())).append(" --");
         }
 
         String currentNotes = order.getNotes();
         if (currentNotes == null || currentNotes.isEmpty()) {
             order.setNotes(note.toString());
         } else {
-            order.setNotes(currentNotes + " | " + note.toString());
+            order.setNotes(currentNotes +NOTES_SEPARATOR + note);
         }
     }
 
@@ -391,23 +397,18 @@ public class ManagerPurchaseService {
         if (result.isFullyReceived()) {
             order.setStatus(OrderStatus.DELIVERED);
             order.setActualDelivery(LocalDate.now());
-            log.info(messageService.get("purchase.salesOrder.fully.received", order.getId()));
+            log.info(logMsg.get("purchase.salesOrder.fully.received", order.getId()));
         } else {
             order.setStatus(OrderStatus.PARTIALLY_RECEIVED);
-            log.info(messageService.get("purchase.salesOrder.partially.received", order.getId()));
+            log.info(logMsg.get("purchase.salesOrder.partially.received", order.getId()));
 
             if (!result.getUnreceivedItems().isEmpty()) {
-                log.warn(messageService.get("purchase.salesOrder.unreceived.items",
+                log.warn(logMsg.get("purchase.salesOrder.unreceived.items",
                         result.getUnreceivedItems().size(), order.getId()));
             }
         }
 
-        order.setReceivedBy(managerId);
-        order.setQualityCheck(request.getQualityCheck());
-
-        if (request.getPaymentStatus() != null) {
-            order.setPaymentStatus(request.getPaymentStatus());
-        }
+        setOrderFields(order, request, managerId);
     }
 
     /**
@@ -421,23 +422,18 @@ public class ManagerPurchaseService {
         if (result.isFullyReceived()) {
             order.setStatus(OrderStatus.DELIVERED);
             order.setActualDelivery(LocalDate.now());
-            log.info(messageService.get("purchase.salesOrder.fully.received", order.getId()));
+            log.info(logMsg.get("purchase.salesOrder.fully.received", order.getId()));
         } else {
             order.setStatus(OrderStatus.PARTIALLY_RECEIVED);
-            log.info(messageService.get("purchase.salesOrder.partially.received", order.getId()));
+            log.info(logMsg.get("purchase.salesOrder.partially.received", order.getId()));
 
             if (!result.getFailedItems().isEmpty()) {
-                log.warn(messageService.get("purchase.salesOrder.failed.items",
+                log.warn(logMsg.get("purchase.salesOrder.failed.items",
                         result.getFailedItems().size(), order.getId()));
             }
         }
 
-        order.setReceivedBy(managerId);
-        order.setQualityCheck(request.getQualityCheck());
-
-        if (request.getPaymentStatus() != null) {
-            order.setPaymentStatus(request.getPaymentStatus());
-        }
+        setOrderFields(order, request, managerId);
     }
 
     /**
@@ -445,18 +441,25 @@ public class ManagerPurchaseService {
      */
     private void updatePurchaseOrderReceivingInfo(PurchaseOrder order,
                                                   ReceiveAndStockRequest request,
-                                                  Long managerId,
-                                                  CellBasedReceivingProcessor.CellBasedReceivingResult result) {
+                                                  Long managerId) {
         order.setActualDelivery(LocalDate.now());
+        setOrderFields(order, request, managerId);
+
+        if (request.getWarehouseLocation() != null) {
+            order.setWarehouseLocation(request.getWarehouseLocation());
+        }
+    }
+
+    private void setOrderFields(PurchaseOrder order, ReceiveAndStockRequest request, Long managerId) {
         order.setReceivedBy(managerId);
         order.setQualityCheck(request.getQualityCheck());
 
         if (request.getPaymentStatus() != null) {
-            order.setPaymentStatus(request.getPaymentStatus());
-        }
-
-        if (request.getWarehouseLocation() != null) {
-            order.setWarehouseLocation(request.getWarehouseLocation());
+            try {
+                order.setPaymentStatus(OrderPaymentStatus.valueOf(request.getPaymentStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                log.warn(logMsg.get("order.payment.status.invalid", request.getPaymentStatus()));
+            }
         }
     }
 
@@ -471,33 +474,33 @@ public class ManagerPurchaseService {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         StringBuilder note = new StringBuilder();
 
-        note.append("-- ").append(messageService.get("purchase.receiving.note.header",
+        note.append(NOTES_HEADER).append(messageService.get("purchase.receiving.note.header",
                 timestamp, managerId));
 
         if (result.isFullyReceived()) {
-            note.append("-- ").append(messageService.get("purchase.receiving.note.fully.received"));
+            note.append(NOTES_HEADER).append(messageService.get("purchase.receiving.note.fully.received"));
         } else {
-            note.append("-- ").append(messageService.get("purchase.receiving.note.partially.received"));
-            note.append("-- ").append(messageService.get("purchase.receiving.note.unreceived.count",
+            note.append(NOTES_HEADER).append(messageService.get("purchase.receiving.note.partially.received"));
+            note.append(NOTES_HEADER).append(messageService.get("purchase.receiving.note.unreceived.count",
                     result.getFailedItems().size()));
         }
 
-        note.append("-- ").append(messageService.get("purchase.receiving.note.cells.used",
+        note.append(NOTES_HEADER).append(messageService.get("purchase.receiving.note.cells.used",
                 result.getPlacements().size()));
 
         if (request.getQualityCheck() != null) {
-            note.append("-- ").append(request.getQualityCheck() ?
+            note.append(NOTES_HEADER).append(request.getQualityCheck() ?
                     messageService.get("purchase.receiving.note.quality.passed") :
                     messageService.get("purchase.receiving.note.quality.failed"));
         }
 
         if (!result.getFailedItems().isEmpty()) {
-            note.append("-- ").append(messageService.get("purchase.receiving.note.failed.items",
+            note.append(NOTES_HEADER).append(messageService.get("purchase.receiving.note.failed.items",
                     result.getFailedItems().size()));
         }
 
         if (request.getNotes() != null && !request.getNotes().isEmpty()) {
-            note.append("-- ").append(messageService.get("purchase.receiving.note.notes",
+            note.append(NOTES_HEADER).append(messageService.get("purchase.receiving.note.notes",
                     request.getNotes()));
         }
 
@@ -505,7 +508,7 @@ public class ManagerPurchaseService {
         if (currentNotes == null || currentNotes.isEmpty()) {
             order.setNotes(note.toString());
         } else {
-            order.setNotes(currentNotes + " | " + note);
+            order.setNotes(currentNotes +NOTES_SEPARATOR + note);
         }
     }
 
@@ -542,7 +545,7 @@ public class ManagerPurchaseService {
         Supplier supplier = supplierMapper.toEntity(request, managerId);
         Supplier savedSupplier = supplierRepository.save(supplier);
 
-        log.info(messageService.get("manager.supplier.created.log",
+        log.info(logMsg.get("manager.supplier.created.log",
                 savedSupplier.getName(), savedSupplier.getId(), managerId));
 
         return supplierMapper.toDto(savedSupplier);
@@ -563,7 +566,7 @@ public class ManagerPurchaseService {
         supplierMapper.updateEntity(supplier, request);
         Supplier updatedSupplier = supplierRepository.save(supplier);
 
-        log.info(messageService.get("manager.supplier.updated.log", updatedSupplier.getId()));
+        log.info(logMsg.get("manager.supplier.updated.log", updatedSupplier.getId()));
 
         return supplierMapper.toDto(updatedSupplier);
     }
@@ -582,7 +585,7 @@ public class ManagerPurchaseService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "name"));
         Page<Supplier> suppliers = supplierRepository.searchSuppliersNative(name, status, pageable);
 
-        log.debug(messageService.get("manager.suppliers.fetched.log", suppliers.getTotalElements()));
+        log.debug(logMsg.get("manager.suppliers.fetched.log", suppliers.getTotalElements()));
 
         return suppliers.map(supplierMapper::toDto);
     }
@@ -606,32 +609,6 @@ public class ManagerPurchaseService {
                                                    SupplierProductRequest request,
                                                    Long managerId) {
         return supplierProductProcessor.addProductToSupplier(supplierId, productId, request, managerId);
-    }
-
-    /**
-     * Updates a supplier product relationship
-     *
-     * @param supplierProductId supplier product identifier
-     * @param request           supplier product update request
-     * @param managerId         ID of the manager updating the product
-     * @return updated supplier product DTO
-     */
-    @Transactional
-    public SupplierProductDto updateSupplierProduct(Long supplierProductId,
-                                                    SupplierProductRequest request,
-                                                    Long managerId) {
-        return supplierProductProcessor.updateSupplierProduct(supplierProductId, request, managerId);
-    }
-
-    /**
-     * Removes a product from a supplier's catalog
-     *
-     * @param supplierProductId supplier product identifier
-     * @param managerId         ID of the manager removing the product
-     */
-    @Transactional
-    public void removeProductFromSupplier(Long supplierProductId, Long managerId) {
-        supplierProductProcessor.removeProductFromSupplier(supplierProductId, managerId);
     }
 
     // =========================================================================

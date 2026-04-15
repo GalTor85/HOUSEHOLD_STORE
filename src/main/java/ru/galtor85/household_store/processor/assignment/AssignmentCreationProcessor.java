@@ -9,10 +9,13 @@ import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.entity.user.UserTypeAssignment;
 import ru.galtor85.household_store.mapper.user.UserTypeAssignmentMapper;
 import ru.galtor85.household_store.repository.user.UserTypeAssignmentRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.time.LocalDateTime;
 
+/**
+ * Processor for creating user type assignments.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -20,8 +23,19 @@ public class AssignmentCreationProcessor {
 
     private final UserTypeAssignmentRepository assignmentRepository;
     private final UserTypeAssignmentMapper mapper;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
+    /**
+     * Creates a new user type assignment.
+     *
+     * @param userId     the user ID
+     * @param userType   the user type to assign
+     * @param assignedBy identifier of who assigned the type
+     * @param reason     reason for assignment
+     * @param validFrom  validity start date (optional)
+     * @param validTo    validity end date (optional)
+     * @return created UserTypeAssignmentDto
+     */
     @Transactional
     public UserTypeAssignmentDto createAssignment(Long userId, UserType userType, String assignedBy,
                                                   String reason, LocalDateTime validFrom, LocalDateTime validTo) {
@@ -32,7 +46,7 @@ public class AssignmentCreationProcessor {
 
         UserTypeAssignment saved = assignmentRepository.save(assignment);
 
-        log.info(messageService.get(
+        log.info(logMsg.get(
                 "user-type.log.assigned.success",
                 userType, userId, assignedBy
         ));

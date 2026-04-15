@@ -28,7 +28,7 @@ public class PromoCodeUsage {
     private Long userId;
 
     @Column(name = "order_id")
-    private Long orderId; // ID заказа, где использован
+    private Long orderId;
 
     @Column(name = "used_at")
     @CreationTimestamp

@@ -5,17 +5,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.builder.price.PriceCalculationResultBuilder;
 import ru.galtor85.household_store.calculator.BasePriceCalculator;
-import ru.galtor85.household_store.dto.response.cart.CartItemDto;
 import ru.galtor85.household_store.dto.request.price.PriceCalculationRequest;
+import ru.galtor85.household_store.dto.response.cart.CartItemDto;
 import ru.galtor85.household_store.dto.response.finance.PriceCalculationResult;
 import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.processor.user.UserTypeDiscountProcessor;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Processor for price calculation with discounts.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -26,54 +29,55 @@ public class PriceCalculationProcessor {
     private final PriceRuleProcessor priceRuleProcessor;
     private final PromoCodeProcessor promoCodeProcessor;
     private final PriceCalculationResultBuilder resultBuilder;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
-     * Рассчитывает итоговую цену с учетом всех скидок
+     * Calculates final price with all applicable discounts.
+     *
+     * @param request price calculation request
+     * @return PriceCalculationResult with original and final totals
      */
     public PriceCalculationResult calculatePrice(PriceCalculationRequest request) {
+        log.debug(logMsg.get("price.calculation.processor.start"));
 
-        log.debug(messageService.get("price.calculation.processor.start"));
-
-        // 1. Расчет оригинальной суммы
         BigDecimal originalTotal = basePriceCalculator.calculateOriginalTotal(request.getItems());
         BigDecimal currentTotal = originalTotal;
         List<PriceCalculationResult.AppliedDiscount> appliedDiscounts = new ArrayList<>();
 
-        // 2. Применяем скидки по типу пользователя
         UserTypeDiscountProcessor.UserTypeDiscountResult userTypeResult =
                 userTypeDiscountProcessor.applyUserTypeDiscount(
                         currentTotal, request.getUserId(), appliedDiscounts);
-        currentTotal = userTypeResult.getTotalAfterDiscount();
-        UserType userType = userTypeResult.getUserType();
+        currentTotal = userTypeResult.totalAfterDiscount();
+        UserType userType = userTypeResult.userType();
 
-        // 3. Применяем правила ценообразования
         currentTotal = priceRuleProcessor.applyPriceRules(
                 currentTotal, userType, request.getItems(), appliedDiscounts);
 
-        // 4. Применяем промокод (если есть)
         if (request.getPromoCode() != null && !request.getPromoCode().isEmpty()) {
             PromoCodeProcessor.PromoCodeResult promoResult = promoCodeProcessor.applyPromoCode(
                     currentTotal, request.getPromoCode(), request.getUserId(),
-                    userType, request.getItems(), appliedDiscounts);
+                    userType, appliedDiscounts);
 
-            if (promoResult.isApplied()) {
-                currentTotal = promoResult.getTotalAfterDiscount();
+            if (promoResult.applied()) {
+                currentTotal = promoResult.totalAfterDiscount();
             }
         }
 
-        // 5. Строим результат
         PriceCalculationResult result = resultBuilder.build(
                 originalTotal, currentTotal, appliedDiscounts);
 
-        log.info(messageService.get("price.calculation.processor.complete",
+        log.info(logMsg.get("price.calculation.processor.complete",
                 originalTotal, result.getFinalTotal(), appliedDiscounts.size()));
 
         return result;
     }
 
     /**
-     * Рассчитывает цену для списка товаров (упрощенная версия)
+     * Calculates price for a list of items.
+     *
+     * @param items  cart items
+     * @param userId user ID
+     * @return PriceCalculationResult
      */
     public PriceCalculationResult calculatePriceForItems(List<CartItemDto> items, Long userId) {
         PriceCalculationRequest request = PriceCalculationRequest.builder()
@@ -88,7 +92,12 @@ public class PriceCalculationProcessor {
     }
 
     /**
-     * Рассчитывает цену с промокодом
+     * Calculates price with promo code.
+     *
+     * @param items     cart items
+     * @param userId    user ID
+     * @param promoCode promo code
+     * @return PriceCalculationResult
      */
     public PriceCalculationResult calculatePriceWithPromoCode(List<CartItemDto> items,
                                                               Long userId,
@@ -106,7 +115,10 @@ public class PriceCalculationProcessor {
     }
 
     /**
-     * Рассчитывает только базовую цену без скидок
+     * Calculates base price without discounts.
+     *
+     * @param items cart items
+     * @return base total
      */
     public BigDecimal calculateBasePrice(List<CartItemDto> items) {
         return basePriceCalculator.calculateOriginalTotal(items);

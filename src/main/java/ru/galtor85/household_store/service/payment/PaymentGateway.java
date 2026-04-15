@@ -1,6 +1,7 @@
 package ru.galtor85.household_store.service.payment;
 
 import ru.galtor85.household_store.entity.payment.PaymentMethod;
+import ru.galtor85.household_store.entity.payment.PaymentTransactionStatus;
 
 import java.math.BigDecimal;
 
@@ -39,5 +40,5 @@ public interface PaymentGateway {
      * @param transactionId provider transaction ID
      * @return payment status
      */
-    PaymentStatus checkStatus(String transactionId);
+    PaymentTransactionStatus checkStatus(String transactionId);
 }

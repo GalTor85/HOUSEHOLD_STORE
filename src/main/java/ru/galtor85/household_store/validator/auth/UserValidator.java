@@ -15,6 +15,7 @@ import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.repository.auth.SecurityUserRepository;
 import ru.galtor85.household_store.repository.user.UserRepository;
 import ru.galtor85.household_store.security.SecurityUser;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.util.regex.Pattern;
@@ -45,6 +46,7 @@ public class UserValidator {
     private final MessageService messageService;
     private final PasswordEncoder passwordEncoder;
     private final BusinessConfig businessConfig;
+    private final LogMessageService logMsg;
 
     // =========================================================================
     // UNIQUENESS VALIDATION
@@ -62,7 +64,7 @@ public class UserValidator {
         if (email != null) {
             validateEmailLength(email);
             if (userRepository.existsByEmail(email)) {
-                log.warn(messageService.get("user-service.log.user.email.exists", email));
+                log.warn(logMsg.get("user-service.log.user.email.exists", email));
                 throw new UserAlreadyExistsException(email);
             }
         }
@@ -80,7 +82,7 @@ public class UserValidator {
         if (mobileNumber != null) {
             validatePhoneNumberLength(mobileNumber);
             if (userRepository.existsByMobileNumber(mobileNumber)) {
-                log.warn(messageService.get("user-service.log.user.mobile.exists", mobileNumber));
+                log.warn(logMsg.get("user-service.log.user.mobile.exists", mobileNumber));
                 throw new UserAlreadyExistsException(mobileNumber);
             }
         }
@@ -99,7 +101,7 @@ public class UserValidator {
                 !request.getEmail().equals(user.getEmail()) &&
                 userRepository.existsByEmail(request.getEmail())) {
 
-            log.warn(messageService.get("user-service.log.user.email.exists", request.getEmail()));
+            log.warn(logMsg.get("user-service.log.user.email.exists", request.getEmail()));
             throw new UserAlreadyExistsException(request.getEmail());
         }
     }
@@ -117,7 +119,7 @@ public class UserValidator {
                 !request.getMobileNumber().equals(user.getMobileNumber()) &&
                 userRepository.existsByMobileNumber(request.getMobileNumber())) {
 
-            log.warn(messageService.get("user-service.log.user.mobile.exists", request.getMobileNumber()));
+            log.warn(logMsg.get("user-service.log.user.mobile.exists", request.getMobileNumber()));
             throw new UserAlreadyExistsException(request.getMobileNumber());
         }
     }
@@ -136,7 +138,7 @@ public class UserValidator {
     public SecurityUser validateSecurityUserExists(Long userId) {
         return securityUserRepository.findById(userId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("user-service.log.security.user.not.found", userId));
+                    log.error(logMsg.get("user-service.log.security.user.not.found", userId));
                     return new UserNotFoundException(userId.toString());
                 });
     }

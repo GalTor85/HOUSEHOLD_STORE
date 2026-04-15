@@ -10,11 +10,14 @@ import ru.galtor85.household_store.entity.warehouse.CategoryWarehouse;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.mapper.category.CategoryWarehouseMapper;
 import ru.galtor85.household_store.repository.category.CategoryWarehouseRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Processor for bulk category-warehouse assignments.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -22,8 +25,16 @@ public class BulkCategoryProcessor {
 
     private final CategoryWarehouseRepository categoryWarehouseRepository;
     private final CategoryWarehouseMapper mapper;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
+    /**
+     * Processes bulk assignment of categories to a warehouse.
+     *
+     * @param request   the bulk assignment request
+     * @param warehouse the target warehouse
+     * @param createdBy ID of the user performing the operation
+     * @return BulkAssignmentResult containing successful and skipped assignments
+     */
     @Transactional
     public BulkAssignmentResult processBulkAssign(BulkCategoryWarehouseRequest request,
                                                   Warehouse warehouse,
@@ -56,23 +67,37 @@ public class BulkCategoryProcessor {
         return new BulkAssignmentResult(results, newlyAssigned, alreadyAssigned);
     }
 
+    /**
+     * Logs the results of bulk assignment.
+     *
+     * @param newlyAssigned   list of newly assigned categories
+     * @param alreadyAssigned list of already assigned categories
+     * @param warehouseId     the warehouse ID
+     * @param createdBy       ID of the user performing the operation
+     */
     private void logResults(List<String> newlyAssigned, List<String> alreadyAssigned,
                             Long warehouseId, Long createdBy) {
         if (!newlyAssigned.isEmpty()) {
-            log.info(messageService.get("category.bulk.assigned.log",
+            log.info(logMsg.get("category.bulk.assigned.log",
                     newlyAssigned.size(), warehouseId, createdBy));
         }
 
         if (!alreadyAssigned.isEmpty()) {
-            log.warn(messageService.get("category.bulk.already.assigned.log",
+            log.warn(logMsg.get("category.bulk.already.assigned.log",
                     String.join(", ", alreadyAssigned)));
         }
     }
 
-    @lombok.Value
-    public static class BulkAssignmentResult {
-        List<CategoryWarehouseDto> results;
-        List<String> newlyAssigned;
-        List<String> alreadyAssigned;
-    }
+    /**
+     * Result of bulk category assignment operation.
+     *
+     * @param results         successfully assigned categories with details
+     * @param newlyAssigned   list of newly assigned category names
+     * @param alreadyAssigned list of category names that were already assigned
+     */
+    public record BulkAssignmentResult(
+            List<CategoryWarehouseDto> results,
+            List<String> newlyAssigned,
+            List<String> alreadyAssigned
+    ) {}
 }

@@ -1,24 +1,13 @@
 package ru.galtor85.household_store.dto.request.warehouse;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.galtor85.household_store.entity.warehouse.CellType;
 
-import static ru.galtor85.household_store.constants.TechnicalConstants.CELL_CODE_PATTERN;
-import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_ACTIVE;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_NOTES_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_SECTION_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_RACK_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_SHELF_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_POSITION_LENGTH;
+import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 /**
  * Request DTO for creating a storage cell.
@@ -77,155 +66,4 @@ public class StorageCellCreateRequest {
     @Size(max = MAX_NOTES_LENGTH, message = "{cell.validation.notes.max}")
     @Schema(description = "Notes about the cell", example = "Near the entrance, suitable for fragile items")
     private String notes;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    /**
-     * Gets full cell path in format Section-Rack-Shelf-Position
-     *
-     * @return full path string
-     */
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getFullPath() {
-        StringBuilder path = new StringBuilder();
-        if (section != null) path.append(section);
-        if (rack != null) path.append("-").append(rack);
-        if (shelf != null) path.append("-").append(shelf);
-        if (position != null) path.append("-").append(position);
-        return path.toString();
-    }
-
-    /**
-     * Checks if cell has full addressing (section + rack + shelf + position)
-     *
-     * @return true if all address parts are present
-     */
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasFullAddress() {
-        return section != null && rack != null && shelf != null && position != null;
-    }
-
-    /**
-     * Checks if cell is a pallet cell
-     *
-     * @return true if cell type is PALLET
-     */
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isPalletCell() {
-        return CellType.PALLET.equals(cellType);
-    }
-
-    /**
-     * Checks if cell requires special conditions (fridge, freezer, dangerous goods)
-     *
-     * @return true if special conditions required
-     */
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean requiresSpecialConditions() {
-        return cellType == CellType.FRIDGE ||
-                cellType == CellType.FREEZER ||
-                cellType == CellType.DANGEROUS;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasCode() {
-        return code != null && !code.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasCellType() {
-        return cellType != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasSection() {
-        return section != null && !section.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasRack() {
-        return rack != null && !rack.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasShelf() {
-        return shelf != null && !shelf.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasPosition() {
-        return position != null && !position.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasMaxWeightKg() {
-        return maxWeightKg != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasMaxVolumeM3() {
-        return maxVolumeM3 != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasIsActive() {
-        return isActive != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasNotes() {
-        return notes != null && !notes.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isActiveTrue() {
-        return Boolean.TRUE.equals(isActive);
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedCode() {
-        return code != null ? code.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedSection() {
-        return section != null ? section.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedRack() {
-        return rack != null ? rack.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedShelf() {
-        return shelf != null ? shelf.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedPosition() {
-        return position != null ? position.trim() : null;
-    }
 }

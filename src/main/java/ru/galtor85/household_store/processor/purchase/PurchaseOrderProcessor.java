@@ -7,19 +7,18 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.builder.order.PurchaseOrderBuilder;
 import ru.galtor85.household_store.dto.request.order.PurchaseOrderCreateRequest;
 import ru.galtor85.household_store.entity.finance.Invoice;
-import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.order.PurchaseOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.supplier.Supplier;
 import ru.galtor85.household_store.processor.invoice.InvoiceAutoCreationProcessor;
+import ru.galtor85.household_store.processor.order.OrderCancellationHelper;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.validator.order.PurchaseOrderValidator;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -34,7 +33,8 @@ public class PurchaseOrderProcessor {
     private final PurchaseOrderBuilder builder;
     private final InvoiceAutoCreationProcessor invoiceAutoCreationProcessor;
     private final PurchaseOrderValidator validator;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
+    private final OrderCancellationHelper orderCancellationHelper;
 
     // =========================================================================
     // CREATE PURCHASE ORDER
@@ -57,7 +57,7 @@ public class PurchaseOrderProcessor {
                                              List<BigDecimal> prices,
                                              Long managerId) {
 
-        log.info(messageService.get("purchase.order.processor.create.start",
+        log.info(logMsg.get("purchase.order.processor.create.start",
                 request.getSupplierId(), managerId));
 
         // Validate request and supplier
@@ -92,11 +92,11 @@ public class PurchaseOrderProcessor {
         if (invoice != null) {
             savedOrder.addInvoice(invoice);
             purchaseOrderRepository.save(savedOrder);
-            log.info(messageService.get("purchase.order.processor.invoice.created",
+            log.info(logMsg.get("purchase.order.processor.invoice.created",
                     invoice.getInvoiceNumber(), savedOrder.getOrderNumber()));
         }
 
-        log.info(messageService.get("purchase.order.processor.create.complete",
+        log.info(logMsg.get("purchase.order.processor.create.complete",
                 savedOrder.getOrderNumber(), managerId, items.size(), totalAmount));
 
         return savedOrder;
@@ -116,26 +116,13 @@ public class PurchaseOrderProcessor {
      */
     @Transactional
     public PurchaseOrder cancelOrder(PurchaseOrder order, String reason, Long cancelledBy) {
-        log.info(messageService.get("purchase.order.processor.cancel.start",
-                order.getOrderNumber(), reason));
+        log.info(logMsg.get("purchase.order.processor.cancel.start", order.getOrderNumber(), reason));
 
-        // Update status
-        order.setStatus(OrderStatus.CANCELLED);
-        order.setCancelledAt(LocalDateTime.now());
-        order.setCancellationReason(reason);
+        orderCancellationHelper.cancelPurchaseOrder(order, reason);
 
-        // Cancel all pending invoices
-        for (Invoice invoice : order.getInvoices()) {
-            if (invoice.getStatus() == InvoiceStatus.PENDING) {
-                invoice.setStatus(InvoiceStatus.CANCELLED);
-            }
-        }
-
-        // Save
         PurchaseOrder cancelled = purchaseOrderRepository.save(order);
 
-        log.info(messageService.get("purchase.order.processor.cancel.complete",
-                order.getOrderNumber(), cancelledBy));
+        log.info(logMsg.get("purchase.order.processor.cancel.complete", order.getOrderNumber(), cancelledBy));
 
         return cancelled;
     }

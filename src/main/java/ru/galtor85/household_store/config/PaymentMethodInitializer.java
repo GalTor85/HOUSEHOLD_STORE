@@ -13,7 +13,7 @@ import ru.galtor85.household_store.entity.payment.PaymentProvider;
 import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.repository.payment.PaymentMethodRepository;
 import ru.galtor85.household_store.repository.payment.PaymentMethodUserTypeRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -59,7 +59,7 @@ public class PaymentMethodInitializer {
 
     private final PaymentMethodRepository paymentMethodRepository;
     private final PaymentMethodUserTypeRepository paymentMethodUserTypeRepository;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final FinancialConfig financialConfig;
 
     // =========================================================================
@@ -73,17 +73,17 @@ public class PaymentMethodInitializer {
     @EventListener(ApplicationReadyEvent.class)
     public void initPaymentMethods() {
         if (paymentMethodRepository.count() > 0) {
-            log.debug(messageService.get("payment.method.init.skip"));
+            log.debug(logMsg.get("payment.method.init.skip"));
             return;
         }
 
-        log.info(messageService.get("payment.method.init.start"));
+        log.info(logMsg.get("payment.method.init.start"));
 
         createCashPaymentMethod();
         createCreditCardPaymentMethod();
         createBankTransferPaymentMethod();
 
-        log.info(messageService.get("payment.method.init.complete"));
+        log.info(logMsg.get("payment.method.init.complete"));
     }
 
     // =========================================================================
@@ -102,7 +102,7 @@ public class PaymentMethodInitializer {
         );
 
         assignToAllUserTypes(cash.getId(), CASH_SORT_ORDER);
-        log.info(messageService.get("payment.method.created", CASH_METHOD_NAME));
+        log.info(logMsg.get("payment.method.created", CASH_METHOD_NAME));
     }
 
     /**
@@ -117,7 +117,7 @@ public class PaymentMethodInitializer {
         );
 
         assignToAllUserTypes(card.getId(), CREDIT_CARD_SORT_ORDER);
-        log.info(messageService.get("payment.method.created", CREDIT_CARD_METHOD_NAME));
+        log.info(logMsg.get("payment.method.created", CREDIT_CARD_METHOD_NAME));
     }
 
     /**
@@ -132,7 +132,7 @@ public class PaymentMethodInitializer {
         );
 
         assignToAllUserTypes(bankTransfer.getId(), BANK_TRANSFER_SORT_ORDER);
-        log.info(messageService.get("payment.method.created", BANK_TRANSFER_METHOD_NAME));
+        log.info(logMsg.get("payment.method.created", BANK_TRANSFER_METHOD_NAME));
     }
 
     // =========================================================================

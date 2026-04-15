@@ -4,18 +4,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.advice.exception.cash.CashRegisterNotFoundException;
 import ru.galtor85.household_store.converter.CashRegisterConverter;
 import ru.galtor85.household_store.dto.request.finance.CashRegisterCreateRequest;
+import ru.galtor85.household_store.dto.request.finance.CashRegisterUpdateRequest;
 import ru.galtor85.household_store.dto.response.finance.CashRegisterDto;
 import ru.galtor85.household_store.dto.response.finance.CashRegisterSummaryDto;
-import ru.galtor85.household_store.dto.request.finance.CashRegisterUpdateRequest;
 import ru.galtor85.household_store.entity.finance.CashRegister;
-import ru.galtor85.household_store.entity.finance.TransactionType;
 import ru.galtor85.household_store.processor.cash.CashRegisterProcessor;
 import ru.galtor85.household_store.repository.cash.CashRegisterRepository;
 import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.validator.cash.CashRegisterValidator;
 
 import java.math.BigDecimal;
@@ -23,39 +21,45 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Service for managing cash register operations.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class CashRegisterService {
+
+    private static final String EXCESS_TYPE = "EXCESS";
+    private static final String SHORTAGE_TYPE = "SHORTAGE";
+    private static final String BALANCE_FORMAT = "%,.2f";
+    private static final String DEFAULT_BALANCE = "0.00";
 
     private final CashRegisterRepository cashRegisterRepository;
     private final CashTransactionRepository cashTransactionRepository;
     private final CashRegisterValidator validator;
     private final CashRegisterProcessor processor;
     private final CashRegisterConverter converter;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     // =========================================================================
-    // ПУБЛИЧНЫЕ МЕТОДЫ ДЛЯ ДРУГИХ СЕРВИСОВ
+    // PUBLIC METHODS FOR OTHER SERVICES
     // =========================================================================
 
     /**
-     * Проверяет существование кассы и возвращает её
+     * Validates cash register existence and returns it.
+     *
+     * @param cashRegisterId cash register ID
+     * @return CashRegister entity
      */
     public CashRegister validateCashRegisterExists(Long cashRegisterId) {
         return validator.validateExists(cashRegisterId);
     }
 
     /**
-     * Проверяет, активна ли касса
-     */
-    public void validateCashRegisterActive(Long cashRegisterId) {
-        CashRegister cashRegister = validator.validateExists(cashRegisterId);
-        validator.validateActive(cashRegister);
-    }
-
-    /**
-     * Получает текущий баланс кассы (для других сервисов)
+     * Gets current cash register balance for other services.
+     *
+     * @param cashRegisterId cash register ID
+     * @return current balance
      */
     public BigDecimal getCurrentBalance(Long cashRegisterId) {
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
@@ -63,12 +67,19 @@ public class CashRegisterService {
     }
 
     // =========================================================================
-    // СОЗДАНИЕ КАССЫ
+    // CASH REGISTER CREATION
     // =========================================================================
 
+    /**
+     * Creates a new cash register.
+     *
+     * @param request creation request
+     * @param createdBy ID of user creating the register
+     * @return created cash register DTO
+     */
     @Transactional
     public CashRegisterDto createCashRegister(CashRegisterCreateRequest request, Long createdBy) {
-        log.info(messageService.get("cash.register.service.create.start", request.getRegisterNumber()));
+        log.info(logMsg.get("cash.register.service.create.start", request.getRegisterNumber()));
 
         validator.validateRegisterNumberUnique(request.getRegisterNumber());
         validator.validateOpeningBalance(request.getOpeningBalance());
@@ -76,89 +87,116 @@ public class CashRegisterService {
         CashRegister saved = processor.createCashRegister(request, createdBy);
         CashRegisterDto result = converter.toSimpleDto(saved);
 
-        log.info(messageService.get("cash.register.service.created", result.getRegisterNumber()));
+        log.info(logMsg.get("cash.register.service.created", result.getRegisterNumber()));
 
         return result;
     }
 
     // =========================================================================
-    // ОБНОВЛЕНИЕ КАССЫ
+    // CASH REGISTER UPDATE
     // =========================================================================
 
+    /**
+     * Updates an existing cash register.
+     *
+     * @param cashRegisterId cash register ID
+     * @param request update request
+     * @return updated cash register DTO
+     */
     @Transactional
     public CashRegisterDto updateCashRegister(Long cashRegisterId, CashRegisterUpdateRequest request) {
-        log.info(messageService.get("cash.register.service.update.start", cashRegisterId));
+        log.info(logMsg.get("cash.register.service.update.start", cashRegisterId));
 
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
         CashRegister updated = processor.updateCashRegister(cashRegister, request);
         CashRegisterDto result = converter.toDto(updated, getCalculatedBalance(cashRegister));
 
-        log.info(messageService.get("cash.register.service.updated", result.getRegisterNumber()));
+        log.info(logMsg.get("cash.register.service.updated", result.getRegisterNumber()));
 
         return result;
     }
 
     // =========================================================================
-    // ПОЛУЧЕНИЕ КАСС
+    // CASH REGISTER RETRIEVAL
     // =========================================================================
 
+    /**
+     * Gets all cash registers.
+     *
+     * @return list of cash register DTOs
+     */
     @Transactional(readOnly = true)
     public List<CashRegisterDto> getAllCashRegisters() {
         return cashRegisterRepository.findAll().stream()
-                .map(cashRegister -> {
-                    BigDecimal calculatedBalance = getCalculatedBalance(cashRegister);
-                    return converter.toDto(cashRegister, calculatedBalance);
-                })
+                .map(cr -> converter.toDto(cr, getCalculatedBalance(cr)))
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Gets all active cash registers.
+     *
+     * @return list of active cash register DTOs
+     */
     @Transactional(readOnly = true)
     public List<CashRegisterDto> getActiveCashRegisters() {
         return cashRegisterRepository.findByIsActiveTrue().stream()
-                .map(cashRegister -> {
-                    BigDecimal calculatedBalance = getCalculatedBalance(cashRegister);
-                    return converter.toDto(cashRegister, calculatedBalance);
-                })
+                .map(cr -> converter.toDto(cr, getCalculatedBalance(cr)))
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Gets cash register by ID.
+     *
+     * @param cashRegisterId cash register ID
+     * @return cash register DTO
+     */
     @Transactional(readOnly = true)
     public CashRegisterDto getCashRegisterById(Long cashRegisterId) {
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
-        BigDecimal calculatedBalance = getCalculatedBalance(cashRegister);
-        return converter.toDto(cashRegister, calculatedBalance);
-    }
-
-    @Transactional(readOnly = true)
-    public CashRegisterDto getCashRegisterByNumber(String registerNumber) {
-        CashRegister cashRegister = cashRegisterRepository.findByRegisterNumber(registerNumber)
-                .orElseThrow(() -> new CashRegisterNotFoundException(registerNumber));
-        return converter.toDto(cashRegister,getCalculatedBalance(cashRegister));
+        return converter.toDto(cashRegister, getCalculatedBalance(cashRegister));
     }
 
     // =========================================================================
-    // ОТКРЫТИЕ / ЗАКРЫТИЕ КАССЫ
+    // CASH REGISTER OPENING / CLOSING
     // =========================================================================
 
+    /**
+     * Opens a cash register for a new shift.
+     *
+     * @param cashRegisterId cash register ID
+     * @param openingBalance opening balance
+     * @param cashierId cashier ID
+     * @return opened cash register DTO
+     */
     @Transactional
     public CashRegisterDto openCashRegister(Long cashRegisterId, BigDecimal openingBalance, Long cashierId) {
-        log.info(messageService.get("cash.register.service.open.start", cashRegisterId, cashierId));
+        log.info(logMsg.get("cash.register.service.open.start", cashRegisterId, cashierId));
 
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
         validator.validateClosed(cashRegister);
         validator.validateOpeningBalance(openingBalance);
 
         CashRegister opened = processor.openCashRegister(cashRegister, openingBalance, cashierId);
-        CashRegisterDto result = converter.toDto(opened,getCalculatedBalance(cashRegister));
+        CashRegisterDto result = converter.toDto(opened, getCalculatedBalance(cashRegister));
 
-        log.info(messageService.get("cash.register.service.opened", result.getRegisterNumber()));
+        log.info(logMsg.get("cash.register.service.opened", result.getRegisterNumber()));
 
         return result;
     }
 
+    /**
+     * Closes a cash register at the end of a shift.
+     *
+     * @param cashRegisterId cash register ID
+     * @param closingBalance closing balance
+     * @param discrepancyReason reason for discrepancy
+     * @param cashierId cashier ID
+     * @return closed cash register DTO
+     */
     @Transactional
-    public CashRegisterDto closeCashRegister(Long cashRegisterId, BigDecimal closingBalance, String discrepancyReason, Long cashierId) {
-        log.info(messageService.get("cash.register.service.close.start", cashRegisterId, cashierId));
+    public CashRegisterDto closeCashRegister(Long cashRegisterId, BigDecimal closingBalance,
+                                             String discrepancyReason, Long cashierId) {
+        log.info(logMsg.get("cash.register.service.close.start", cashRegisterId, cashierId));
 
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
         validator.validateActive(cashRegister);
@@ -166,68 +204,58 @@ public class CashRegisterService {
         validator.validateClosingBalance(closingBalance);
 
         BigDecimal calculatedBalance = getCalculatedBalance(cashRegister);
-
         validator.validateDiscrepancyReason(closingBalance, calculatedBalance, discrepancyReason);
 
         BigDecimal discrepancy = closingBalance.subtract(calculatedBalance);
 
         if (discrepancy.compareTo(BigDecimal.ZERO) != 0) {
-            // Логируем с локализацией
-            log.warn(messageService.get("cash.register.discrepancy.warning",
+            log.warn(logMsg.get("cash.register.discrepancy.warning",
                     cashRegisterId,
                     formatBalance(calculatedBalance),
                     formatBalance(closingBalance),
                     formatBalance(discrepancy)));
 
-            // Сохраняем расхождение
-            saveDiscrepancy(cashRegisterId, calculatedBalance, closingBalance,
-                    discrepancy, discrepancyReason, cashierId);
-
-            log.info(messageService.get("cash.register.discrepancy.saved",
-                    discrepancyReason));
+            saveDiscrepancy(cashRegisterId, discrepancy, discrepancyReason, cashierId);
+            log.info(logMsg.get("cash.register.discrepancy.saved", discrepancyReason));
         }
 
-        CashRegister closed = processor.closeCashRegister(cashRegister, closingBalance, cashierId);
+        CashRegister closed = processor.closeCashRegister(cashRegister, closingBalance);
         CashRegisterDto result = converter.toDto(closed, calculatedBalance);
 
-        log.info(messageService.get("cash.register.service.closed", result.getRegisterNumber()));
+        log.info(logMsg.get("cash.register.service.closed", result.getRegisterNumber()));
 
         return result;
     }
 
     // =========================================================================
-    // БАЛАНС И СТАТИСТИКА (ВНУТРЕННИЕ МЕТОДЫ)
+    // BALANCE AND STATISTICS
     // =========================================================================
 
-    private BigDecimal getCurrentBalance(CashRegister cashRegister) {
-
-        return getCalculatedBalance(cashRegister);
-    }
-
-
+    /**
+     * Gets cash register summary for a period.
+     *
+     * @param cashRegisterId cash register ID
+     * @param startDate period start
+     * @param endDate period end
+     * @return summary DTO
+     */
     @Transactional(readOnly = true)
     public CashRegisterSummaryDto getSummary(Long cashRegisterId, LocalDateTime startDate, LocalDateTime endDate) {
-        log.info(messageService.get("cash.register.service.summary.start", cashRegisterId, startDate, endDate));
+        log.info(logMsg.get("cash.register.service.summary.start", cashRegisterId, startDate, endDate));
 
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
 
         BigDecimal openingBalance = cashRegister.getOpeningBalance();
-        BigDecimal totalIncome = cashTransactionRepository.getTotalIncomeByCashRegisterAndDateRange(
-                cashRegisterId, startDate, endDate);
-        BigDecimal totalExpense = cashTransactionRepository.getTotalExpenseByCashRegisterAndDateRange(
-                cashRegisterId, startDate, endDate);
-        BigDecimal netTurnover = cashTransactionRepository.getNetTurnoverByCashRegisterAndDateRange(
-                cashRegisterId, startDate, endDate);
-        long transactionCount = cashTransactionRepository.findByCashRegisterIdAndDateRange(
-                cashRegisterId, startDate, endDate).size();
+        BigDecimal totalIncome = nullToZero(cashTransactionRepository
+                .getTotalIncomeByCashRegisterAndDateRange(cashRegisterId, startDate, endDate));
+        BigDecimal totalExpense = nullToZero(cashTransactionRepository
+                .getTotalExpenseByCashRegisterAndDateRange(cashRegisterId, startDate, endDate));
+        BigDecimal netTurnover = nullToZero(cashTransactionRepository
+                .getNetTurnoverByCashRegisterAndDateRange(cashRegisterId, startDate, endDate));
+        long transactionCount = cashTransactionRepository
+                .findByCashRegisterIdAndDateRange(cashRegisterId, startDate, endDate).size();
 
-        if (totalIncome == null) totalIncome = BigDecimal.ZERO;
-        if (totalExpense == null) totalExpense = BigDecimal.ZERO;
-        if (netTurnover == null) netTurnover = BigDecimal.ZERO;
-
-        BigDecimal closingBalance = openingBalance
-                .add(totalIncome)
-                .subtract(totalExpense);
+        BigDecimal closingBalance = openingBalance.add(totalIncome).subtract(totalExpense);
 
         CashRegisterSummaryDto summary = CashRegisterSummaryDto.builder()
                 .cashRegisterId(cashRegisterId)
@@ -242,43 +270,44 @@ public class CashRegisterService {
                 .transactionCount((int) transactionCount)
                 .build();
 
-        log.info(messageService.get("cash.register.service.summary.complete",
+        log.info(logMsg.get("cash.register.service.summary.complete",
                 cashRegisterId, summary.getTransactionCount(), summary.getNetTurnover()));
 
         return summary;
     }
 
     // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // HELPER METHODS
     // =========================================================================
 
+    /** Checks if cash register exists by ID. */
     public boolean existsById(Long cashRegisterId) {
         return cashRegisterRepository.existsById(cashRegisterId);
     }
 
+    /** Checks if cash register is active. */
     public boolean isActive(Long cashRegisterId) {
         return cashRegisterRepository.findById(cashRegisterId)
                 .map(CashRegister::getIsActive)
                 .orElse(false);
     }
 
+    private BigDecimal getCurrentBalance(CashRegister cashRegister) {
+        return getCalculatedBalance(cashRegister);
+    }
+
     private BigDecimal getCalculatedBalance(CashRegister cashRegister) {
-        // Получаем все транзакции после открытия кассы
         LocalDateTime startDate = cashRegister.getOpenedAt();
         if (startDate == null) {
-            // Если касса не открыта, возвращаем openingBalance
             return cashRegister.getOpeningBalance();
         }
 
-        // Суммируем REFUND и INCOME (увеличивают баланс)
-        BigDecimal totalIncome = cashTransactionRepository.getTotalIncomeByCashRegisterAndDateRange(
-                cashRegister.getId(), startDate, LocalDateTime.now());
-        BigDecimal totalRefund = cashTransactionRepository.getTotalRefundByCashRegisterAndDateRange(
-                cashRegister.getId(), startDate, LocalDateTime.now());
-
-        // Суммируем EXPENSE (уменьшают баланс)
-        BigDecimal totalExpense = cashTransactionRepository.getTotalExpenseByCashRegisterAndDateRange(
-                cashRegister.getId(), startDate, LocalDateTime.now());
+        BigDecimal totalIncome = nullToZero(cashTransactionRepository
+                .getTotalIncomeByCashRegisterAndDateRange(cashRegister.getId(), startDate, LocalDateTime.now()));
+        BigDecimal totalRefund = nullToZero(cashTransactionRepository
+                .getTotalRefundByCashRegisterAndDateRange(cashRegister.getId(), startDate, LocalDateTime.now()));
+        BigDecimal totalExpense = nullToZero(cashTransactionRepository
+                .getTotalExpenseByCashRegisterAndDateRange(cashRegister.getId(), startDate, LocalDateTime.now()));
 
         return cashRegister.getOpeningBalance()
                 .add(totalIncome)
@@ -286,27 +315,27 @@ public class CashRegisterService {
                 .subtract(totalExpense);
     }
 
-    private void saveDiscrepancy(Long cashRegisterId,
-                                 BigDecimal calculatedBalance,
-                                 BigDecimal actualBalance,
-                                 BigDecimal discrepancy,
-                                 String discrepancyReason,
-                                 Long cashierId) {
+    private void saveDiscrepancy(Long cashRegisterId, BigDecimal discrepancy,
+                                 String discrepancyReason, Long cashierId) {
         try {
-            String discrepancyType = discrepancy.compareTo(BigDecimal.ZERO) > 0 ? "EXCESS" : "SHORTAGE";
-            log.info(messageService.get("cash.register.discrepancy.saved.details",
+            String discrepancyType = discrepancy.compareTo(BigDecimal.ZERO) > 0 ? EXCESS_TYPE : SHORTAGE_TYPE;
+            log.info(logMsg.get("cash.register.discrepancy.saved.details",
                     cashRegisterId, cashierId, discrepancyType,
                     formatBalance(discrepancy.abs()), discrepancyReason));
-
         } catch (Exception e) {
-            log.error(messageService.get("cash.register.discrepancy.save.failed",
+            log.error(logMsg.get("cash.register.discrepancy.save.failed",
                     cashRegisterId, e.getMessage()), e);
         }
     }
 
-    private String formatBalance(BigDecimal balance) {
-        if (balance == null) return "0.00";
-        return String.format("%,.2f", balance);
+    private BigDecimal nullToZero(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 
+    private String formatBalance(BigDecimal balance) {
+        if (balance == null) {
+            return DEFAULT_BALANCE;
+        }
+        return String.format(BALANCE_FORMAT, balance);
+    }
 }

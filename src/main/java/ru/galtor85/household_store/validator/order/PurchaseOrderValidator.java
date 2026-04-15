@@ -1,7 +1,6 @@
 package ru.galtor85.household_store.validator.order;
 
 import lombok.RequiredArgsConstructor;
-import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.order.CannotReceivePurchaseOrderException;
@@ -11,16 +10,16 @@ import ru.galtor85.household_store.advice.exception.product.ProductNotFoundExcep
 import ru.galtor85.household_store.advice.exception.supplier.SupplierInactiveException;
 import ru.galtor85.household_store.advice.exception.supplier.SupplierNotFoundException;
 import ru.galtor85.household_store.advice.exception.validation.InvalidPriceException;
-import ru.galtor85.household_store.dto.request.order.PurchaseOrderCreateRequest;
 import ru.galtor85.household_store.dto.common.PurchaseOrderItemCreateDto;
+import ru.galtor85.household_store.dto.request.order.PurchaseOrderCreateRequest;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.supplier.Supplier;
 import ru.galtor85.household_store.entity.supplier.SupplierStatus;
-import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.supplier.SupplierRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.product.ProductValidator;
 
@@ -41,9 +40,9 @@ public class PurchaseOrderValidator {
     // =========================================================================
 
     private final SupplierRepository supplierRepository;
-    private final ProductRepository productRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final ProductValidator productValidator;
 
     // =========================================================================
@@ -58,7 +57,7 @@ public class PurchaseOrderValidator {
      */
     public void validateCreateRequest(PurchaseOrderCreateRequest request) {
         if (request == null) {
-            log.error(messageService.get("purchase.validator.request.null"));
+            log.error(logMsg.get("purchase.validator.request.null"));
             throw new IllegalArgumentException(
                     messageService.get("purchase.validator.request.null")
             );
@@ -67,7 +66,7 @@ public class PurchaseOrderValidator {
         validateNotEmpty(request);
 
         if (request.getSupplierId() == null) {
-            log.error(messageService.get("purchase.validator.supplier.id.empty"));
+            log.error(logMsg.get("purchase.validator.supplier.id.empty"));
             throw new IllegalArgumentException(
                     messageService.get("purchase.validator.supplier.id.empty")
             );
@@ -82,7 +81,7 @@ public class PurchaseOrderValidator {
      */
     public void validateNotEmpty(PurchaseOrderCreateRequest request) {
         if (request.getItems() == null || request.getItems().isEmpty()) {
-            log.error(messageService.get("purchase.validation.items.empty"));
+            log.error(logMsg.get("purchase.validation.items.empty"));
             throw new IllegalArgumentException(
                     messageService.get("purchase.validation.items.empty")
             );
@@ -103,7 +102,7 @@ public class PurchaseOrderValidator {
     public Supplier validateSupplierExists(Long supplierId) {
         return supplierRepository.findById(supplierId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("manager.supplier.error.not.found", supplierId));
+                    log.error(logMsg.get("manager.supplier.error.not.found", supplierId));
                     return new SupplierNotFoundException(supplierId);
                 });
     }
@@ -120,7 +119,7 @@ public class PurchaseOrderValidator {
         Supplier supplier = validateSupplierExists(supplierId);
 
         if (supplier.getStatus() != SupplierStatus.ACTIVE) {
-            log.error(messageService.get("manager.purchase.error.supplier.inactive",
+            log.error(logMsg.get("manager.purchase.error.supplier.inactive",
                     supplier.getStatus()));
             throw new SupplierInactiveException(supplier.getStatus());
         }
@@ -136,7 +135,7 @@ public class PurchaseOrderValidator {
      */
     public void validateSupplierActive(Supplier supplier) {
         if (supplier.getStatus() != SupplierStatus.ACTIVE) {
-            log.error(messageService.get("manager.purchase.error.supplier.inactive",
+            log.error(logMsg.get("manager.purchase.error.supplier.inactive",
                     supplier.getStatus()));
             throw new SupplierInactiveException(supplier.getStatus());
         }
@@ -204,7 +203,7 @@ public class PurchaseOrderValidator {
      */
     private void validatePrice(BigDecimal price, Product product) {
         if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
-            log.error(messageService.get("manager.purchase.error.price.not.set",
+            log.error(logMsg.get("manager.purchase.error.price.not.set",
                     product.getSku()));
             throw new InvalidPriceException(price);
         }
@@ -224,7 +223,7 @@ public class PurchaseOrderValidator {
     public PurchaseOrder validatePurchaseOrderExists(Long orderId) {
         return purchaseOrderRepository.findById(orderId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("purchase.order.not.found", orderId));
+                    log.error(logMsg.get("purchase.order.not.found", orderId));
                     return new PurchaseOrderNotFoundException(orderId);
                 });
     }
@@ -239,7 +238,7 @@ public class PurchaseOrderValidator {
         if (order.getStatus() == OrderStatus.DELIVERED ||
                 order.getStatus() == OrderStatus.COMPLETED ||
                 order.getStatus() == OrderStatus.CANCELLED) {
-            log.error(messageService.get("manager.purchase.error.cannot.receive",
+            log.error(logMsg.get("manager.purchase.error.cannot.receive",
                     order.getStatus()));
             throw new CannotReceivePurchaseOrderException(order.getStatus());
         }
@@ -255,14 +254,14 @@ public class PurchaseOrderValidator {
         if (order.getStatus() == OrderStatus.DELIVERED ||
                 order.getStatus() == OrderStatus.COMPLETED||
                 order.getStatus() == OrderStatus.CANCELLED) {
-            log.error(messageService.get("purchase.order.cannot.cancel", order.getStatus()));
+            log.error(logMsg.get("purchase.order.cannot.cancel", order.getStatus()));
             throw new PurchaseOrderCancellationException(
                     messageService.get("purchase.order.cannot.cancel", order.getStatus())
             );
         }
         // Cannot cancel if already partially received
         if (order.getStatus() == OrderStatus.PARTIALLY_RECEIVED) {
-            log.error(messageService.get("purchase.order.cannot.cancel.partially.received",
+            log.error(logMsg.get("purchase.order.cannot.cancel.partially.received",
                     order.getId()));
             throw new PurchaseOrderCancellationException(
                     messageService.get("purchase.order.cannot.cancel.partially.received",
@@ -278,9 +277,6 @@ public class PurchaseOrderValidator {
     /**
      * Result of product validation containing products and their prices
      */
-    @Value
-    public static class ProductValidationResult {
-        List<Product> products;
-        List<BigDecimal> prices;
+    public record ProductValidationResult(List<Product> products, List<BigDecimal> prices) {
     }
 }

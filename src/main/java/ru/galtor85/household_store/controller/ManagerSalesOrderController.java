@@ -13,14 +13,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import ru.galtor85.household_store.dto.request.order.RollbackRequest;
 import ru.galtor85.household_store.dto.request.order.SalesOrderCreateRequest;
 import ru.galtor85.household_store.dto.response.order.RollbackApprovalDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
-import ru.galtor85.household_store.dto.request.order.RollbackRequest;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.entity.user.User;
-import ru.galtor85.household_store.service.order.SalesOrderService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.order.SalesOrderService;
 import ru.galtor85.household_store.service.rollback.RollbackService;
 
 import java.math.BigDecimal;
@@ -54,6 +55,7 @@ public class ManagerSalesOrderController extends BaseController {
     private final SalesOrderService salesOrderService;
     private final MessageService messageService;
     private final RollbackService rollbackService;
+    private final LogMessageService logMsg;
 
     // =========================================================================
     // CUSTOMER ORDER MANAGEMENT
@@ -133,7 +135,7 @@ public class ManagerSalesOrderController extends BaseController {
             @Valid @RequestBody SalesOrderCreateRequest request) {
 
         User manager = getCurrentUser();
-        log.info(messageService.get("manager.order.create.start", manager.getEmail(), request.getUserId()));
+        log.info(logMsg.get("manager.order.create.start", manager.getEmail(), request.getUserId()));
 
         SalesOrderDto order = salesOrderService.createSalesOrder(request, manager.getId());
 

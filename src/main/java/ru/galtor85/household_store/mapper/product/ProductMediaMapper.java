@@ -3,23 +3,32 @@ package ru.galtor85.household_store.mapper.product;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
 import ru.galtor85.household_store.dto.common.ProductMediaUploadDto;
+import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
 import ru.galtor85.household_store.entity.product.MediaType;
 import ru.galtor85.household_store.entity.product.ProductMedia;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static ru.galtor85.household_store.constants.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.ApiConstants.MEDIA_PATH;
 
+/**
+ * Mapper for ProductMedia entity to/from DTO.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ProductMediaMapper {
 
+    private final LogMessageService logMsg;
+
     /**
-     * Преобразование сущности в DTO
+     * Converts ProductMedia entity to DTO.
+     *
+     * @param media the product media entity
+     * @return ProductMediaDto
      */
     public ProductMediaDto toDto(ProductMedia media) {
         if (media == null) {
@@ -30,7 +39,7 @@ public class ProductMediaMapper {
                 .id(media.getId())
                 .mediaType(media.getMediaType())
                 .fileName(media.getFileName())
-                .fileUrl(API_BASE+"/media/" + media.getId())
+                .fileUrl(MEDIA_PATH + media.getId())
                 .fileSize(media.getFileSize())
                 .mimeType(media.getMimeType())
                 .altText(media.getAltText())
@@ -44,7 +53,10 @@ public class ProductMediaMapper {
     }
 
     /**
-     * Преобразование списка сущностей в список DTO
+     * Converts a list of ProductMedia entities to DTOs.
+     *
+     * @param mediaList list of product media entities
+     * @return list of ProductMediaDto
      */
     public List<ProductMediaDto> toDtoList(List<ProductMedia> mediaList) {
         if (mediaList == null) {
@@ -56,7 +68,15 @@ public class ProductMediaMapper {
     }
 
     /**
-     * Преобразование Upload DTO в сущность (для создания)
+     * Converts ProductMediaUploadDto to ProductMedia entity.
+     *
+     * @param uploadDto     the upload DTO
+     * @param productId     the product ID
+     * @param uploadedBy    ID of the user uploading the file
+     * @param storedFileName stored file name on disk
+     * @param filePath      full path to the file
+     * @param fileSize      file size in bytes
+     * @return ProductMedia entity
      */
     public ProductMedia toEntity(ProductMediaUploadDto uploadDto, Long productId, Long uploadedBy,
                                  String storedFileName, String filePath, Long fileSize) {
@@ -83,7 +103,18 @@ public class ProductMediaMapper {
     }
 
     /**
-     * Создание сущности из параметров (без Upload DTO)
+     * Creates a ProductMedia entity from parameters.
+     *
+     * @param productId     the product ID
+     * @param uploadedBy    ID of the user uploading the file
+     * @param mediaType     media type
+     * @param storedFileName stored file name on disk
+     * @param filePath      full path to the file
+     * @param fileSize      file size in bytes
+     * @param mimeType      MIME type
+     * @param sortOrder     sort order
+     * @param isMain        is main image flag
+     * @return ProductMedia entity
      */
     public ProductMedia createEntity(Long productId, Long uploadedBy, MediaType mediaType,
                                      String storedFileName, String filePath, Long fileSize,
@@ -102,7 +133,10 @@ public class ProductMediaMapper {
     }
 
     /**
-     * Обновление сущности из Upload DTO
+     * Updates an existing ProductMedia entity from upload DTO.
+     *
+     * @param media     the existing product media entity
+     * @param uploadDto the upload DTO with updated values
      */
     public void updateEntity(ProductMedia media, ProductMediaUploadDto uploadDto) {
         if (media == null || uploadDto == null) {
@@ -125,7 +159,7 @@ public class ProductMediaMapper {
             try {
                 media.setMediaType(MediaType.valueOf(uploadDto.getMediaType().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                log.warn("Invalid media type: {}", uploadDto.getMediaType());
+                log.warn(logMsg.get("media.type.invalid", uploadDto.getMediaType()));
             }
         }
         if (uploadDto.getWidth() != null) {
@@ -140,11 +174,14 @@ public class ProductMediaMapper {
     }
 
     /**
-     * Определение типа медиа из строки
+     * Detects media type from string.
+     *
+     * @param mediaTypeStr media type as string
+     * @return MediaType enum value, defaults to IMAGE
      */
     private MediaType detectMediaType(String mediaTypeStr) {
         if (mediaTypeStr == null) {
-            return MediaType.IMAGE; // по умолчанию
+            return MediaType.IMAGE;
         }
         try {
             return MediaType.valueOf(mediaTypeStr.toUpperCase());

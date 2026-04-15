@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.dto.request.stock;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -13,9 +12,7 @@ import ru.galtor85.household_store.dto.common.StockWriteOffItem;
 
 import java.util.List;
 
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_DESCRIPTION_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_WAREHOUSE_LOCATION_LENGTH;
-import static ru.galtor85.household_store.constants.TechnicalConstants.MAX_REASON_WRITEOFF_LENGTH;
+import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 /**
  * Request DTO for stock write-off.
@@ -49,65 +46,4 @@ public class StockWriteOffRequest {
 
     @Schema(description = "Related order ID (if applicable)", example = "1")
     private Long relatedOrderId;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasDescription() {
-        return description != null && !description.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasWarehouseLocation() {
-        return warehouseLocation != null && !warehouseLocation.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasWarehouseId() {
-        return warehouseId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasRelatedOrderId() {
-        return relatedOrderId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public int getTotalItems() {
-        return items != null ? items.size() : 0;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public int getTotalQuantity() {
-        if (items == null) return 0;
-        return items.stream()
-                .mapToInt(StockWriteOffItem::getQuantity)
-                .sum();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedReason() {
-        return reason != null ? reason.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedDescription() {
-        return description != null ? description.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedWarehouseLocation() {
-        return warehouseLocation != null ? warehouseLocation.trim() : null;
-    }
 }

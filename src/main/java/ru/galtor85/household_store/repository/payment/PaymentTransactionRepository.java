@@ -250,7 +250,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
      * Checks if invoice has any completed transactions
      *
      * @param invoiceId invoice ID
-     * @return true if has completed transactions
+     * @return true if it has completed transactions
      */
     boolean existsByInvoiceIdAndStatus(Long invoiceId, PaymentTransactionStatus status);
 
@@ -259,7 +259,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
      *
      * @param orderId order ID
      * @param orderType order type
-     * @return true if has completed transactions
+     * @return true if it has completed transactions
      */
     boolean existsByOrderIdAndOrderTypeAndStatus(Long orderId, OrderType orderType, PaymentTransactionStatus status);
 
@@ -286,4 +286,12 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
      * @return list of refund transactions
      */
     List<PaymentTransaction> findAllByOriginalTransactionId(Long originalTransactionId);
+
+    /**
+     * Counts transactions created by a user
+     *
+     * @param userId user ID
+     * @return total count of transactions
+     */
+    long countByCreatedBy(Long userId);
 }

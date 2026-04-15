@@ -4,21 +4,31 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.rollback.RollbackInvalidTransitionException;
-import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.entity.order.OrderStatus;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.entity.order.SalesOrder;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
+/**
+ * Processor for determining target status for rollback operations.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class RollbackTargetStatusProcessor {
 
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
+    /**
+     * Determines the target status for a rollback based on current status.
+     *
+     * @param salesOrder the sales order
+     * @return target OrderStatus
+     * @throws RollbackInvalidTransitionException if current status cannot be rolled back
+     */
     public OrderStatus determineTargetStatus(SalesOrder salesOrder) {
         OrderStatus currentStatus = salesOrder.getStatus();
 
-        log.debug(messageService.get("rollback.target.determining", currentStatus));
+        log.debug(logMsg.get("rollback.target.determining", currentStatus));
 
         return switch (currentStatus) {
             case PAID -> OrderStatus.PENDING;
@@ -26,7 +36,7 @@ public class RollbackTargetStatusProcessor {
             case SHIPPED -> OrderStatus.PROCESSING;
             case DELIVERED -> OrderStatus.SHIPPED;
             default -> {
-                log.error(messageService.get("rollback.target.cannot.determine", currentStatus));
+                log.error(logMsg.get("rollback.target.cannot.determine", currentStatus));
                 throw new RollbackInvalidTransitionException(currentStatus, null);
             }
         };

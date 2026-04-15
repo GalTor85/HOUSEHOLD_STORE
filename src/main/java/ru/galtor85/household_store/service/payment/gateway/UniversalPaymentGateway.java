@@ -1,14 +1,18 @@
 package ru.galtor85.household_store.service.payment.gateway;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 import ru.galtor85.household_store.config.PaymentConfig;
 import ru.galtor85.household_store.entity.payment.PaymentMethod;
+import ru.galtor85.household_store.entity.payment.PaymentTransactionStatus;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.payment.PaymentGateway;
 import ru.galtor85.household_store.service.payment.PaymentResult;
-import ru.galtor85.household_store.service.payment.PaymentStatus;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -17,8 +21,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import static ru.galtor85.household_store.constants.PaymentConstants.*;
-import static ru.galtor85.household_store.constants.TechnicalConstants.REFUND_TXN_PREFIX;
 import static ru.galtor85.household_store.constants.TechnicalConstants.FALLBACK_TXN_PREFIX;
+import static ru.galtor85.household_store.constants.TechnicalConstants.REFUND_TXN_PREFIX;
 
 /**
  * Universal payment gateway that can be configured for different providers.
@@ -58,6 +62,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
     private final RestTemplate restTemplate;
     private final PaymentConfig paymentConfig;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     // =========================================================================
     // CONSTRUCTOR
@@ -72,10 +77,12 @@ public class UniversalPaymentGateway implements PaymentGateway {
      */
     public UniversalPaymentGateway(PaymentProviderConfig config,
                                    PaymentConfig paymentConfig,
-                                   MessageService messageService) {
+                                   MessageService messageService,
+                                   LogMessageService logMsg) {
         this.config = config;
         this.paymentConfig = paymentConfig;
         this.messageService = messageService;
+        this.logMsg = logMsg;
         this.restTemplate = new RestTemplate();
     }
 
@@ -89,12 +96,12 @@ public class UniversalPaymentGateway implements PaymentGateway {
         try {
             String transactionId = generateTransactionId();
 
-            log.info(messageService.get("payment.gateway.processing.start",
+            log.info(logMsg.get("payment.gateway.processing.start",
                     config.getProviderName(), transactionId, amount, currency));
 
             // Handle offline payment providers (e.g., cash)
             if (isOfflineProvider()) {
-                log.info(messageService.get("payment.gateway.offline.processing", config.getProviderName()));
+                log.info(logMsg.get("payment.gateway.offline.processing", config.getProviderName()));
                 return buildOfflinePaymentResult(transactionId, amount);
             }
 
@@ -114,19 +121,19 @@ public class UniversalPaymentGateway implements PaymentGateway {
             );
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String providerTransactionId = extractTransactionId(response.getBody());
-                log.info(messageService.get("payment.gateway.processing.success",
+                String providerTransactionId = extractTransactionId();
+                log.info(logMsg.get("payment.gateway.processing.success",
                         config.getProviderName(), transactionId));
 
                 return PaymentResult.builder()
                         .success(true)
                         .transactionId(providerTransactionId)
-                        .paymentUrl(extractPaymentUrl(response.getBody()))
+                        .paymentUrl(extractPaymentUrl())
                         .fee(calculateFee(amount))
                         .netAmount(calculateNetAmount(amount))
                         .build();
             } else {
-                log.warn(messageService.get("payment.gateway.processing.http.error",
+                log.warn(logMsg.get("payment.gateway.processing.http.error",
                         config.getProviderName(), response.getStatusCode(), response.getBody()));
 
                 return PaymentResult.builder()
@@ -136,7 +143,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
             }
 
         } catch (Exception e) {
-            log.error(messageService.get("payment.gateway.processing.error",
+            log.error(logMsg.get("payment.gateway.processing.error",
                     config.getProviderName(), e.getMessage()), e);
             return PaymentResult.builder()
                     .success(false)
@@ -155,7 +162,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
         try {
             String refundId = REFUND_TXN_PREFIX + generateTransactionId();
 
-            log.info(messageService.get("payment.gateway.refund.start",
+            log.info(logMsg.get("payment.gateway.refund.start",
                     config.getProviderName(), transactionId, amount, reason));
 
             HttpEntity<?> requestEntity = buildRefundRequest(transactionId, amount, reason);
@@ -167,7 +174,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
             );
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info(messageService.get("payment.gateway.refund.success",
+                log.info(logMsg.get("payment.gateway.refund.success",
                         config.getProviderName(), refundId));
 
                 return PaymentResult.builder()
@@ -175,7 +182,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
                         .transactionId(refundId)
                         .build();
             } else {
-                log.warn(messageService.get("payment.gateway.refund.http.error",
+                log.warn(logMsg.get("payment.gateway.refund.http.error",
                         config.getProviderName(), response.getStatusCode(), response.getBody()));
 
                 return PaymentResult.builder()
@@ -185,7 +192,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
             }
 
         } catch (Exception e) {
-            log.error(messageService.get("payment.gateway.refund.error",
+            log.error(logMsg.get("payment.gateway.refund.error",
                     config.getProviderName(), e.getMessage()), e);
             return PaymentResult.builder()
                     .success(false)
@@ -199,9 +206,9 @@ public class UniversalPaymentGateway implements PaymentGateway {
     // =========================================================================
 
     @Override
-    public PaymentStatus checkStatus(String transactionId) {
+    public PaymentTransactionStatus checkStatus(String transactionId) {
         try {
-            log.debug(messageService.get("payment.gateway.status.check.start",
+            log.debug(logMsg.get("payment.gateway.status.check.start",
                     config.getProviderName(), transactionId));
 
             HttpEntity<?> requestEntity = buildStatusRequest(transactionId);
@@ -213,21 +220,21 @@ public class UniversalPaymentGateway implements PaymentGateway {
             );
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                PaymentStatus status = extractStatus(response.getBody());
-                log.debug(messageService.get("payment.gateway.status.check.success",
+                PaymentTransactionStatus status = extractStatus();
+                log.debug(logMsg.get("payment.gateway.status.check.success",
                         config.getProviderName(), transactionId, status));
                 return status;
             }
 
-            log.warn(messageService.get("payment.gateway.status.check.http.error",
+            log.warn(logMsg.get("payment.gateway.status.check.http.error",
                     config.getProviderName(), response.getStatusCode()));
 
-            return PaymentStatus.FAILED;
+            return PaymentTransactionStatus.FAILED;
 
         } catch (Exception e) {
-            log.error(messageService.get("payment.gateway.status.check.error",
+            log.error(logMsg.get("payment.gateway.status.check.error",
                     config.getProviderName(), e.getMessage()), e);
-            return PaymentStatus.FAILED;
+            return PaymentTransactionStatus.FAILED;
         }
     }
 
@@ -240,7 +247,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
         HttpHeaders headers = buildHeaders();
         Map<String, Object> body = buildPaymentBody(paymentMethod, amount, currency, description);
 
-        log.debug(messageService.get("payment.gateway.request.built", config.getProviderName()));
+        log.debug(logMsg.get("payment.gateway.request.built", config.getProviderName()));
         return new HttpEntity<>(body, headers);
     }
 
@@ -248,7 +255,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
         HttpHeaders headers = buildHeaders();
         Map<String, Object> body = buildRefundBody(transactionId, amount, reason);
 
-        log.debug(messageService.get("payment.gateway.refund.request.built", config.getProviderName()));
+        log.debug(logMsg.get("payment.gateway.refund.request.built", config.getProviderName()));
         return new HttpEntity<>(body, headers);
     }
 
@@ -270,7 +277,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
 
         if (config.getApiKey() != null) {
             headers.set(HEADER_AUTHORIZATION, config.getAuthScheme() + " " + config.getApiKey());
-            log.debug(messageService.get("payment.gateway.request.auth.added", config.getProviderName()));
+            log.debug(logMsg.get("payment.gateway.request.auth.added", config.getProviderName()));
         }
         if (config.getApiSecret() != null) {
             headers.set(HEADER_API_SECRET, config.getApiSecret());
@@ -337,7 +344,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
         String transactionId = config.getTransactionPrefix() + "-" + System.currentTimeMillis() + "-" +
                 UUID.randomUUID().toString().substring(0, length).toUpperCase();
 
-        log.debug(messageService.get("payment.gateway.transaction.id.generated",
+        log.debug(logMsg.get("payment.gateway.transaction.id.generated",
                 config.getProviderName(), transactionId));
 
         return transactionId;
@@ -347,23 +354,23 @@ public class UniversalPaymentGateway implements PaymentGateway {
     // RESPONSE EXTRACTORS (placeholder implementations)
     // =========================================================================
 
-    private String extractTransactionId(String responseBody) {
-        log.debug(messageService.get("payment.gateway.extract.transaction.id.placeholder"));
+    private String extractTransactionId() {
+        log.debug(logMsg.get("payment.gateway.extract.transaction.id.placeholder"));
         return FALLBACK_TXN_PREFIX + System.currentTimeMillis();
     }
 
-    private String extractPaymentUrl(String responseBody) {
+    private String extractPaymentUrl() {
         String returnUrl = config.getReturnUrl();
         String baseUrl = returnUrl != null ? returnUrl : "";
         String paymentUrl = baseUrl + FALLBACK_PAYMENT_URL_PATH + System.currentTimeMillis();
 
-        log.debug(messageService.get("payment.gateway.extract.payment.url.placeholder", paymentUrl));
+        log.debug(logMsg.get("payment.gateway.extract.payment.url.placeholder", paymentUrl));
         return paymentUrl;
     }
 
-    private PaymentStatus extractStatus(String responseBody) {
-        log.debug(messageService.get("payment.gateway.extract.status.placeholder"));
-        return PaymentStatus.COMPLETED;
+    private PaymentTransactionStatus extractStatus() {
+        log.debug(logMsg.get("payment.gateway.extract.status.placeholder"));
+        return PaymentTransactionStatus.COMPLETED;
     }
 
     // =========================================================================
@@ -374,16 +381,16 @@ public class UniversalPaymentGateway implements PaymentGateway {
         if (config.getFeePercent() != null) {
             BigDecimal fee = amount.multiply(config.getFeePercent())
                     .divide(BigDecimal.valueOf(paymentConfig.getProcessing().getPercentBase()), RoundingMode.HALF_UP);
-            log.debug(messageService.get("payment.gateway.fee.percentage.calculated",
+            log.debug(logMsg.get("payment.gateway.fee.percentage.calculated",
                     config.getProviderName(), fee, config.getFeePercent()));
             return fee;
         }
         if (config.getFeeFixed() != null) {
-            log.debug(messageService.get("payment.gateway.fee.fixed.calculated",
+            log.debug(logMsg.get("payment.gateway.fee.fixed.calculated",
                     config.getProviderName(), config.getFeeFixed()));
             return config.getFeeFixed();
         }
-        log.debug(messageService.get("payment.gateway.fee.none", config.getProviderName()));
+        log.debug(logMsg.get("payment.gateway.fee.none", config.getProviderName()));
         return BigDecimal.ZERO;
     }
 
@@ -391,7 +398,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
         BigDecimal fee = calculateFee(amount);
         BigDecimal netAmount = amount.subtract(fee);
 
-        log.debug(messageService.get("payment.gateway.net.amount.calculated",
+        log.debug(logMsg.get("payment.gateway.net.amount.calculated",
                 config.getProviderName(), amount, fee, netAmount));
 
         return netAmount;

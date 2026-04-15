@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.order.OrderCancellationNotAllowedException;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
 import ru.galtor85.household_store.entity.order.OrderStatus;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
@@ -20,6 +21,7 @@ import java.math.BigDecimal;
 public class OrderSalesCancellationValidator {
 
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
      * Validates that an order can be cancelled.
@@ -38,7 +40,7 @@ public class OrderSalesCancellationValidator {
      */
     private void validateStatus(SalesOrderDto order) {
         if (order.getStatus() != OrderStatus.PENDING) {
-            log.warn(messageService.get("order.cancel.validator.invalid.status",
+            log.warn(logMsg.get("order.cancel.validator.invalid.status",
                     order.getId(), order.getStatus()));
             throw new OrderCancellationNotAllowedException(
                     messageService.get("order.cancel.error.invalid.status",
@@ -52,7 +54,7 @@ public class OrderSalesCancellationValidator {
      */
     private void validateNoPayments(SalesOrderDto order) {
         if (hasPayments(order)) {
-            log.warn(messageService.get("order.cancel.validator.has.payments",
+            log.warn(logMsg.get("order.cancel.validator.has.payments",
                     order.getId(), order.getPaymentSummary().getTotalPaid()));
             throw new OrderCancellationNotAllowedException(
                     messageService.get("order.cancel.error.has.payments", order.getId()));
@@ -68,12 +70,5 @@ public class OrderSalesCancellationValidator {
         }
         BigDecimal totalPaid = order.getPaymentSummary().getTotalPaid();
         return totalPaid != null && totalPaid.compareTo(BigDecimal.ZERO) > 0;
-    }
-
-    /**
-     * Checks if order is cancellable without throwing exception.
-     */
-    public boolean isCancellable(SalesOrderDto order) {
-        return order.getStatus() == OrderStatus.PENDING && !hasPayments(order);
     }
 }

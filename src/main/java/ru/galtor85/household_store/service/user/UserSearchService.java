@@ -6,40 +6,48 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.dto.response.user.UserStatistics;
 import ru.galtor85.household_store.entity.user.User;
-import ru.galtor85.household_store.processor.security.SecurityUserProcessor;
 import ru.galtor85.household_store.processor.user.UserSearchProcessor;
 import ru.galtor85.household_store.processor.user.UserStatisticsProcessor;
-import ru.galtor85.household_store.security.SecurityUser;
-import ru.galtor85.household_store.validator.common.SortFieldValidator;
 import ru.galtor85.household_store.validator.auth.UserSearchValidator;
+import ru.galtor85.household_store.validator.common.SortFieldValidator;
 
 import java.util.List;
-import java.util.Optional;
 
+/**
+ * Service for searching users and retrieving user statistics.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserSearchService {
 
-    // Валидаторы
     private final UserSearchValidator validator;
-
-    // Процессоры
     private final UserSearchProcessor searchProcessor;
     private final UserStatisticsProcessor statisticsProcessor;
-    private final SecurityUserProcessor securityUserProcessor;
-
-    // Утилиты
     private final SortFieldValidator sortFieldValidator;
 
-    // ========== ПОИСК ПОЛЬЗОВАТЕЛЕЙ ==========
-
+    /**
+     * Gets all users with sorting.
+     *
+     * @param sort sort field
+     * @return list of users
+     */
     @Transactional(readOnly = true)
     public List<User> getAllUsers(String sort) {
         String validSort = sortFieldValidator.validateAndGetSortField(sort);
         return searchProcessor.getAllUsers(validSort);
     }
 
+    /**
+     * Searches users by criteria.
+     *
+     * @param mobileNumber mobile number filter
+     * @param email email filter
+     * @param firstName first name filter
+     * @param lastName last name filter
+     * @param sort sort field
+     * @return list of matching users
+     */
     @Transactional(readOnly = true)
     public List<User> searchUsersByCriteria(String mobileNumber, String email,
                                             String firstName, String lastName,
@@ -49,53 +57,23 @@ public class UserSearchService {
                 mobileNumber, email, firstName, lastName, validSort);
     }
 
-    @Transactional(readOnly = true)
-    public Optional<User> searchUsersByEmailOrMobileNumber(String identify) {
-        return searchProcessor.searchUsersByEmailOrMobileNumber(identify);
-    }
-
-    @Transactional(readOnly = true)
-    public Optional<User> findByEmail(String email) {
-        return searchProcessor.findByEmail(email);
-    }
-
-    // ========== ПРОВЕРКА СУЩЕСТВОВАНИЯ ==========
-
-    @Transactional(readOnly = true)
-    public boolean userExistsByEmail(String email) {
-        return searchProcessor.userExistsByEmail(email);
-    }
-
-    @Transactional(readOnly = true)
-    public boolean userExistsById(Long userId) {
-        return searchProcessor.userExistsById(userId);
-    }
-
-    // ========== ПОЛУЧЕНИЕ ПОЛЬЗОВАТЕЛЯ ПО ID ==========
-
+    /**
+     * Gets user by ID.
+     *
+     * @param userId user ID
+     * @return user entity
+     */
     public User getUserById(Long userId) {
         return validator.validateUserExists(userId);
     }
 
-    // ========== СТАТИСТИКА ==========
-
+    /**
+     * Gets user statistics.
+     *
+     * @return user statistics DTO
+     */
     @Transactional(readOnly = true)
     public UserStatistics getUserStatistics() {
         return statisticsProcessor.calculateStatistics();
     }
-
-    // ========== SECURITY USER ==========
-
-    public SecurityUser getSecurityUserByUserId(Long userId) {
-        return securityUserProcessor.getSecurityUserByUserId(userId);
-    }
-
-    public Optional<SecurityUser> findSecurityUserByUserId(Long userId) {
-        return securityUserProcessor.findSecurityUserByUserId(userId);
-    }
-
-    // ========== ПЕРЕГРУЖЕННЫЕ МЕТОДЫ (БЕЗ LOCALE) ==========
-
-
 }
-

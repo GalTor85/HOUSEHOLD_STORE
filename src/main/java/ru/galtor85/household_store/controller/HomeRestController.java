@@ -12,8 +12,9 @@ import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.dto.response.system.HealthStatus;
 import ru.galtor85.household_store.dto.response.system.HomeInfo;
 import ru.galtor85.household_store.dto.response.system.SystemInfo;
-import ru.galtor85.household_store.service.system.SystemService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.system.SystemService;
 
 import java.time.LocalDateTime;
 
@@ -42,6 +43,7 @@ public class HomeRestController {
 
     private final SystemService systemService;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
      * Retrieves home page information including system status and available endpoints.
@@ -65,7 +67,7 @@ public class HomeRestController {
         String welcomeMessage = messageService.get("home-rest-controller.home.welcome");
         ApiResponse<HomeInfo> response = ApiResponse.success(welcomeMessage, homeInfo);
 
-        log.info(messageService.get("home-rest-controller.log.home.requested"));
+        log.info(logMsg.get("home-rest-controller.log.home.requested"));
         return ResponseEntity.ok(response);
     }
 
@@ -89,7 +91,7 @@ public class HomeRestController {
         String healthMessage = messageService.get("home-rest-controller.health.message.normal");
         ApiResponse<HealthStatus> response = ApiResponse.success(healthMessage, healthStatus);
 
-        log.info(messageService.get("home-rest-controller.log.health.requested"));
+        log.info(logMsg.get("home-rest-controller.log.health.requested"));
         return ResponseEntity.ok(response);
     }
 
@@ -114,7 +116,7 @@ public class HomeRestController {
         String infoMessage = messageService.get("home-rest-controller.info.message");
         ApiResponse<SystemInfo> response = ApiResponse.success(infoMessage, systemInfo);
 
-        log.info(messageService.get("home-rest-controller.log.info.requested"));
+        log.info(logMsg.get("home-rest-controller.log.info.requested"));
         return ResponseEntity.ok(response);
     }
 
@@ -128,7 +130,7 @@ public class HomeRestController {
             description = "Simple availability check of the service")
     public ResponseEntity<ApiResponse<String>> ping() {
 
-        log.info(messageService.get("home-rest-controller.log.ping.requested"));
+        log.info(logMsg.get("home-rest-controller.log.ping.requested"));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("home-rest-controller.ping.response"),

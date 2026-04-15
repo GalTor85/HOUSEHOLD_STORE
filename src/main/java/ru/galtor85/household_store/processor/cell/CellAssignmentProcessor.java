@@ -8,7 +8,7 @@ import ru.galtor85.household_store.advice.exception.cell.CellWeightLimitExceeded
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.warehouse.StorageCell;
 import ru.galtor85.household_store.repository.warehouse.StorageCellRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.validator.cell.CellValidationHelper;
 
 import java.time.LocalDateTime;
@@ -20,7 +20,7 @@ public class CellAssignmentProcessor {
 
     private final StorageCellRepository storageCellRepository;
     private final CellValidationHelper cellValidationHelper;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
      * Assigns a product to a storage cell or increases quantity if the same product.
@@ -55,7 +55,7 @@ public class CellAssignmentProcessor {
             currentWeight = currentQuantity * product.getWeightKg();
             newWeight = currentWeight + (additionalQuantity * product.getWeightKg());
             if (newWeight > cell.getMaxWeightKg()) {
-                log.warn(messageService.get("cell.validation.weight.limit.exceeded.log",
+                log.warn(logMsg.get("cell.validation.weight.limit.exceeded.log",
                         cell.getId(), cell.getMaxWeightKg(), newWeight));
                 throw new CellWeightLimitExceededException(
                         cell.getId(), cell.getMaxWeightKg(), newWeight);
@@ -67,7 +67,7 @@ public class CellAssignmentProcessor {
             currentVolume = currentQuantity * product.getVolumeM3();
             newVolume = currentVolume + (additionalQuantity * product.getVolumeM3());
             if (newVolume > cell.getMaxVolumeM3()) {
-                log.warn(messageService.get("cell.validation.volume.limit.exceeded.log",
+                log.warn(logMsg.get("cell.validation.volume.limit.exceeded.log",
                         cell.getId(), cell.getMaxVolumeM3(), newVolume));
                 throw new CellVolumeLimitExceededException(
                         cell.getId(), cell.getMaxVolumeM3(), newVolume);
@@ -80,7 +80,7 @@ public class CellAssignmentProcessor {
         cell.setIsOccupied(true);
         cell.setLastInventoryDate(LocalDateTime.now());
 
-        log.info(messageService.get("cell.assignment.updated.log",
+        log.info(logMsg.get("cell.assignment.updated.log",
                 cell.getCode(), currentQuantity, newQuantity,
                 newWeight, cell.getMaxWeightKg(), newVolume, cell.getMaxVolumeM3()));
 

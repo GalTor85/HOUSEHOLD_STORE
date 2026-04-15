@@ -4,185 +4,192 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.cell.*;
-import ru.galtor85.household_store.entity.warehouse.CellType;
 import ru.galtor85.household_store.entity.product.Product;
+import ru.galtor85.household_store.entity.warehouse.CellType;
 import ru.galtor85.household_store.entity.warehouse.StorageCell;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
+/**
+ * Helper for storage cell validation.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class CellValidationHelper {
 
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
-     * Проверка активности ячейки
+     * Validates cell is active.
+     *
+     * @param cell storage cell
+     * @throws CellInactiveException if inactive
      */
     public void validateCellActive(StorageCell cell) {
-
         if (!cell.getIsActive()) {
-            log.warn(messageService.get("cell.validation.inactive.log", cell.getId()));
+            log.warn(logMsg.get("cell.validation.inactive.log", cell.getId()));
             throw new CellInactiveException(cell.getId());
         }
     }
 
     /**
-     * Validates that a cell can accept a product.
-     * Allows adding more quantity if the cell already contains the same product.
-     * Throws exception if cell contains a different product.
+     * Validates cell can accept the product.
      *
-     * @param cell    the storage cell to validate
-     * @param product the product to be placed
-     * @throws CellAlreadyOccupiedException if cell contains a different product
+     * @param cell storage cell
+     * @param product product to place
+     * @throws CellAlreadyOccupiedException if cell contains different product
      */
     public void validateCellNotOccupied(StorageCell cell, Product product) {
-        // If cell is empty - OK
         if (!cell.getIsOccupied()) {
             return;
         }
-
-        // If cell contains a different product - error
         if (!cell.getCurrentProductId().equals(product.getId())) {
-            log.warn(messageService.get("cell.validation.occupied.log",
+            log.warn(logMsg.get("cell.validation.occupied.log",
                     cell.getId(), cell.getCurrentProductId()));
             throw new CellAlreadyOccupiedException(cell.getId(), cell.getCurrentProductId());
         }
-
-        // Same product - allow adding more quantity
-        log.debug(messageService.get("cell.validation.same.product.log",
-                cell.getId(), product.getId()));
+        log.debug(logMsg.get("cell.validation.same.product.log", cell.getId(), product.getId()));
     }
 
     /**
-     * Определение требуемого типа ячейки на основе характеристик продукта
+     * Determines required cell type based on product characteristics.
+     *
+     * @param product product entity
+     * @return required cell type
      */
     public CellType determineRequiredCellType(Product product) {
-        if (product.getIsHazardous()) {
+        if (Boolean.TRUE.equals(product.getIsHazardous())) {
             return CellType.DANGEROUS;
         }
-        if (product.getRequiresFreezing()) {
+        if (Boolean.TRUE.equals(product.getRequiresFreezing())) {
             return CellType.FREEZER;
         }
-        if (product.getRequiresRefrigeration()) {
+        if (Boolean.TRUE.equals(product.getRequiresRefrigeration())) {
             return CellType.FRIDGE;
         }
-        if (product.getIsOversize()) {
+        if (Boolean.TRUE.equals(product.getIsOversize())) {
             return CellType.OVERSIZE;
         }
-        if (product.getIsLiquid()) {
+        if (Boolean.TRUE.equals(product.getIsLiquid())) {
             return CellType.LIQUID;
         }
-        if (product.getIsPalletized()) {
+        if (Boolean.TRUE.equals(product.getIsPalletized())) {
             return CellType.PALLET;
         }
         return CellType.STANDARD;
     }
 
     /**
-     * Проверка совместимости типа ячейки с продуктом
+     * Validates cell type is compatible with product.
+     *
+     * @param cell storage cell
+     * @param product product to place
+     * @throws IncompatibleCellTypeException if incompatible
      */
     public void validateCellTypeCompatibility(StorageCell cell, Product product) {
-
         CellType requiredType = determineRequiredCellType(product);
 
         if (cell.getCellType() != requiredType) {
             String cellTypeLocalized = messageService.get("cell.type." + cell.getCellType().name());
             String requiredTypeLocalized = messageService.get("cell.type." + requiredType.name());
 
-            log.warn(messageService.get("cell.validation.incompatible.type.log",
+            log.warn(logMsg.get("cell.validation.incompatible.type.log",
                     cell.getId(), cellTypeLocalized, requiredTypeLocalized));
 
             throw new IncompatibleCellTypeException(cell.getId(), cell.getCellType(), requiredType.name());
         }
 
-        // Дополнительные проверки для специальных типов
         switch (cell.getCellType()) {
             case FRIDGE:
-                if (!product.getRequiresRefrigeration()) {
-                    log.warn(messageService.get("cell.validation.fridge.not.needed.log", cell.getId()));
+                if (Boolean.FALSE.equals(product.getRequiresRefrigeration())) {
+                    log.warn(logMsg.get("cell.validation.fridge.not.needed.log", cell.getId()));
                     throw new IncompatibleCellTypeException(cell.getId(), cell.getCellType(),
                             messageService.get("cell.validation.error.fridge.not.needed"));
                 }
                 break;
-
             case FREEZER:
-                if (!product.getRequiresFreezing()) {
-                    log.warn(messageService.get("cell.validation.freezer.not.needed.log", cell.getId()));
+                if (Boolean.FALSE.equals(product.getRequiresFreezing())) {
+                    log.warn(logMsg.get("cell.validation.freezer.not.needed.log", cell.getId()));
                     throw new IncompatibleCellTypeException(cell.getId(), cell.getCellType(),
                             messageService.get("cell.validation.error.freezer.not.needed"));
                 }
                 break;
-
             case DANGEROUS:
-                if (!product.getIsHazardous()) {
-                    log.warn(messageService.get("cell.validation.dangerous.not.needed.log", cell.getId()));
+                if (Boolean.FALSE.equals(product.getIsHazardous())) {
+                    log.warn(logMsg.get("cell.validation.dangerous.not.needed.log", cell.getId()));
                     throw new IncompatibleCellTypeException(cell.getId(), cell.getCellType(),
                             messageService.get("cell.validation.error.dangerous.not.needed"));
                 }
                 break;
-
             default:
-                // Для остальных типов дополнительных проверок не требуется
                 break;
         }
     }
 
     /**
-     * Проверка лимита веса
+     * Validates weight limit is not exceeded.
+     *
+     * @param cell storage cell
+     * @param product product to place
+     * @param quantity quantity to add
+     * @throws CellWeightLimitExceededException if limit exceeded
      */
     public void validateWeightLimit(StorageCell cell, Product product, int quantity) {
-
         if (cell.getMaxWeightKg() == null || product.getWeightKg() == null) {
             return;
         }
-
         double totalWeight = product.getWeightKg() * quantity;
         if (totalWeight > cell.getMaxWeightKg()) {
-            log.warn(messageService.get("cell.validation.weight.limit.exceeded.log",
+            log.warn(logMsg.get("cell.validation.weight.limit.exceeded.log",
                     cell.getId(), cell.getMaxWeightKg(), totalWeight));
-
             throw new CellWeightLimitExceededException(cell.getId(), cell.getMaxWeightKg(), totalWeight);
         }
     }
 
     /**
-     * Проверка лимита объема
+     * Validates volume limit is not exceeded.
+     *
+     * @param cell storage cell
+     * @param product product to place
+     * @param quantity quantity to add
+     * @throws CellVolumeLimitExceededException if limit exceeded
      */
     public void validateVolumeLimit(StorageCell cell, Product product, int quantity) {
-
         if (cell.getMaxVolumeM3() == null || product.getVolumeM3() == null) {
             return;
         }
-
         double totalVolume = product.getVolumeM3() * quantity;
         if (totalVolume > cell.getMaxVolumeM3()) {
-            log.warn(messageService.get("cell.validation.volume.limit.exceeded.log",
+            log.warn(logMsg.get("cell.validation.volume.limit.exceeded.log",
                     cell.getId(), cell.getMaxVolumeM3(), totalVolume));
-
             throw new CellVolumeLimitExceededException(cell.getId(), cell.getMaxVolumeM3(), totalVolume);
         }
     }
 
     /**
-     * Проверка, что товар уже не находится в другой ячейке этого же склада
+     * Validates product is not already in another cell of the same warehouse.
+     *
+     * @param cellsWithProduct cells containing the product
+     * @param currentCellId current cell ID
+     * @param productId product ID
+     * @param warehouseId warehouse ID
+     * @throws ProductAlreadyInWarehouseException if product found in another cell
      */
     public void checkProductNotInOtherCells(List<StorageCell> cellsWithProduct,
                                             Long currentCellId, Long productId,
                                             Long warehouseId) {
-
         List<StorageCell> otherCells = cellsWithProduct.stream()
                 .filter(cell -> !cell.getId().equals(currentCellId))
-                .collect(Collectors.toList());
+                .toList();
 
         if (!otherCells.isEmpty()) {
-            StorageCell existingCell = otherCells.get(0);
-            log.warn(messageService.get("cell.validation.product.already.in.warehouse.log",
+            StorageCell existingCell = otherCells.getFirst();
+            log.warn(logMsg.get("cell.validation.product.already.in.warehouse.log",
                     productId, existingCell.getCode(), warehouseId));
-
             throw new ProductAlreadyInWarehouseException(productId, warehouseId, existingCell.getCode());
         }
     }

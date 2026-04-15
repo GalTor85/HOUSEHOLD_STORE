@@ -16,6 +16,7 @@ import ru.galtor85.household_store.dto.request.finance.BankAccountTransactionReq
 import ru.galtor85.household_store.dto.response.finance.BankAccountDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.service.finance.BankAccountService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
@@ -51,7 +52,7 @@ public class BankAccountController extends BaseController {
 
     private final BankAccountService bankAccountService;
     private final MessageService messageService;
-
+    private final LogMessageService logMsg;
 
     // =========================================================================
     // CREATE BANK ACCOUNT
@@ -69,12 +70,12 @@ public class BankAccountController extends BaseController {
     public ResponseEntity<ApiResponse<BankAccountDto>> createBankAccount(
             @Valid @RequestBody BankAccountCreateRequest request) {
 
-        log.info(messageService.get("bank.account.controller.create.start", request.getAccountNumber()));
+        log.info(logMsg.get("bank.account.controller.create.start", request.getAccountNumber()));
 
         Long userId = getCurrentUserId();
         BankAccountDto account = bankAccountService.createBankAccount(request, userId);
 
-        log.info(messageService.get("bank.account.controller.create.success", account.getId(), account.getAccountNumber()));
+        log.info(logMsg.get("bank.account.controller.create.success", account.getId(), account.getAccountNumber()));
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
@@ -96,11 +97,11 @@ public class BankAccountController extends BaseController {
             description = "Retrieves a list of all bank accounts. Only accessible by ADMIN and MANAGER.")
     public ResponseEntity<ApiResponse<List<BankAccountDto>>> getAllBankAccounts() {
 
-        log.info(messageService.get("bank.account.controller.get.all.start"));
+        log.info(logMsg.get("bank.account.controller.get.all.start"));
 
         List<BankAccountDto> accounts = bankAccountService.getAllBankAccounts();
 
-        log.info(messageService.get("bank.account.controller.get.all.success", accounts.size()));
+        log.info(logMsg.get("bank.account.controller.get.all.success", accounts.size()));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("bank.accounts.fetched"),
@@ -117,11 +118,11 @@ public class BankAccountController extends BaseController {
             description = "Retrieves a list of active bank accounts only. Only accessible by ADMIN and MANAGER.")
     public ResponseEntity<ApiResponse<List<BankAccountDto>>> getActiveBankAccounts() {
 
-        log.info(messageService.get("bank.account.controller.get.active.start"));
+        log.info(logMsg.get("bank.account.controller.get.active.start"));
 
         List<BankAccountDto> accounts = bankAccountService.getActiveBankAccounts();
 
-        log.info(messageService.get("bank.account.controller.get.active.success", accounts.size()));
+        log.info(logMsg.get("bank.account.controller.get.active.success", accounts.size()));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("bank.accounts.active.fetched"),
@@ -141,11 +142,11 @@ public class BankAccountController extends BaseController {
             @Parameter(description = "Bank account ID", example = "1", required = true)
             @PathVariable Long accountId) {
 
-        log.info(messageService.get("bank.account.controller.get.by.id.start", accountId));
+        log.info(logMsg.get("bank.account.controller.get.by.id.start", accountId));
 
         BankAccountDto account = bankAccountService.getBankAccountById(accountId);
 
-        log.info(messageService.get("bank.account.controller.get.by.id.success", accountId));
+        log.info(logMsg.get("bank.account.controller.get.by.id.success", accountId));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("bank.account.fetched"),
@@ -165,11 +166,11 @@ public class BankAccountController extends BaseController {
             @Parameter(description = "Bank account number", example = "40702810123456789012", required = true)
             @PathVariable String accountNumber) {
 
-        log.info(messageService.get("bank.account.controller.get.by.number.start", accountNumber));
+        log.info(logMsg.get("bank.account.controller.get.by.number.start", accountNumber));
 
         BankAccountDto account = bankAccountService.getBankAccountByNumber(accountNumber);
 
-        log.info(messageService.get("bank.account.controller.get.by.number.success", accountNumber));
+        log.info(logMsg.get("bank.account.controller.get.by.number.success", accountNumber));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("bank.account.fetched"),
@@ -192,13 +193,12 @@ public class BankAccountController extends BaseController {
     public ResponseEntity<ApiResponse<BankAccountDto>> deposit(
             @Valid @RequestBody BankAccountTransactionRequest request) {
 
-        log.info(messageService.get("bank.account.controller.deposit.start",
+        log.info(logMsg.get("bank.account.controller.deposit.start",
                 request.getAccountId(), request.getAmount()));
 
-        Long userId = getCurrentUserId();
-        BankAccountDto account = bankAccountService.deposit(request, userId);
+        BankAccountDto account = bankAccountService.deposit(request);
 
-        log.info(messageService.get("bank.account.controller.deposit.success",
+        log.info(logMsg.get("bank.account.controller.deposit.success",
                 account.getId(), request.getAmount(), account.getBalance()));
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -218,13 +218,12 @@ public class BankAccountController extends BaseController {
     public ResponseEntity<ApiResponse<BankAccountDto>> withdraw(
             @Valid @RequestBody BankAccountTransactionRequest request) {
 
-        log.info(messageService.get("bank.account.controller.withdraw.start",
+        log.info(logMsg.get("bank.account.controller.withdraw.start",
                 request.getAccountId(), request.getAmount()));
 
-        Long userId = getCurrentUserId();
-        BankAccountDto account = bankAccountService.withdraw(request, userId);
+        BankAccountDto account = bankAccountService.withdraw(request);
 
-        log.info(messageService.get("bank.account.controller.withdraw.success",
+        log.info(logMsg.get("bank.account.controller.withdraw.success",
                 account.getId(), request.getAmount(), account.getBalance()));
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -238,7 +237,6 @@ public class BankAccountController extends BaseController {
      * @param fromAccountId source account ID
      * @param toAccountId   destination account ID
      * @param amount        transfer amount
-     * @param description   transfer description (optional)
      * @return success response
      */
     @PostMapping("/transfer")
@@ -250,17 +248,14 @@ public class BankAccountController extends BaseController {
             @Parameter(description = "Destination account ID", example = "2", required = true)
             @RequestParam Long toAccountId,
             @Parameter(description = "Transfer amount", example = "5000.00", required = true)
-            @RequestParam BigDecimal amount,
-            @Parameter(description = "Transfer description", example = "Fund transfer")
-            @RequestParam(required = false) String description) {
+            @RequestParam BigDecimal amount) {
 
-        log.info(messageService.get("bank.account.controller.transfer.start",
+        log.info(logMsg.get("bank.account.controller.transfer.start",
                 fromAccountId, toAccountId, amount));
 
-        Long userId = getCurrentUserId();
-        bankAccountService.transfer(fromAccountId, toAccountId, amount, description, userId);
+        bankAccountService.transfer(fromAccountId, toAccountId, amount);
 
-        log.info(messageService.get("bank.account.controller.transfer.success",
+        log.info(logMsg.get("bank.account.controller.transfer.success",
                 fromAccountId, toAccountId, amount));
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -285,11 +280,11 @@ public class BankAccountController extends BaseController {
             @Parameter(description = "Bank account ID", example = "1", required = true)
             @PathVariable Long accountId) {
 
-        log.info(messageService.get("bank.account.controller.balance.start", accountId));
+        log.info(logMsg.get("bank.account.controller.balance.start", accountId));
 
         BigDecimal balance = bankAccountService.getBalance(accountId);
 
-        log.info(messageService.get("bank.account.controller.balance.success", accountId, balance));
+        log.info(logMsg.get("bank.account.controller.balance.success", accountId, balance));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("bank.account.balance.fetched"),
@@ -313,12 +308,11 @@ public class BankAccountController extends BaseController {
             @Parameter(description = "Bank account ID", example = "1", required = true)
             @PathVariable Long accountId) {
 
-        log.info(messageService.get("bank.account.controller.deactivate.start", accountId));
+        log.info(logMsg.get("bank.account.controller.deactivate.start", accountId));
 
-        Long userId = getCurrentUserId();
-        BankAccountDto account = bankAccountService.deactivate(accountId, userId);
+        BankAccountDto account = bankAccountService.deactivate(accountId);
 
-        log.info(messageService.get("bank.account.controller.deactivate.success", accountId));
+        log.info(logMsg.get("bank.account.controller.deactivate.success", accountId));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("bank.account.deactivated"),
@@ -338,12 +332,11 @@ public class BankAccountController extends BaseController {
             @Parameter(description = "Bank account ID", example = "1", required = true)
             @PathVariable Long accountId) {
 
-        log.info(messageService.get("bank.account.controller.activate.start", accountId));
+        log.info(logMsg.get("bank.account.controller.activate.start", accountId));
 
-        Long userId = getCurrentUserId();
-        BankAccountDto account = bankAccountService.activate(accountId, userId);
+        BankAccountDto account = bankAccountService.activate(accountId);
 
-        log.info(messageService.get("bank.account.controller.activate.success", accountId));
+        log.info(logMsg.get("bank.account.controller.activate.success", accountId));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("bank.account.activated"),

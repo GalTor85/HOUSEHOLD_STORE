@@ -5,13 +5,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.cash.CashRegisterClosedException;
 import ru.galtor85.household_store.advice.exception.cash.CashRegisterNotFoundException;
-import ru.galtor85.household_store.advice.exception.cash.InsufficientCashException;
 import ru.galtor85.household_store.entity.finance.CashRegister;
 import ru.galtor85.household_store.repository.cash.CashRegisterRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 
+/**
+ * Validator for cash register operations.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -19,34 +22,45 @@ public class CashRegisterValidator {
 
     private final CashRegisterRepository cashRegisterRepository;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
-     * Проверяет существование кассы
+     * Validates cash register exists.
+     *
+     * @param cashRegisterId cash register ID
+     * @return cash register entity
+     * @throws CashRegisterNotFoundException if not found
      */
     public CashRegister validateExists(Long cashRegisterId) {
         return cashRegisterRepository.findById(cashRegisterId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("cash.register.not.found.id", cashRegisterId));
+                    log.error(logMsg.get("cash.register.not.found.id", cashRegisterId));
                     return new CashRegisterNotFoundException(cashRegisterId);
                 });
     }
 
     /**
-     * Проверяет, что касса активна
+     * Validates cash register is active.
+     *
+     * @param cashRegister cash register entity
+     * @throws CashRegisterClosedException if closed
      */
     public void validateActive(CashRegister cashRegister) {
         if (!cashRegister.getIsActive()) {
-            log.error(messageService.get("cash.register.closed", cashRegister.getId()));
+            log.error(logMsg.get("cash.register.closed", cashRegister.getId()));
             throw new CashRegisterClosedException(cashRegister.getId());
         }
     }
 
     /**
-     * Проверяет, что касса закрыта
+     * Validates cash register is closed.
+     *
+     * @param cashRegister cash register entity
+     * @throws IllegalStateException if open
      */
     public void validateClosed(CashRegister cashRegister) {
         if (cashRegister.getIsActive()) {
-            log.error(messageService.get("cash.register.is.open", cashRegister.getId()));
+            log.error(logMsg.get("cash.register.is.open", cashRegister.getId()));
             throw new IllegalStateException(
                     messageService.get("cash.register.is.open", cashRegister.getId())
             );
@@ -54,11 +68,14 @@ public class CashRegisterValidator {
     }
 
     /**
-     * Проверяет уникальность номера кассы
+     * Validates register number is unique.
+     *
+     * @param registerNumber register number
+     * @throws IllegalArgumentException if already exists
      */
     public void validateRegisterNumberUnique(String registerNumber) {
         if (cashRegisterRepository.findByRegisterNumber(registerNumber).isPresent()) {
-            log.error(messageService.get("cash.register.number.exists", registerNumber));
+            log.error(logMsg.get("cash.register.number.exists", registerNumber));
             throw new IllegalArgumentException(
                     messageService.get("cash.register.number.exists", registerNumber)
             );
@@ -66,11 +83,15 @@ public class CashRegisterValidator {
     }
 
     /**
-     * Проверяет, что кассир тот же, кто открывал кассу
+     * Validates cashier is the same who opened the register.
+     *
+     * @param cashRegister cash register entity
+     * @param cashierId cashier ID
+     * @throws IllegalStateException if wrong cashier
      */
     public void validateCashier(CashRegister cashRegister, Long cashierId) {
         if (cashRegister.getCashierId() != null && !cashRegister.getCashierId().equals(cashierId)) {
-            log.error(messageService.get("cash.register.wrong.cashier",
+            log.error(logMsg.get("cash.register.wrong.cashier",
                     cashRegister.getId(), cashierId));
             throw new IllegalStateException(
                     messageService.get("cash.register.wrong.cashier",
@@ -80,11 +101,14 @@ public class CashRegisterValidator {
     }
 
     /**
-     * Проверяет сумму открытия кассы
+     * Validates opening balance is not negative.
+     *
+     * @param openingBalance opening balance
+     * @throws IllegalArgumentException if negative
      */
     public void validateOpeningBalance(BigDecimal openingBalance) {
         if (openingBalance != null && openingBalance.compareTo(BigDecimal.ZERO) < 0) {
-            log.error(messageService.get("cash.register.opening.balance.negative", openingBalance));
+            log.error(logMsg.get("cash.register.opening.balance.negative", openingBalance));
             throw new IllegalArgumentException(
                     messageService.get("cash.register.opening.balance.negative", openingBalance)
             );
@@ -92,52 +116,45 @@ public class CashRegisterValidator {
     }
 
     /**
-     * Проверяет сумму закрытия кассы
+     * Validates closing balance is valid.
+     *
+     * @param closingBalance closing balance
+     * @throws IllegalArgumentException if null or negative
      */
     public void validateClosingBalance(BigDecimal closingBalance) {
         if (closingBalance == null) {
-            log.error(messageService.get("cash.register.closing.balance.required"));
+            log.error(logMsg.get("cash.register.closing.balance.required"));
             throw new IllegalArgumentException(
                     messageService.get("cash.register.closing.balance.required"));
         }
-
         if (closingBalance.compareTo(BigDecimal.ZERO) < 0) {
-            log.error(messageService.get("cash.register.closing.balance.negative", closingBalance));
+            log.error(logMsg.get("cash.register.closing.balance.negative", closingBalance));
             throw new IllegalArgumentException(
                     messageService.get("cash.register.closing.balance.negative", closingBalance)
             );
         }
     }
 
+    /**
+     * Validates discrepancy reason is provided when balances differ.
+     *
+     * @param actualBalance actual closing balance
+     * @param calculatedBalance calculated balance
+     * @param discrepancyReason reason for discrepancy
+     * @throws IllegalArgumentException if reason required but not provided
+     */
     public void validateDiscrepancyReason(BigDecimal actualBalance,
                                           BigDecimal calculatedBalance,
                                           String discrepancyReason) {
         if (actualBalance == null || calculatedBalance == null) {
             return;
         }
-
         BigDecimal discrepancy = actualBalance.subtract(calculatedBalance);
         if (discrepancy.compareTo(BigDecimal.ZERO) != 0) {
             if (discrepancyReason == null || discrepancyReason.trim().isEmpty()) {
                 throw new IllegalArgumentException(
                         messageService.get("cash.register.discrepancy.reason.required"));
             }
-        }
-    }
-
-    /**
-     * Validates that cash register has sufficient funds
-     *
-     * @param cashRegister cash register entity
-     * @param amount       amount to withdraw
-     * @throws InsufficientCashException if insufficient funds
-     */
-    public void validateSufficientFunds(CashRegister cashRegister, BigDecimal amount) {
-        BigDecimal currentBalance = cashRegister.getCurrentBalance();
-        if (currentBalance.compareTo(amount) < 0) {
-            log.error(messageService.get("cash.register.insufficient.balance.with.id",
-                    cashRegister.getId(), currentBalance, amount));
-            throw new InsufficientCashException(cashRegister.getId(), currentBalance, amount);
         }
     }
 }

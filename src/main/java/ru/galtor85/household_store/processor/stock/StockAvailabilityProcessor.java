@@ -8,7 +8,7 @@ import ru.galtor85.household_store.dto.response.stock.WarehouseStockDetailDto;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +28,7 @@ import java.util.List;
 public class StockAvailabilityProcessor {
 
     private final ProductStockRepository productStockRepository;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final WarehouseRepository warehouseRepository;
     private final WarehouseStockDetailConverter warehouseStockDetailConverter;
 
@@ -54,12 +54,12 @@ public class StockAvailabilityProcessor {
      * @return available quantity (0 if no stock)
      */
     public Integer calculateAvailableStock(Product product) {
-        log.debug(messageService.get("stock.processor.calculate.start", product.getId()));
+        log.debug(logMsg.get("stock.processor.calculate.start", product.getId()));
 
         Integer available = productStockRepository.getAvailableStockForProduct(product.getId());
         available = available != null ? available : 0;
 
-        log.debug(messageService.get("stock.processor.calculate.complete", product.getId(), available));
+        log.debug(logMsg.get("stock.processor.calculate.complete", product.getId(), available));
 
         return available;
     }
@@ -72,12 +72,12 @@ public class StockAvailabilityProcessor {
      * @return available quantity from visible warehouses (0 if no stock)
      */
     public Integer calculateAvailableStockForCustomer(Product product) {
-        log.debug(messageService.get("stock.processor.calculate.customer.start", product.getId()));
+        log.debug(logMsg.get("stock.processor.calculate.customer.start", product.getId()));
 
         Integer available = productStockRepository.getAvailableStockForCustomer(product.getId());
         available = available != null ? available : 0;
 
-        log.debug(messageService.get("stock.processor.calculate.customer.complete", product.getId(), available));
+        log.debug(logMsg.get("stock.processor.calculate.customer.complete", product.getId(), available));
 
         return available;
     }
@@ -94,7 +94,7 @@ public class StockAvailabilityProcessor {
      * @return list of warehouse stock detail DTOs
      */
     public List<WarehouseStockDetailDto> getStockDetailsByWarehouse(Long productId, boolean includeInvisible) {
-        log.debug(messageService.get("stock.processor.warehouse.details.start", productId));
+        log.debug(logMsg.get("stock.processor.warehouse.details.start", productId));
 
         List<Object[]> results = productStockRepository.getStockByWarehouseWithVisibility(productId);
         List<WarehouseStockDetailDto> details = new ArrayList<>();
@@ -117,7 +117,7 @@ public class StockAvailabilityProcessor {
             );
         }
 
-        log.debug(messageService.get("stock.processor.warehouse.details.complete", productId, details.size()));
+        log.debug(logMsg.get("stock.processor.warehouse.details.complete", productId, details.size()));
 
         return details;
     }

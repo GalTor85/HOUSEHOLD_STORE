@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.repository.product.ProductRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 /**
  * Validator for stock display operations.
@@ -20,7 +20,7 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 public class StockDisplayValidator {
 
     private final ProductRepository productRepository;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     /**
      * Validates that a product exists.
@@ -32,7 +32,7 @@ public class StockDisplayValidator {
     public Product validateProductExists(Long productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> {
-                    log.warn(messageService.get("stock.validator.product.not.found", productId));
+                    log.warn(logMsg.get("stock.validator.product.not.found", productId));
                     return new ProductNotFoundException(productId);
                 });
     }

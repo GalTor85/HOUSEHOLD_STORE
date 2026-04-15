@@ -11,13 +11,17 @@ import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.product.ProductMedia;
 import ru.galtor85.household_store.repository.product.ProductMediaRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.media.MediaValidator;
 
 import java.util.List;
 
-import static ru.galtor85.household_store.constants.ApiConstants.API_BASE;
+import static ru.galtor85.household_store.constants.ApiConstants.MEDIA_PATH;
 
+/**
+ * Processor for managing main product images.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -27,25 +31,35 @@ public class MainImageProcessor {
     private final ProductRepository productRepository;
     private final MediaValidator validator;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
+    /**
+     * Sets a media file as the main image for its product.
+     *
+     * @param mediaId the media ID
+     * @throws ProductMediaNotFoundException if media not found
+     */
     @Transactional
-    public void setMainImage(Long mediaId, Long setBy) {
+    public void setMainImage(Long mediaId) {
         ProductMedia newMainMedia = findMediaById(mediaId);
         validator.validateMediaIsImage(newMainMedia);
 
-        // Сбрасываем флаг main у всех медиа этого продукта
         mediaRepository.resetMainImage(newMainMedia.getProductId());
-        log.debug(messageService.get("product.media.service.reset.main", newMainMedia.getProductId()));
+        log.debug(logMsg.get("product.media.service.reset.main", newMainMedia.getProductId()));
 
-        // Устанавливаем новый main
         newMainMedia.setIsMain(true);
         mediaRepository.save(newMainMedia);
-        log.debug(messageService.get("product.media.service.set.new.main", mediaId));
+        log.debug(logMsg.get("product.media.service.set.new.main", mediaId));
 
-        // Обновляем imageUrl в продукте
         updateProductImageUrl(newMainMedia.getProductId(), mediaId);
     }
 
+    /**
+     * Updates product main image from uploaded media list.
+     *
+     * @param product       the product
+     * @param uploadedMedia list of uploaded media DTOs
+     */
     @Transactional
     public void updateMainImage(Product product, List<ProductMediaDto> uploadedMedia) {
         uploadedMedia.stream()
@@ -54,11 +68,16 @@ public class MainImageProcessor {
                 .ifPresent(mainMedia -> {
                     product.setImageUrl(mainMedia.getFileUrl());
                     productRepository.save(product);
-                    log.debug(messageService.get("product.media.service.main.updated",
+                    log.debug(logMsg.get("product.media.service.main.updated",
                             product.getId(), mainMedia.getId()));
                 });
     }
 
+    /**
+     * Resets the main image for a product.
+     *
+     * @param productId the product ID
+     */
     @Transactional
     public void resetMainImage(Long productId) {
         mediaRepository.findByProductIdAndIsMainTrue(productId)
@@ -67,8 +86,7 @@ public class MainImageProcessor {
                     if (product != null) {
                         product.setImageUrl(null);
                         productRepository.save(product);
-                        log.debug(messageService.get("product.media.service.main.reset",
-                                productId));
+                        log.debug(logMsg.get("product.media.service.main.reset", productId));
                     }
                 });
     }
@@ -76,7 +94,7 @@ public class MainImageProcessor {
     private ProductMedia findMediaById(Long mediaId) {
         return mediaRepository.findById(mediaId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("product.media.service.media.not.found", mediaId));
+                    log.error(logMsg.get("product.media.service.media.not.found", mediaId));
                     return new ProductMediaNotFoundException(
                             messageService.get("product.media.service.error.not.found", mediaId),
                             mediaId
@@ -87,11 +105,11 @@ public class MainImageProcessor {
     private void updateProductImageUrl(Long productId, Long mediaId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> {
-                    log.error(messageService.get("product.media.service.product.not.found", productId));
+                    log.error(logMsg.get("product.media.service.product.not.found", productId));
                     return new ProductNotFoundException(productId);
                 });
 
-        product.setImageUrl(API_BASE+"/media/" + mediaId);
+        product.setImageUrl(MEDIA_PATH + mediaId);
         productRepository.save(product);
     }
 }

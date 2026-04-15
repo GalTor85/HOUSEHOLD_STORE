@@ -4,17 +4,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.entity.order.OrderStatus;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 
+/**
+ * Utility for parsing date strings into LocalDateTime objects.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class DateParser {
 
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     public LocalDateTime parseDate(String dateStr) {
         if (dateStr == null || dateStr.isBlank()) {
@@ -23,7 +26,7 @@ public class DateParser {
         try {
             return LocalDateTime.parse(dateStr);
         } catch (DateTimeParseException e) {
-            log.warn(messageService.get("manager.purchase.log.date.parse.failed", dateStr));
+            log.warn(logMsg.get("manager.purchase.log.date.parse.failed", dateStr));
             return null;
         }
     }
@@ -35,7 +38,7 @@ public class DateParser {
         try {
             return OrderStatus.valueOf(status);
         } catch (IllegalArgumentException e) {
-            log.warn(messageService.get("manager.order.log.invalid.status", status));
+            log.warn(logMsg.get("manager.order.log.invalid.status", status));
             return null;
         }
     }

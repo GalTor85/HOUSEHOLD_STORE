@@ -8,7 +8,7 @@ import ru.galtor85.household_store.dto.response.finance.PriceCalculationResult;
 import ru.galtor85.household_store.entity.promotion.PriceRule;
 import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.repository.price.PriceRuleRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -16,14 +16,37 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Processor for applying price rules to orders.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class PriceRuleProcessor {
 
-    private final PriceRuleRepository priceRuleRepository;
-    private final MessageService messageService;
+    private static final String DISCOUNT_TYPE_RULE = "RULE";
+    private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
+    private static final String DIGITS_ONLY_PATTERN = "\\d+";
+    private static final String RULE_SEPARATOR = ":";
+    private static final String PRODUCT_ID_SEPARATOR = ",";
+    private static final String CATEGORY_INFO_FORMAT = "%s: %d";
+    private static final String CATEGORY_INFO_DELIMITER = ", ";
+    private static final String UNKNOWN_CATEGORY = "unknown";
+    private static final int RULE_PARTS_LENGTH_3 = 3;
+    private static final int RULE_PARTS_LENGTH_2 = 2;
 
+    private final PriceRuleRepository priceRuleRepository;
+    private final LogMessageService logMsg;
+
+    /**
+     * Applies active price rules to the current total.
+     *
+     * @param currentTotal current order total
+     * @param userType user type for rule filtering
+     * @param items cart items
+     * @param appliedDiscounts list to track applied discounts
+     * @return total after applying rules
+     */
     public BigDecimal applyPriceRules(BigDecimal currentTotal, UserType userType,
                                       List<CartItemDto> items,
                                       List<PriceCalculationResult.AppliedDiscount> appliedDiscounts) {
@@ -31,11 +54,10 @@ public class PriceRuleProcessor {
                 userType, LocalDateTime.now());
 
         if (activeRules.isEmpty()) {
-            log.debug(messageService.get("price.rules.none.active"));
+            log.debug(logMsg.get("price.rules.none.active"));
             return currentTotal;
         }
 
-        // Сортируем по приоритету
         activeRules.sort(Comparator.comparing(PriceRule::getPriority));
 
         BigDecimal result = currentTotal;
@@ -49,11 +71,9 @@ public class PriceRuleProcessor {
                         .name(rule.getName())
                         .description(rule.getDescription())
                         .discountAmount(discount)
-                        .type("RULE")
+                        .type(DISCOUNT_TYPE_RULE)
                         .build());
-
-                log.debug(messageService.get("price.rule.applied",
-                        rule.getName(), discount));
+                log.debug(logMsg.get("price.rule.applied", rule.getName(), discount));
             }
         }
         return result;
@@ -62,147 +82,92 @@ public class PriceRuleProcessor {
     private BigDecimal applySingleRule(BigDecimal currentTotal, PriceRule rule,
                                        List<CartItemDto> items) {
         return switch (rule.getDiscountType()) {
-            case PERCENTAGE -> {
-                BigDecimal result = applyPercentageDiscount(currentTotal, rule);
-                log.debug(messageService.get("price.rule.percentage.applied",
-                        rule.getName(), rule.getDiscountValue(), result));
-                yield result;
-            }
-
-            case FIXED_AMOUNT -> {
-                BigDecimal result = applyFixedDiscount(currentTotal, rule);
-                log.debug(messageService.get("price.rule.fixed.applied",
-                        rule.getName(), rule.getDiscountValue(), result));
-                yield result;
-            }
-
-            case BUY_X_GET_Y -> {
-                BigDecimal result = applyBuyXGetY(currentTotal, rule, items);
-                log.debug(messageService.get("price.rule.buyxgety.completed",
-                        rule.getName()));
-                yield result;
-            }
-
-            case FREE_SHIPPING -> {
-                log.debug(messageService.get("price.rule.free.shipping", rule.getName()));
-                yield currentTotal; // Бесплатная доставка не влияет на сумму товаров
-            }
-
-            case BUNDLE -> {
-                BigDecimal result = applyBundleDiscount(currentTotal, rule, items);
-                log.debug(messageService.get("price.rule.bundle.completed",
-                        rule.getName()));
-                yield result;
-            }
+            case PERCENTAGE -> applyPercentageDiscount(currentTotal, rule);
+            case FIXED_AMOUNT -> applyFixedDiscount(currentTotal, rule);
+            case BUY_X_GET_Y -> applyBuyXGetY(currentTotal, rule, items);
+            case FREE_SHIPPING -> currentTotal;
+            case BUNDLE -> applyBundleDiscount(currentTotal, rule, items);
         };
     }
 
     private BigDecimal applyPercentageDiscount(BigDecimal currentTotal, PriceRule rule) {
-        return currentTotal.multiply(BigDecimal.ONE.subtract(
-                rule.getDiscountValue().divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP)));
+        BigDecimal result = currentTotal.multiply(BigDecimal.ONE.subtract(
+                rule.getDiscountValue().divide(ONE_HUNDRED, RoundingMode.HALF_UP)));
+        log.debug(logMsg.get("price.rule.percentage.applied",
+                rule.getName(), rule.getDiscountValue(), result));
+        return result;
     }
 
     private BigDecimal applyFixedDiscount(BigDecimal currentTotal, PriceRule rule) {
-        return currentTotal.subtract(rule.getDiscountValue()).max(BigDecimal.ZERO);
+        BigDecimal result = currentTotal.subtract(rule.getDiscountValue()).max(BigDecimal.ZERO);
+        log.debug(logMsg.get("price.rule.fixed.applied",
+                rule.getName(), rule.getDiscountValue(), result));
+        return result;
     }
 
     private BigDecimal applyBuyXGetY(BigDecimal currentTotal, PriceRule rule,
                                      List<CartItemDto> items) {
         String ruleValue = rule.getDiscountValue().toString();
         try {
-            String[] parts = ruleValue.split(":");
-            if (parts.length == 3) {
+            String[] parts = ruleValue.split(RULE_SEPARATOR);
+            if (parts.length == RULE_PARTS_LENGTH_3) {
                 String target = parts[0];
                 int buyQuantity = Integer.parseInt(parts[1]);
                 int freeQuantity = Integer.parseInt(parts[2]);
 
-                log.debug(messageService.get("price.rule.buyxgety.processing",
+                log.debug(logMsg.get("price.rule.buyxgety.processing",
                         rule.getName(), target, buyQuantity, freeQuantity));
 
-                // Находим подходящие товары
                 List<CartItemDto> eligibleItems = findEligibleItems(items, target);
 
                 if (eligibleItems.isEmpty()) {
-                    log.debug(messageService.get("price.rule.buyxgety.no.items",
-                            rule.getName(), target));
+                    log.debug(logMsg.get("price.rule.buyxgety.no.items", rule.getName(), target));
                     return currentTotal;
                 }
 
-                log.debug(messageService.get("price.rule.buyxgety.items.found",
-                        eligibleItems.size(), target));
+                log.debug(logMsg.get("price.rule.buyxgety.items.found", eligibleItems.size(), target));
 
-                // Рассчитываем скидку
                 BigDecimal discount = calculateBuyXGetYDiscount(
                         eligibleItems, buyQuantity, freeQuantity, rule.getName());
-
-                log.debug(messageService.get("price.rule.buyxgety.applied",
-                        rule.getName(), discount));
+                log.debug(logMsg.get("price.rule.buyxgety.applied", rule.getName(), discount));
 
                 return currentTotal.subtract(discount);
             } else {
-                log.warn(messageService.get("price.rule.buyxgety.invalid.format",
-                        ruleValue));
+                log.warn(logMsg.get("price.rule.buyxgety.invalid.format", ruleValue));
             }
         } catch (Exception e) {
-            log.error(messageService.get("price.rule.buyxgety.error",
-                    rule.getName(), e.getMessage()), e);
+            log.error(logMsg.get("price.rule.buyxgety.error", rule.getName(), e.getMessage()), e);
         }
         return currentTotal;
     }
 
     private List<CartItemDto> findEligibleItems(List<CartItemDto> items, String target) {
-        // Проверяем, является ли target числом (ID товара) или строкой (категория)
-        if (target.matches("\\d+")) {
+        if (target.matches(DIGITS_ONLY_PATTERN)) {
             Long productId = Long.parseLong(target);
             return items.stream()
                     .filter(item -> item.getProductId().equals(productId))
-                    .collect(Collectors.toList());
-        } else {
-            // ТЕПЕРЬ МОЖНО ИСКАТЬ ПО КАТЕГОРИИ НАПРЯМУЮ
-            return items.stream()
-                    .filter(item -> target.equals(item.getCategory()))
-                    .collect(Collectors.toList());
+                    .toList();
         }
+        return items.stream()
+                .filter(item -> target.equals(item.getCategory()))
+                .toList();
     }
 
     private BigDecimal calculateBuyXGetYDiscount(List<CartItemDto> eligibleItems,
                                                  int buyQuantity, int freeQuantity,
                                                  String ruleName) {
+        logCategoryInfo(eligibleItems);
 
-        // Логируем информацию о категориях
-        Map<String, Long> categoryCount = eligibleItems.stream()
-                .collect(Collectors.groupingBy(
-                        CartItemDto::getCategory,
-                        Collectors.counting()
-                ));
-
-        if (!categoryCount.isEmpty()) {
-            String categoriesInfo = categoryCount.entrySet().stream()
-                    .map(e -> String.format("%s: %d", e.getKey(), e.getValue()))
-                    .collect(Collectors.joining(", "));
-
-            log.debug(messageService.get("price.rule.buyxgety.eligible.categories",
-                    categoriesInfo));
-        } else {
-            log.debug(messageService.get("price.rule.buyxgety.no.categories"));
-        }
-
-        // Сортируем по цене (самые дешевые будут бесплатными)
         List<CartItemDto> sorted = eligibleItems.stream()
                 .sorted(Comparator.comparing(CartItemDto::getPrice))
-                .collect(Collectors.toList());
+                .toList();
 
-        // Рассчитываем количество бесплатных единиц
-        int totalEligibleQuantity = eligibleItems.stream()
-                .mapToInt(CartItemDto::getQuantity)
-                .sum();
-
+        int totalEligibleQuantity = eligibleItems.stream().mapToInt(CartItemDto::getQuantity).sum();
         int freeUnits = (totalEligibleQuantity / (buyQuantity + freeQuantity)) * freeQuantity;
 
-        log.debug(messageService.get("price.rule.buyxgety.calculation",
+        log.debug(logMsg.get("price.rule.buyxgety.calculation",
                 totalEligibleQuantity, buyQuantity, freeQuantity, freeUnits));
 
-        // Берем самые дешевые товары как бесплатные
         BigDecimal discount = BigDecimal.ZERO;
         int remainingFree = freeUnits;
         List<DiscountDetail> discountDetails = new ArrayList<>();
@@ -221,63 +186,63 @@ public class PriceRuleProcessor {
                     freeFromThisItem,
                     itemDiscount
             ));
-
             remainingFree -= freeFromThisItem;
         }
 
-        // Логируем детали скидки
-        for (DiscountDetail detail : discountDetails) {
-            log.debug(messageService.get("price.rule.buyxgety.discount.detail",
-                    detail.getProductName(),
-                    detail.getQuantity(),
-                    detail.getDiscount(),
-                    detail.getCategory() != null ? detail.getCategory() : "без категории"));
-        }
-
-        log.info(messageService.get("price.rule.buyxgety.total.discount",
-                ruleName, discount, freeUnits));
+        logDiscountDetails(discountDetails);
+        log.info(logMsg.get("price.rule.buyxgety.total.discount", ruleName, discount, freeUnits));
 
         return discount;
     }
 
-    // Вспомогательный класс для деталей скидки
-    @lombok.Value
-    private static class DiscountDetail {
-        Long productId;
-        String productName;
-        String category;
-        int quantity;
-        BigDecimal discount;
+    private void logCategoryInfo(List<CartItemDto> eligibleItems) {
+        Map<String, Long> categoryCount = eligibleItems.stream()
+                .collect(Collectors.groupingBy(CartItemDto::getCategory, Collectors.counting()));
+
+        if (!categoryCount.isEmpty()) {
+            String categoriesInfo = categoryCount.entrySet().stream()
+                    .map(e -> String.format(CATEGORY_INFO_FORMAT, e.getKey(), e.getValue()))
+                    .collect(Collectors.joining(CATEGORY_INFO_DELIMITER));
+            log.debug(logMsg.get("price.rule.buyxgety.eligible.categories", categoriesInfo));
+        } else {
+            log.debug(logMsg.get("price.rule.buyxgety.no.categories"));
+        }
     }
+
+    private void logDiscountDetails(List<DiscountDetail> discountDetails) {
+        for (DiscountDetail detail : discountDetails) {
+            log.debug(logMsg.get("price.rule.buyxgety.discount.detail",
+                    detail.productName(),
+                    detail.quantity(),
+                    detail.discount(),
+                    Objects.requireNonNullElse(detail.category(), UNKNOWN_CATEGORY)));
+        }
+    }
+
+    private record DiscountDetail(Long productId, String productName, String category, int quantity,
+                                  BigDecimal discount) {}
 
     private BigDecimal applyBundleDiscount(BigDecimal currentTotal, PriceRule rule,
                                            List<CartItemDto> items) {
-        // Формат: "productId1,productId2,productId3:discountPercent"
         String ruleValue = rule.getDiscountValue().toString();
         try {
-            String[] parts = ruleValue.split(":");
-            if (parts.length == 2) {
-                String[] productIds = parts[0].split(",");
+            String[] parts = ruleValue.split(RULE_SEPARATOR);
+            if (parts.length == RULE_PARTS_LENGTH_2) {
+                String[] productIds = parts[0].split(PRODUCT_ID_SEPARATOR);
                 double discountPercent = Double.parseDouble(parts[1]);
 
-                // Проверяем, есть ли все товары комплекта в корзине
                 if (hasAllBundleItems(items, productIds)) {
-                    // Рассчитываем стоимость комплекта
                     BigDecimal bundleTotal = calculateBundleTotal(items, productIds);
-
-                    // Рассчитываем скидку на комплект
                     BigDecimal bundleDiscount = bundleTotal
                             .multiply(BigDecimal.valueOf(discountPercent))
-                            .divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP);
+                            .divide(ONE_HUNDRED, RoundingMode.HALF_UP);
 
-                    log.debug(messageService.get("price.rule.bundle.applied",
-                            rule.getName(), bundleDiscount));
-
+                    log.debug(logMsg.get("price.rule.bundle.applied", rule.getName(), bundleDiscount));
                     return currentTotal.subtract(bundleDiscount);
                 }
             }
         } catch (Exception e) {
-            log.error(messageService.get("price.rule.bundle.error", rule.getName(), e.getMessage()), e);
+            log.error(logMsg.get("price.rule.bundle.error", rule.getName(), e.getMessage()), e);
         }
         return currentTotal;
     }
@@ -287,7 +252,6 @@ public class PriceRuleProcessor {
         Set<String> cartProductIds = items.stream()
                 .map(item -> String.valueOf(item.getProductId()))
                 .collect(Collectors.toSet());
-
         return cartProductIds.containsAll(requiredProductIds);
     }
 

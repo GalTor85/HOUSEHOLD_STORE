@@ -3,7 +3,6 @@ package ru.galtor85.household_store.service.stock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,7 +23,7 @@ import ru.galtor85.household_store.processor.stock.StockAvailabilityProcessor;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
-import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.validator.stock.StockDisplayValidator;
 import ru.galtor85.household_store.validator.warehouse.WarehouseValidator;
 
@@ -50,7 +49,7 @@ public class StockDisplayService {
     private final StockDisplayValidator validator;
     private final StockAvailabilityProcessor processor;
     private final ProductAvailabilityConverter converter;
-    private final MessageService messageService;
+    private final LogMessageService logMsg;
     private final StockDisplayConfig config;
     private final WarehouseRepository warehouseRepository;
     private final WarehouseMapper warehouseMapper;
@@ -67,27 +66,6 @@ public class StockDisplayService {
     // =========================================================================
 
     /**
-     * Gets product availability for customer view (visible warehouses only).
-     * Results are cached to reduce database load.
-     *
-     * @param productId product identifier
-     * @return product availability DTO
-     */
-    @Cacheable(value = "productAvailability", key = "#productId", unless = "#result == null")
-    public ProductAvailabilityDto getProductAvailabilityForCustomer(Long productId) {
-        log.debug(messageService.get("stock.display.service.customer.start", productId));
-
-        Product product = validator.validateProductExists(productId);
-        Integer availableStock = processor.calculateAvailableStockForCustomer(product);
-        ProductAvailabilityDto result = converter.toDto(product, availableStock);
-
-        log.debug(messageService.get("stock.display.service.customer.complete",
-                productId, result.getStatus(), availableStock));
-
-        return result;
-    }
-
-    /**
      * Gets all products with availability for customers.
      * Only includes stock from warehouses visible for sale.
      *
@@ -100,7 +78,7 @@ public class StockDisplayService {
      */
     public Page<ProductAvailabilityDto> getAllProductsWithAvailability(String category, int page, int size,
                                                                        String sortBy, String sortDir) {
-        log.debug(messageService.get("stock.display.service.products.start", page, size, category));
+        log.debug(logMsg.get("stock.display.service.products.start", page, size, category));
 
         Sort sort = sortDir.equalsIgnoreCase("desc") ?
                 Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
@@ -119,7 +97,7 @@ public class StockDisplayService {
             return converter.toDto(product, availableStock);
         });
 
-        log.debug(messageService.get("stock.display.service.products.complete", result.getTotalElements()));
+        log.debug(logMsg.get("stock.display.service.products.complete", result.getTotalElements()));
 
         return result;
     }
@@ -136,7 +114,7 @@ public class StockDisplayService {
      * @return product availability DTO with warehouse details
      */
     public ProductAvailabilityWithWarehousesDto getProductAvailabilityForManager(Long productId, boolean includeInvisible) {
-        log.debug(messageService.get("stock.display.service.manager.start", productId, includeInvisible));
+        log.debug(logMsg.get("stock.display.service.manager.start", productId, includeInvisible));
 
         Product product = validator.validateProductExists(productId);
         Integer availableStock = processor.calculateAvailableStock(product);
@@ -150,7 +128,7 @@ public class StockDisplayService {
                 .warehouses(warehouseDetails)
                 .build();
 
-        log.debug(messageService.get("stock.display.service.manager.complete", productId, warehouseDetails.size()));
+        log.debug(logMsg.get("stock.display.service.manager.complete", productId, warehouseDetails.size()));
 
         return result;
     }
@@ -162,11 +140,11 @@ public class StockDisplayService {
      * @return list of warehouse DTOs
      */
     public List<WarehouseDto> getWarehousesForSale(boolean includeInvisible) {
-        log.debug(messageService.get("stock.display.service.warehouses.start", includeInvisible));
+        log.debug(logMsg.get("stock.display.service.warehouses.start", includeInvisible));
 
         List<Warehouse> warehouses = warehouseRepository.findWarehousesForSale(includeInvisible);
 
-        log.debug(messageService.get("stock.display.service.warehouses.complete", warehouses.size()));
+        log.debug(logMsg.get("stock.display.service.warehouses.complete", warehouses.size()));
 
         return warehouses.stream()
                 .map(warehouseMapper::toDto)
@@ -183,7 +161,7 @@ public class StockDisplayService {
      */
     @Transactional
     public WarehouseDto toggleWarehouseVisibility(Long warehouseId, boolean visible) {
-        log.info(messageService.get("stock.display.service.visibility.start", warehouseId, visible));
+        log.info(logMsg.get("stock.display.service.visibility.start", warehouseId, visible));
 
         Warehouse warehouse = warehouseValidator.validateWarehouseExists(warehouseId);
         warehouse.setIsVisibleForSale(visible);
@@ -192,35 +170,9 @@ public class StockDisplayService {
         // Clear cache for all products in this warehouse to reflect visibility change
         clearCacheForWarehouse(warehouseId);
 
-        log.info(messageService.get("stock.display.service.visibility.complete", warehouseId, visible));
+        log.info(logMsg.get("stock.display.service.visibility.complete", warehouseId, visible));
 
         return warehouseMapper.toDto(warehouse);
-    }
-
-    // =========================================================================
-    // LEGACY METHOD (deprecated)
-    // =========================================================================
-
-    /**
-     * Gets product availability (legacy method - uses all warehouses).
-     *
-     * @param productId product identifier
-     * @return product availability DTO
-     * @deprecated Use {@link #getProductAvailabilityForCustomer(Long)} instead
-     */
-    @Deprecated
-    @Cacheable(value = "productAvailability", key = "#productId", unless = "#result == null")
-    public ProductAvailabilityDto getProductAvailability(Long productId) {
-        log.debug(messageService.get("stock.display.service.start", productId));
-
-        Product product = validator.validateProductExists(productId);
-        Integer availableStock = processor.calculateAvailableStock(product);
-        ProductAvailabilityDto result = converter.toDto(product, availableStock);
-
-        log.debug(messageService.get("stock.display.service.complete",
-                productId, result.getStatus(), availableStock));
-
-        return result;
     }
 
     // =========================================================================
@@ -237,7 +189,7 @@ public class StockDisplayService {
         for (ProductStock stock : stocks) {
             Objects.requireNonNull(cacheManager.getCache("productAvailability")).evict(stock.getProductId());
         }
-        log.debug(messageService.get("stock.display.service.cache.cleared", warehouseId, stocks.size()));
+        log.debug(logMsg.get("stock.display.service.cache.cleared", warehouseId, stocks.size()));
     }
 
     /**
