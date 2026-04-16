@@ -1,7 +1,9 @@
 package ru.galtor85.household_store.advice.exception.supplier;
 
+import lombok.Getter;
 import ru.galtor85.household_store.entity.supplier.SupplierStatus;
 
+@Getter
 public class SupplierInactiveException extends RuntimeException {
     private final SupplierStatus currentStatus;
 
@@ -10,7 +12,4 @@ public class SupplierInactiveException extends RuntimeException {
         this.currentStatus = currentStatus;
     }
 
-    public SupplierStatus getCurrentStatus() {
-        return currentStatus;
-    }
 }

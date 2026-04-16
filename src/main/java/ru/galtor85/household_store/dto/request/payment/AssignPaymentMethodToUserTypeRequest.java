@@ -14,7 +14,7 @@ import java.util.Set;
  * Request DTO for assigning payment methods to user types.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder

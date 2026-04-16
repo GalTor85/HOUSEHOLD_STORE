@@ -12,9 +12,6 @@ import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -88,44 +85,6 @@ public class InvoiceConverter {
                 .totalPaid(totalPaid)
                 .remainingAmount(remainingAmount)
                 .paymentPercent(paymentPercent)
-                .build();
-    }
-
-    /**
-     * Converts a list of invoices to DTOs
-     */
-    public List<InvoiceDto> toDtoList(List<Invoice> invoices, Map<Long, BigDecimal> paidAmounts) {
-        if (invoices == null) {
-            return null;
-        }
-        return invoices.stream()
-                .map(invoice -> {
-                    BigDecimal totalPaid = paidAmounts.get(invoice.getId());
-                    return toDto(invoice, totalPaid != null ? totalPaid : BigDecimal.ZERO);
-                })
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Simplified DTO without payment details
-     */
-    public InvoiceDto toSimpleDto(Invoice invoice) {
-        if (invoice == null) {
-            return null;
-        }
-
-        return InvoiceDto.builder()
-                .id(invoice.getId())
-                .invoiceNumber(invoice.getInvoiceNumber())
-                .amount(invoice.getAmount())
-                .currency(invoice.getCurrency())
-                .status(invoice.getStatus())
-                .localizedStatus(invoice.getStatus().getLocalizedName(messageService))
-                .paymentMethod(invoice.getPaymentMethod())
-                .localizedPaymentMethod(invoice.getPaymentMethod().getLocalizedName(messageService))
-                .issueDate(invoice.getIssueDate())
-                .dueDate(invoice.getDueDate())
-                .paidDate(invoice.getPaidDate())
                 .build();
     }
 }

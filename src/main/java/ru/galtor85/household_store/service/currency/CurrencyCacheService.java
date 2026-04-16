@@ -1,8 +1,9 @@
 package ru.galtor85.household_store.service.currency;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import ru.galtor85.household_store.repository.currency.CurrencyRepository;
 
@@ -24,7 +25,7 @@ public class CurrencyCacheService {
     private final Map<String, String> currencySymbolCache = new ConcurrentHashMap<>();
     private final Map<String, BigDecimal> currencyRateCache = new ConcurrentHashMap<>();
 
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     public void initCache() {
         refreshCache();
         log.info("Currency cache initialized with {} currencies", currencySymbolCache.size());
@@ -58,39 +59,4 @@ public class CurrencyCacheService {
         return currencySymbolCache.getOrDefault(currencyCode, currencyCode);
     }
 
-    /**
-     * Gets exchange rate by currency code
-     *
-     * @param currencyCode currency code
-     * @return exchange rate or null if not found
-     */
-    public BigDecimal getExchangeRate(String currencyCode) {
-        return currencyRateCache.get(currencyCode);
-    }
-
-    /**
-     * Updates single currency in cache
-     *
-     * @param currencyCode currency code
-     * @param symbol new symbol
-     * @param rate new exchange rate
-     */
-    public void updateCurrency(String currencyCode, String symbol, BigDecimal rate) {
-        currencySymbolCache.put(currencyCode, symbol);
-        if (rate != null) {
-            currencyRateCache.put(currencyCode, rate);
-        }
-        log.debug("Currency cache updated for: {}", currencyCode);
-    }
-
-    /**
-     * Removes currency from cache
-     *
-     * @param currencyCode currency code
-     */
-    public void evictCurrency(String currencyCode) {
-        currencySymbolCache.remove(currencyCode);
-        currencyRateCache.remove(currencyCode);
-        log.debug("Currency evicted from cache: {}", currencyCode);
-    }
 }

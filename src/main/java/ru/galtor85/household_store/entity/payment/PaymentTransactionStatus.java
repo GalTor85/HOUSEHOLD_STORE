@@ -11,11 +11,6 @@ public enum PaymentTransactionStatus {
     PENDING,
 
     /**
-     * In progress
-     */
-    PROCESSING,
-
-    /**
      * Completed successfully
      */
     COMPLETED,
@@ -33,10 +28,6 @@ public enum PaymentTransactionStatus {
     /**
      * Cancelled
      */
-    CANCELLED,
+    CANCELLED
 
-    /**
-     * Pending verification (e.g., bank transfer)
-     */
-    PENDING_VERIFICATION
 }

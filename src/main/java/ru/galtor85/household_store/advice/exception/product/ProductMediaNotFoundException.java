@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.product;
 
+import lombok.Getter;
+
+@Getter
 public class ProductMediaNotFoundException extends RuntimeException {
 
     private final Long mediaId;
@@ -9,7 +12,4 @@ public class ProductMediaNotFoundException extends RuntimeException {
         this.mediaId = mediaId;
     }
 
-    public Long getMediaId() {
-        return mediaId;
-    }
 }

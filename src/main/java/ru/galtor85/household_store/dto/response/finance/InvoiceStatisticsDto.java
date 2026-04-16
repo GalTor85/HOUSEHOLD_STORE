@@ -9,12 +9,15 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+/**
+ * Invoice statistics DTO.
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(description = "Invoice statistics DTO")
+@Schema(description = "Invoice statistics by order type")
 public class InvoiceStatisticsDto {
 
     @Schema(description = "Total pending amount for purchase orders", example = "44600.00")
@@ -26,12 +29,12 @@ public class InvoiceStatisticsDto {
     @Schema(description = "Total pending amount for all invoices", example = "44600.00")
     private BigDecimal totalPending;
 
-    @Schema(description = "Localized total pending amount", example = "Остаток к оплате: 44 600.00 ₽")
+    @Schema(description = "Localized total pending amount", example = "Remaining to pay: 44,600.00 ₽")
     private String localizedTotalPending;
 
-    @Schema(description = "Localized purchase pending amount", example = "Закупки: 44 600.00 ₽")
+    @Schema(description = "Localized purchase pending amount", example = "Purchases: 44,600.00 ₽")
     private String localizedPurchasePending;
 
-    @Schema(description = "Localized sales pending amount", example = "Продажи: 0.00 ₽")
+    @Schema(description = "Localized sales pending amount", example = "Sales: 0.00 ₽")
     private String localizedSalesPending;
 }

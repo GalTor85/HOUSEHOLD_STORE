@@ -10,7 +10,7 @@ import ru.galtor85.household_store.service.i18n.MessageService;
  * Validator for PaymentProcessRequest.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component

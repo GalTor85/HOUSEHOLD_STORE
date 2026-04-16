@@ -3,6 +3,7 @@ package ru.galtor85.household_store.util.generator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.galtor85.household_store.config.WarehouseConfig;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
@@ -31,6 +32,7 @@ public class NumberGenerator {
     private final SalesOrderRepository salesOrderRepository;
     private final LogMessageService logMsg;
     private final MessageService messageService;
+    private final WarehouseConfig warehouseConfig;
 
     /**
      * Generates unique purchase order number.
@@ -91,6 +93,21 @@ public class NumberGenerator {
         throw new IllegalStateException(
                 messageService.get("number.generator.invoice.max.attempts.exceeded", MAX_RETRY_ATTEMPTS)
         );
+    }
+
+    // =========================================================================
+    // BARCODE GENERATION
+    // =========================================================================
+
+    /**
+     * Generates unique barcode for warehouse.
+     *
+     * @return generated barcode string
+     */
+    public String generateWarehouseBarcode() {
+        String prefix = warehouseConfig.getDefaultWarehouseBarcodePrefix();
+        String randomPart = UUID.randomUUID().toString().substring(0, UUID_LENGTH).toUpperCase();
+        return prefix + randomPart;
     }
 
     private String generateRandomPart() {

@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
  * DTO for product availability information displayed to customers.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder

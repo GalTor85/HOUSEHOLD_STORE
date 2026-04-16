@@ -37,7 +37,7 @@ import ru.galtor85.household_store.util.email.EmailMasker;
  * @author G@LTor85
  * @see SecurityUserRepository
  * @see PasswordEncoder
- * @since 1.0
+ 
  */
 @Slf4j
 @Component
@@ -71,6 +71,7 @@ public class UserLoginProcessor {
      * @throws UserAuthenticationError if credentials are invalid or user not found
      * @throws UserNotActiveException  if the user account is deactivated
      */
+    @SuppressWarnings("unused")
     @Transactional(readOnly = true)
     public User login(String password, String identifier) {
         log.debug(logMsg.get("user.login.processor.start", emailMasker.maskIdentifier(identifier)));

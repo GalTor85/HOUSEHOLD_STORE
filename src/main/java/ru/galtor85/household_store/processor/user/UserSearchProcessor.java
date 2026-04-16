@@ -10,7 +10,6 @@ import ru.galtor85.household_store.repository.user.UserRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.util.List;
-import java.util.Optional;
 
 import static ru.galtor85.household_store.constants.PaginationConstants.DEFAULT_SORT_FIELD;
 
@@ -29,7 +28,7 @@ import static ru.galtor85.household_store.constants.PaginationConstants.DEFAULT_
  * a transaction for consistency.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component
@@ -98,93 +97,6 @@ public class UserSearchProcessor {
         ));
 
         return users;
-    }
-
-    /**
-     * Searches for a user by email or mobile number.
-     *
-     * <p>Performs exact match search using the provided identifier
-     * against both email and mobile number fields.</p>
-     *
-     * @param identifier the email or mobile number to search for
-     * @return Optional containing the user if found, empty otherwise
-     */
-    @Transactional(readOnly = true)
-    public Optional<User> searchUsersByEmailOrMobileNumber(String identifier) {
-        Optional<User> user = userRepository.findByEmailOrMobileNumber(identifier, identifier);
-
-        if (user.isPresent()) {
-            log.debug(logMsg.get(
-                    "user-search-service.log.user.search.identify.found",
-                    identifier,
-                    user.get().getEmail()
-            ));
-        } else {
-            log.debug(logMsg.get(
-                    "user-search-service.log.user.search.identify.not.found",
-                    identifier
-            ));
-        }
-
-        return user;
-    }
-
-    /**
-     * Finds a user by exact email match.
-     *
-     * @param email the email address to search for
-     * @return Optional containing the user if found, empty otherwise
-     */
-    @Transactional(readOnly = true)
-    public Optional<User> findByEmail(String email) {
-        Optional<User> user = userRepository.findByEmail(email);
-
-        log.debug(logMsg.get(
-                user.isPresent()
-                        ? "user-search-service.log.user.find.email.found"
-                        : "user-search-service.log.user.find.email.not.found",
-                email
-        ));
-
-        return user;
-    }
-
-    /**
-     * Checks if a user exists with the given email address.
-     *
-     * @param email the email address to check
-     * @return true if a user with this email exists, false otherwise
-     */
-    @Transactional(readOnly = true)
-    public boolean userExistsByEmail(String email) {
-        boolean exists = userRepository.existsByEmail(email);
-
-        log.debug(logMsg.get(
-                "user-search-service.log.user.exists.email",
-                email,
-                exists
-        ));
-
-        return exists;
-    }
-
-    /**
-     * Checks if a user exists with the given ID.
-     *
-     * @param userId the user ID to check
-     * @return true if a user with this ID exists, false otherwise
-     */
-    @Transactional(readOnly = true)
-    public boolean userExistsById(Long userId) {
-        boolean exists = userRepository.existsById(userId);
-
-        log.debug(logMsg.get(
-                "user-search-service.log.user.exists.id",
-                userId,
-                exists
-        ));
-
-        return exists;
     }
 
     /**

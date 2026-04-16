@@ -31,22 +31,22 @@ public class CartItem {
     private Cart cart;
 
     @Column(name = "product_id", nullable = false)
-    private Long productId; // ID продукта (связь по ID)
+    private Long productId;
 
     @Column(nullable = false)
     private Integer quantity;
 
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal price; // Цена на момент добавления
+    private BigDecimal price;
 
     @Column(name = "product_name")
-    private String productName; // Название на момент добавления (для истории)
+    private String productName;
 
     @Column(name = "sku")
-    private String sku; // Артикул на момент добавления
+    private String sku;
 
     @Column(name = "category")
-    private String category; // Категория на момент добавления (для истории)
+    private String category;
 
     @Column(name = "created_at")
     @CreationTimestamp

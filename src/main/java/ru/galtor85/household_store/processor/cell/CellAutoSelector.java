@@ -37,6 +37,7 @@ public class CellAutoSelector {
      * @throws NoAvailableCellException if no cells of required type exist
      * @throws NoSuitableCellException  if no cells can accommodate the product
      */
+    @SuppressWarnings("unused")
     public StorageCell selectCellForProduct(Long warehouseId, Product product, int quantity) {
         log.debug(logMsg.get("cell.selector.start",
                 product.getId(), quantity, warehouseId));

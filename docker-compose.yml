@@ -1,3 +1,4 @@
+#file: noinspection SpellCheckingInspection,SpellCheckingInspection,SpellCheckingInspection
 services:
   postgres:
     image: postgres:15-alpine
@@ -32,17 +33,22 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/household_store?currentSchema=household_schema&useUnicode=true&characterEncoding=UTF-8
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_JPA_HIBERNATE_DDL_AUTO: none
-      SPRING_LIQUIBASE_ENABLED: "true"
-      APP_DATA_INITIALIZE: "true"
       SERVER_PORT: 8443
-      LOGGING_LEVEL_LIQUIBASE: DEBUG
+      SSL_KEYSTORE_PASSWORD: changeit
+      SSL_KEY_ALIAS: tomcat
+      JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
     ports:
       - "8443:8443"
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
       - ./keystore.p12:/app/keystore/keystore.p12:ro
+    healthcheck:
+      test: [ "CMD", "wget", "--no-check-certificate", "-q", "-O-", "https://localhost:8443/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
     networks:
       - household-network
     restart: unless-stopped

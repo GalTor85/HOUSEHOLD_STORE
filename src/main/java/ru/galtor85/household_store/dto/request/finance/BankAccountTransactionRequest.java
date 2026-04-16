@@ -31,10 +31,4 @@ public class BankAccountTransactionRequest {
 
     @Schema(description = "Transaction description", example = "Payment for invoice INV-001")
     private String description;
-
-    @Schema(description = "Reference ID (invoice ID, order ID)", example = "123")
-    private Long referenceId;
-
-    @Schema(description = "Reference type", example = "INVOICE", allowableValues = {"INVOICE", "ORDER", "TRANSFER"})
-    private String referenceType;
 }

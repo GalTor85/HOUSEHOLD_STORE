@@ -27,29 +27,29 @@ public class StorageCell {
     private Warehouse warehouse;
 
     @Column(nullable = false)
-    private String code; // Код ячейки (например, "A-01-01")
+    private String code;
 
     @Column(nullable = false, unique = true)
-    private String barcode; // Штрих-код ячейки
+    private String barcode;
 
     @Column(name = "barcode_format")
-    private String barcodeFormat; // EAN_13, CODE_128, QR_CODE
+    private String barcodeFormat;
 
     @Column(name = "section")
-    private String section; // Секция (A, B, C...)
+    private String section;
 
     @Column(name = "rack")
-    private String rack; // Стеллаж
+    private String rack;
 
     @Column(name = "shelf")
-    private String shelf; // Полка
+    private String shelf;
 
     @Column(name = "position")
-    private String position; // Позиция на полке
+    private String position;
 
     @Column(name = "cell_type")
     @Enumerated(EnumType.STRING)
-    private CellType cellType; // STANDARD, PALLET, FRIDGE, DANGEROUS и т.д.
+    private CellType cellType;
 
     @Column(name = "max_weight_kg")
     private Double maxWeightKg;
@@ -70,7 +70,7 @@ public class StorageCell {
     private Boolean isActive;
 
     @Column(name = "last_inventory_date")
-    private LocalDateTime lastInventoryDate; // Дата последней инвентаризации
+    private LocalDateTime lastInventoryDate;
 
     @Column(name = "notes")
     private String notes;

@@ -13,7 +13,7 @@ import ru.galtor85.household_store.entity.payment.PaymentProvider;
  * Contains only non-sensitive information.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder
@@ -39,7 +39,4 @@ public class PaymentMethodForUserDto {
 
     @Schema(description = "Currency", example = "RUB")
     private String currency;
-
-    @Schema(description = "Sort order for display", example = "0")
-    private Integer sortOrder;
 }

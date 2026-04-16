@@ -13,11 +13,6 @@ import java.util.List;
 @Repository
 public interface PriceRuleRepository extends JpaRepository<PriceRule, Long> {
 
-    @Query("SELECT pr FROM PriceRule pr WHERE pr.active = true " +
-            "AND (pr.startDate IS NULL OR pr.startDate <= :now) " +
-            "AND (pr.endDate IS NULL OR pr.endDate >= :now)")
-    List<PriceRule> findActiveRules(@Param("now") LocalDateTime now);
-
     @Query("SELECT pr FROM PriceRule pr JOIN pr.applicableUserTypes ut " +
             "WHERE pr.active = true AND ut = :userType " +
             "AND (pr.startDate IS NULL OR pr.startDate <= :now) " +

@@ -9,7 +9,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.config.StockDisplayConfig;
 import ru.galtor85.household_store.converter.ProductAvailabilityConverter;
 import ru.galtor85.household_store.dto.response.stock.ProductAvailabilityDto;
 import ru.galtor85.household_store.dto.response.stock.ProductAvailabilityWithWarehousesDto;
@@ -39,7 +38,7 @@ import java.util.stream.Collectors;
  * and manager view (all warehouses with optional visibility filter).</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Service
@@ -50,16 +49,12 @@ public class StockDisplayService {
     private final StockAvailabilityProcessor processor;
     private final ProductAvailabilityConverter converter;
     private final LogMessageService logMsg;
-    private final StockDisplayConfig config;
     private final WarehouseRepository warehouseRepository;
     private final WarehouseMapper warehouseMapper;
     private final ProductStockRepository productStockRepository;
     private final CacheManager cacheManager;
     private final WarehouseValidator warehouseValidator;
     private final ProductRepository productRepository;
-
-    /* Cache duration in seconds */
-    private static final int SECONDS_PER_MINUTE = 60;
 
     // =========================================================================
     // CUSTOMER METHODS (visible warehouses only)
@@ -190,14 +185,5 @@ public class StockDisplayService {
             Objects.requireNonNull(cacheManager.getCache("productAvailability")).evict(stock.getProductId());
         }
         log.debug(logMsg.get("stock.display.service.cache.cleared", warehouseId, stocks.size()));
-    }
-
-    /**
-     * Gets cache duration in seconds.
-     *
-     * @return cache TTL in seconds
-     */
-    public int getCacheTtlSeconds() {
-        return config.getCacheMinutes() * SECONDS_PER_MINUTE;
     }
 }

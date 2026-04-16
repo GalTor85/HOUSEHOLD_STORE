@@ -41,7 +41,7 @@ public class UserTypeAssignment {
     private LocalDateTime updatedAt;
 
     @Column(name = "assigned_by")
-    private String assignedBy; // кто назначил тип
+    private String assignedBy;
 
     @Column(name = "is_active")
     @Builder.Default
@@ -54,5 +54,5 @@ public class UserTypeAssignment {
     private LocalDateTime validTo;
 
     @Column(name = "reason")
-    private String reason; // причина назначения
+    private String reason;
 }

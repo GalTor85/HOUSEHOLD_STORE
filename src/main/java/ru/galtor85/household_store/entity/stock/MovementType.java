@@ -1,10 +1,11 @@
 package ru.galtor85.household_store.entity.stock;
 
+@SuppressWarnings("unused")
 public enum MovementType {
-    RECEIPT,        // Поступление
-    SHIPMENT,       // Отгрузка
-    TRANSFER,       // Перемещение между ячейками
-    WRITE_OFF,      // Списание
-    INVENTORY,      // Инвентаризация
-    RETURN          // Возврат
+    RECEIPT,
+    SHIPMENT,
+    TRANSFER,
+    WRITE_OFF,
+    INVENTORY,
+    RETURN
 }

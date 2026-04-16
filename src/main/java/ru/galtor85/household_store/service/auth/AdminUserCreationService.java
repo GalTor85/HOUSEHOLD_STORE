@@ -26,7 +26,6 @@ import java.time.LocalDate;
  * <p><b>Role hierarchy:</b> ADMIN > MANAGER > USER</p>
  *
  * @author G@LTor85
- * @since 1.0
  */
 @Slf4j
 @Service
@@ -98,7 +97,7 @@ public class AdminUserCreationService {
                     return new UserNotFoundException(adminUser.getId().toString());
                 });
 
-        if (!adminSecurity.getRole().canManage(role)) {
+        if (adminSecurity.getRole().cannotManage(role)) {
             log.warn(logMsg.get(
                     "admin-user-creation-service.log.admin.insufficient.rights.create",
                     emailMasker.maskEmail(adminUser.getEmail()),

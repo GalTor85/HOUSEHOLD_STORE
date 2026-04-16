@@ -10,6 +10,9 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Currency DTO.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -57,29 +60,17 @@ public class CurrencyDto {
     @Schema(description = "Updated at timestamp")
     private LocalDateTime updatedAt;
 
-    // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-    // =========================================================================
-
+    /**
+     * Formats amount with currency symbol.
+     *
+     * @param amount amount to format
+     * @return formatted amount string
+     */
     public String format(BigDecimal amount) {
         if (amount == null) {
             return "0.00 " + symbol;
         }
-        return String.format("%,." + decimalPlaces + "f %s", amount, symbol);
-    }
-
-    public String formatWithCode(BigDecimal amount) {
-        if (amount == null) {
-            return "0.00 " + code;
-        }
-        return String.format("%,." + decimalPlaces + "f %s", amount, code);
-    }
-
-    public boolean isBaseCurrency() {
-        return Boolean.TRUE.equals(isBase);
-    }
-
-    public boolean isActiveCurrency() {
-        return Boolean.TRUE.equals(isActive);
+        String formatPattern = "%,." + decimalPlaces + "f %s";
+        return String.format(formatPattern, amount, symbol);
     }
 }

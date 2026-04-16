@@ -12,7 +12,7 @@ package ru.galtor85.household_store.constants;
  * loaded via {@link ru.galtor85.household_store.config.FinancialConfig}.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 public final class FinancialConstants {
 

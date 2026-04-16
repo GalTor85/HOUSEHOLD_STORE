@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.stock;
 
+import lombok.Getter;
+
+@Getter
 public class InsufficientStockException extends RuntimeException {
     private final String productName;
     private final int availableStock;
@@ -10,11 +13,4 @@ public class InsufficientStockException extends RuntimeException {
         this.availableStock = availableStock;
     }
 
-    public String getProductName() {
-        return productName;
-    }
-
-    public int getAvailableStock() {
-        return availableStock;
-    }
 }

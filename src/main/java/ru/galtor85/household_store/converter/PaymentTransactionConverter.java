@@ -68,24 +68,4 @@ public class PaymentTransactionConverter {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Creates a simple DTO without localized fields
-     *
-     * @param transaction payment transaction entity
-     * @return simple payment transaction DTO
-     */
-    public PaymentTransactionDto toSimpleDto(PaymentTransaction transaction) {
-        if (transaction == null) {
-            return null;
-        }
-
-        return PaymentTransactionDto.builder()
-                .id(transaction.getId())
-                .amount(transaction.getAmount())
-                .currency(transaction.getCurrency())
-                .status(transaction.getStatus())
-                .description(transaction.getDescription())
-                .createdAt(transaction.getCreatedAt())
-                .build();
-    }
 }

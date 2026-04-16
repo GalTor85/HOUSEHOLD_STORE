@@ -9,9 +9,10 @@ import ru.galtor85.household_store.entity.user.UserTypeAssignment;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
+/**
+ * Mapper for user type assignment entity to/from DTO.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -20,16 +21,16 @@ public class UserTypeAssignmentMapper {
     private final MessageService messageService;
 
     /**
-     * Преобразование сущности в DTO с локализацией
+     * Converts entity to DTO with localization.
+     *
+     * @param assignment user type assignment entity
+     * @return user type assignment DTO
      */
     public UserTypeAssignmentDto toDto(UserTypeAssignment assignment) {
         if (assignment == null) {
             return null;
         }
-
-        String localizedName = messageService.get(
-                "usertype." + assignment.getUserType().name().toLowerCase()
-        );
+        String localizedName = messageService.get("usertype." + assignment.getUserType().name().toLowerCase());
 
         return UserTypeAssignmentDto.builder()
                 .id(assignment.getId())
@@ -47,40 +48,15 @@ public class UserTypeAssignmentMapper {
     }
 
     /**
-     * Преобразование списка сущностей в список DTO
-     */
-    public List<UserTypeAssignmentDto> toDtoList(List<UserTypeAssignment> assignments) {
-        if (assignments == null) {
-            return null;
-        }
-
-        return assignments.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Преобразование DTO в сущность (для создания)
-     */
-    public UserTypeAssignment toEntity(UserTypeAssignmentDto dto) {
-        if (dto == null) {
-            return null;
-        }
-
-        return UserTypeAssignment.builder()
-                .id(dto.getId())
-                .userId(dto.getUserId())
-                .userType(dto.getUserType())
-                .assignedBy(dto.getAssignedBy())
-                .reason(dto.getReason())
-                .validFrom(dto.getValidFrom())
-                .validTo(dto.getValidTo())
-                .active(dto.isActive())
-                .build();
-    }
-
-    /**
-     * Создание сущности из параметров
+     * Creates entity from parameters.
+     *
+     * @param userId user ID
+     * @param userType user type
+     * @param assignedBy who assigned
+     * @param reason assignment reason
+     * @param validFrom validity start
+     * @param validTo validity end
+     * @return user type assignment entity
      */
     public UserTypeAssignment createEntity(Long userId, UserType userType, String assignedBy,
                                            String reason, LocalDateTime validFrom, LocalDateTime validTo) {
@@ -96,47 +72,16 @@ public class UserTypeAssignmentMapper {
     }
 
     /**
-     * Обновление существующей сущности
-     */
-    public void updateEntity(UserTypeAssignment assignment, UserTypeAssignmentDto dto) {
-        if (assignment == null || dto == null) {
-            return;
-        }
-
-        if (dto.getUserType() != null) {
-            assignment.setUserType(dto.getUserType());
-        }
-        if (dto.getReason() != null) {
-            assignment.setReason(dto.getReason());
-        }
-        if (dto.getValidFrom() != null) {
-            assignment.setValidFrom(dto.getValidFrom());
-        }
-        if (dto.getValidTo() != null) {
-            assignment.setValidTo(dto.getValidTo());
-        }
-    }
-
-    /**
-     * Деактивация назначения
+     * Deactivates assignment.
+     *
+     * @param assignment assignment to deactivate
+     * @return deactivated assignment
      */
     public UserTypeAssignment deactivate(UserTypeAssignment assignment) {
         if (assignment == null) {
             return null;
         }
         assignment.setActive(false);
-        assignment.setUpdatedAt(LocalDateTime.now());
-        return assignment;
-    }
-
-    /**
-     * Реактивация назначения
-     */
-    public UserTypeAssignment reactivate(UserTypeAssignment assignment) {
-        if (assignment == null) {
-            return null;
-        }
-        assignment.setActive(true);
         assignment.setUpdatedAt(LocalDateTime.now());
         return assignment;
     }

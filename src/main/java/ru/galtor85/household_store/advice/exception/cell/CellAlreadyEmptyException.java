@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.cell;
 
+import lombok.Getter;
+
+@Getter
 public class CellAlreadyEmptyException extends RuntimeException {
     private final Long cellId;
     private final String cellCode;
@@ -10,17 +13,10 @@ public class CellAlreadyEmptyException extends RuntimeException {
         this.cellCode = null;
     }
 
-    public CellAlreadyEmptyException(String cellCode, Long warehouseId) {
+    public CellAlreadyEmptyException(String cellCode) {
         super();
         this.cellCode = cellCode;
         this.cellId = null;
     }
 
-    public Long getCellId() {
-        return cellId;
-    }
-
-    public String getCellCode() {
-        return cellCode;
-    }
 }

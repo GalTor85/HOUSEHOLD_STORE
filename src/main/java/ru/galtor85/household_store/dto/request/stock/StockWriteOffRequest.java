@@ -33,14 +33,6 @@ public class StockWriteOffRequest {
     @Schema(description = "Reason for write-off", example = "DAMAGED", requiredMode = Schema.RequiredMode.REQUIRED)
     private String reason;
 
-    @Size(max = MAX_DESCRIPTION_LENGTH, message = "{writeoff.validation.description.max}")
-    @Schema(description = "Detailed description", example = "Damaged during transportation")
-    private String description;
-
-    @Size(max = MAX_WAREHOUSE_LOCATION_LENGTH, message = "{writeoff.validation.warehouse.location.max}")
-    @Schema(description = "Warehouse location", example = "Warehouse A")
-    private String warehouseLocation;
-
     @Schema(description = "Warehouse ID for write-off", example = "1")
     private Long warehouseId;
 

@@ -30,22 +30,6 @@ public enum OrderType {
     }
 
     /**
-     * Returns the enum constant of the specified code.
-     *
-     * @param code the order type code
-     * @return the matching OrderType
-     * @throws IllegalArgumentException if no matching constant found
-     */
-    public static OrderType fromCode(String code) {
-        for (OrderType type : values()) {
-            if (type.code.equals(code)) {
-                return type;
-            }
-        }
-        throw new IllegalArgumentException("Unknown order type: " + code);
-    }
-
-    /**
      * Returns the payment type for the given transaction type.
      *
      * @param transactionType the transaction type

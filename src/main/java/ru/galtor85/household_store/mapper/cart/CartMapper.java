@@ -12,6 +12,9 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Mapper for cart entity to DTO.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -21,19 +24,21 @@ public class CartMapper {
     private final CartItemMapper cartItemMapper;
 
     /**
-     * Преобразование сущности в DTO
+     * Converts cart entity to DTO.
+     *
+     * @param cart cart entity
+     * @return cart DTO
      */
     public CartDto toDto(Cart cart) {
         if (cart == null) {
             return null;
         }
 
-        List<CartItemDto> itemDtos = cart.getItems() != null ?
-                cartItemMapper.toDtoList(cart.getItems()) : null;
+        List<CartItemDto> itemDtos = cart.getItems() != null
+                ? cartItemMapper.toDtoList(cart.getItems())
+                : null;
 
         String localizedStatus = messageService.get("cart.status." + cart.getStatus().name());
-
-        String localizedCategory = determineCartCategory(cart);
 
         return CartDto.builder()
                 .id(cart.getId())
@@ -41,7 +46,7 @@ public class CartMapper {
                 .status(cart.getStatus())
                 .localizedStatus(localizedStatus)
                 .items(itemDtos)
-                .category(localizedCategory)
+                .category(determineCartCategory(cart))
                 .totalAmount(cart.getTotalAmount())
                 .itemsCount(cart.getItemsCount())
                 .createdAt(cart.getCreatedAt())

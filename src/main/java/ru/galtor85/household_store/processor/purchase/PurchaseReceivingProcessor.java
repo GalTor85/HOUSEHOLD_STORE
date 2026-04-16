@@ -11,7 +11,6 @@ import ru.galtor85.household_store.dto.common.ReceiveStockItem;
 import ru.galtor85.household_store.dto.request.order.ReceiveAndStockRequest;
 import ru.galtor85.household_store.dto.request.order.ReverseReceiptItem;
 import ru.galtor85.household_store.dto.request.order.ReverseReceiptRequest;
-import ru.galtor85.household_store.entity.order.OrderType;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.order.PurchaseOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
@@ -169,7 +168,7 @@ public class PurchaseReceivingProcessor {
 
         return movementBuilder.buildFullMovement(
                 product.getId(), null, null, warehouseId, quantity,
-                MovementType.RECEIPT, OrderType.PURCHASE.name(), order.getId(), order.getOrderNumber(),
+                MovementType.RECEIPT, order.getOrderType().name(), order.getId(), order.getOrderNumber(),
                 performedBy, notes, batchNumber, order.getOrderNumber()
         );
     }
@@ -273,7 +272,7 @@ public class PurchaseReceivingProcessor {
                 continue;
             }
 
-            // Get receipt transactions for this produc
+            // Get receipt transactions for this product
             List<StockMovement> productReceipts = receiptsByProduct.getOrDefault(
                     orderItem.getProductId(), Collections.emptyList());
 

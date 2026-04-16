@@ -47,7 +47,6 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.*;
  * </ul>
  *
  * @author G@LTor85
- * @since 1.0
  */
 @Slf4j
 @Configuration
@@ -125,10 +124,9 @@ public class SecurityConfig {
      *
      * @param http the HttpSecurity to configure
      * @return SecurityFilterChain instance
-     * @throws Exception if configuration fails
      */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))

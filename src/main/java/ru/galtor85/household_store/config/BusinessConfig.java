@@ -25,40 +25,40 @@ public class BusinessConfig {
 
     @Data
     public static class CartConfig {
-        private Integer expiryDays;
-        private Integer maxItems;
-        private Integer maxQuantityPerItem;
-        private Integer defaultIncrementValue;
+        private Integer expiryDays=7;
+        private Integer maxItems=10;
+        private Integer maxQuantityPerItem=5;
+        private Integer defaultIncrementValue=1;
     }
 
     @Data
     public static class StockConfig {
-        private Integer lowStockThreshold;
-        private Integer maxQuantity;
+        private Integer lowStockThreshold=5;
+        private Integer maxQuantity=100;
     }
 
     @Data
     public static class PaginationConfig {
-        private Integer defaultPage;
-        private Integer defaultSize;
-        private Integer maxSize;
+        private Integer defaultPage=1;
+        private Integer defaultSize=10;
+        private Integer maxSize=50;
     }
 
     @Data
     public static class UserConfig {
-        private Integer minPasswordLength;
-        private Integer minNameLength;
-        private Integer maxNameLength;
-        private Integer maxEmailLength;
-        private Integer maxPhoneLength;
-        private Integer maxAddressLength;
-        private Integer maxSurnameLength;
-        private String allowedSpecialChars;
+        private Integer minPasswordLength=8;
+        private Integer minNameLength=2;
+        private Integer maxNameLength=50;
+        private Integer maxEmailLength=100;
+        private Integer maxPhoneLength=20;
+        private Integer maxAddressLength=255;
+        private Integer maxSurnameLength=50;
+        private String allowedSpecialChars="!@#$%^&*()-_=+[]{}|;:'\",.<>?";
     }
 
     @Data
     public static class BankAccountConfig {
-        private Integer maxNameLength;
-        private Integer maxBankNameLength;
+        private Integer maxNameLength=50;
+        private Integer maxBankNameLength=50;
     }
 }

@@ -3,14 +3,43 @@ package ru.galtor85.household_store.builder.stock;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
 import ru.galtor85.household_store.entity.stock.MovementType;
-import ru.galtor85.household_store.entity.stock.StockMovement;
 
 import java.time.LocalDateTime;
 
+/**
+ * Builder for stock movement DTOs.
+ */
 @Component
 public class StockMovementDtoBuilder {
+
     /**
-     * Создание DTO движения со всеми полями
+     * Builds stock movement DTO with all fields.
+     *
+     * @param id movement ID
+     * @param productId product ID
+     * @param productName product name
+     * @param productSku product SKU
+     * @param fromCellId source cell ID
+     * @param fromCellCode source cell code
+     * @param fromWarehouseName source warehouse name
+     * @param toCellId destination cell ID
+     * @param toCellCode destination cell code
+     * @param toWarehouseName destination warehouse name
+     * @param warehouseId warehouse ID
+     * @param warehouseName warehouse name
+     * @param quantity movement quantity
+     * @param movementType movement type
+     * @param localizedMovementType localized movement type
+     * @param referenceType reference type
+     * @param referenceId reference ID
+     * @param referenceNumber reference number
+     * @param performedBy user ID who performed
+     * @param performedByName user name who performed
+     * @param notes movement notes
+     * @param batchNumber batch number
+     * @param documentNumber document number
+     * @param createdAt creation timestamp
+     * @return stock movement DTO
      */
     public StockMovementDto buildDto(
             Long id,
@@ -37,7 +66,6 @@ public class StockMovementDtoBuilder {
             String batchNumber,
             String documentNumber,
             LocalDateTime createdAt) {
-
         return StockMovementDto.builder()
                 .id(id)
                 .productId(productId)
@@ -63,48 +91,6 @@ public class StockMovementDtoBuilder {
                 .batchNumber(batchNumber)
                 .documentNumber(documentNumber)
                 .createdAt(createdAt)
-                .build();
-    }
-
-    /**
-     * Упрощенный метод для создания DTO из сущности (альтернативный подход)
-     */
-    public StockMovementDto fromEntity(StockMovement movement,
-                                       String productName,
-                                       String productSku,
-                                       String fromCellCode,
-                                       String fromWarehouseName,
-                                       String toCellCode,
-                                       String toWarehouseName,
-                                       String warehouseName,
-                                       String performedByName,
-                                       String localizedType) {
-
-        return StockMovementDto.builder()
-                .id(movement.getId())
-                .productId(movement.getProductId())
-                .productName(productName)
-                .productSku(productSku)
-                .fromCellId(movement.getFromCellId())
-                .fromCellCode(fromCellCode)
-                .fromWarehouseName(fromWarehouseName)
-                .toCellId(movement.getToCellId())
-                .toCellCode(toCellCode)
-                .toWarehouseName(toWarehouseName)
-                .warehouseId(movement.getWarehouseId())
-                .warehouseName(warehouseName)
-                .quantity(movement.getQuantity())
-                .movementType(movement.getMovementType())
-                .localizedMovementType(localizedType)
-                .referenceType(movement.getReferenceType())
-                .referenceId(movement.getReferenceId())
-                .referenceNumber(movement.getReferenceNumber())
-                .performedBy(movement.getPerformedBy())
-                .performedByName(performedByName)
-                .notes(movement.getNotes())
-                .batchNumber(movement.getBatchNumber())
-                .documentNumber(movement.getDocumentNumber())
-                .createdAt(movement.getCreatedAt())
                 .build();
     }
 }

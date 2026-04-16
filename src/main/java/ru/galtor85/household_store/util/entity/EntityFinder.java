@@ -4,11 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.supplier.SupplierNotFoundException;
-import ru.galtor85.household_store.advice.exception.supplier.SupplierProductNotFoundException;
 import ru.galtor85.household_store.entity.product.Product;
-import ru.galtor85.household_store.entity.supplier.Supplier;
-import ru.galtor85.household_store.entity.supplier.SupplierProduct;
-import ru.galtor85.household_store.repository.supplier.SupplierProductRepository;
 import ru.galtor85.household_store.repository.supplier.SupplierRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.validator.product.ProductValidator;
@@ -22,7 +18,6 @@ import ru.galtor85.household_store.validator.product.ProductValidator;
 public class EntityFinder {
 
     private final SupplierRepository supplierRepository;
-    private final SupplierProductRepository supplierProductRepository;
     private final LogMessageService logMsg;
     private final ProductValidator productValidator;
 
@@ -30,11 +25,10 @@ public class EntityFinder {
      * Finds supplier by ID.
      *
      * @param id supplier ID
-     * @return supplier entity
      * @throws SupplierNotFoundException if not found
      */
-    public Supplier findSupplierById(Long id) {
-        return supplierRepository.findById(id)
+    public void findSupplierById(Long id) {
+        supplierRepository.findById(id)
                 .orElseThrow(() -> {
                     log.error(logMsg.get("manager.supplier.log.not.found", id));
                     return new SupplierNotFoundException(id);
@@ -50,20 +44,5 @@ public class EntityFinder {
      */
     public Product findProductById(Long id) {
         return productValidator.validateProductExists(id);
-    }
-
-    /**
-     * Finds supplier product by ID.
-     *
-     * @param id supplier product ID
-     * @return supplier product entity
-     * @throws SupplierProductNotFoundException if not found
-     */
-    public SupplierProduct findSupplierProductById(Long id) {
-        return supplierProductRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.error(logMsg.get("manager.supplier.product.log.not.found", id));
-                    return new SupplierProductNotFoundException(id);
-                });
     }
 }

@@ -280,18 +280,6 @@ public class CashRegisterService {
     // HELPER METHODS
     // =========================================================================
 
-    /** Checks if cash register exists by ID. */
-    public boolean existsById(Long cashRegisterId) {
-        return cashRegisterRepository.existsById(cashRegisterId);
-    }
-
-    /** Checks if cash register is active. */
-    public boolean isActive(Long cashRegisterId) {
-        return cashRegisterRepository.findById(cashRegisterId)
-                .map(CashRegister::getIsActive)
-                .orElse(false);
-    }
-
     private BigDecimal getCurrentBalance(CashRegister cashRegister) {
         return getCalculatedBalance(cashRegister);
     }

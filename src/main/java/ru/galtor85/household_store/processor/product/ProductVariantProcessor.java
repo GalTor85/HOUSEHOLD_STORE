@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.product.ProductVariantException;
 import ru.galtor85.household_store.dto.request.product.ProductCreateRequest;
-import ru.galtor85.household_store.dto.response.product.ProductDto;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.product.ProductAttribute;
 import ru.galtor85.household_store.mapper.product.ProductAttributeMapper;
@@ -34,21 +33,6 @@ public class ProductVariantProcessor {
     private final LogMessageService logMsg;
 
     /**
-     * Creates a variant for a parent product.
-     *
-     * @param parentProductId the parent product ID
-     * @param variantRequest  the variant creation request
-     * @param managerId       the manager ID
-     * @return created variant DTO
-     * @throws ProductVariantException if creation fails
-     */
-    @Transactional
-    public ProductDto createVariant(Long parentProductId, ProductCreateRequest variantRequest,
-                                    Long managerId) {
-        return createVariantInternal(parentProductId, variantRequest, managerId);
-    }
-
-    /**
      * Creates multiple variants for a parent product.
      *
      * @param parentProduct   the parent product
@@ -63,8 +47,8 @@ public class ProductVariantProcessor {
         }
     }
 
-    private ProductDto createVariantInternal(Long parentProductId, ProductCreateRequest variantRequest,
-                                             Long managerId) {
+    private void createVariantInternal(Long parentProductId, ProductCreateRequest variantRequest,
+                                       Long managerId) {
 
         Product parentProduct = validator.validateProductExists(parentProductId);
 
@@ -95,7 +79,7 @@ public class ProductVariantProcessor {
                     parentProductId
             ));
 
-            return productMapper.toDto(savedVariant);
+            productMapper.toDto(savedVariant);
 
         } catch (Exception e) {
             log.error(logMsg.get(

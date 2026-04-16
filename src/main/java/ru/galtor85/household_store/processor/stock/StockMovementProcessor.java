@@ -26,8 +26,6 @@ import java.util.stream.Collectors;
 public class StockMovementProcessor {
 
     private static final String CREATED_AT_FIELD = "createdAt";
-    private static final int FIRST_PAGE = 0;
-    private static final int SINGLE_RESULT_SIZE = 1;
 
     private final StockMovementRepository movementRepository;
     private final StockMovementEnricher movementEnricher;
@@ -115,26 +113,6 @@ public class StockMovementProcessor {
         List<String> batches = movementRepository.findBatchNumbersByProduct(productId);
         log.debug(logMsg.get("stock.product.batches.fetched", productId));
         return batches;
-    }
-
-    /**
-     * Retrieves the latest stock movement for a specific product and batch.
-     *
-     * @param productId   the product ID
-     * @param batchNumber the batch number
-     * @return StockMovementDto or null if not found
-     */
-    @Transactional(readOnly = true)
-    public StockMovementDto getLatestBatchMovement(Long productId, String batchNumber) {
-        Pageable pageable = PageRequest.of(FIRST_PAGE, SINGLE_RESULT_SIZE, Sort.by(CREATED_AT_FIELD).descending());
-        List<StockMovement> movements = movementRepository
-                .findLatestByBatchAndProduct(batchNumber, productId, pageable);
-
-        if (movements.isEmpty()) {
-            return null;
-        }
-
-        return movementEnricher.enrichMovementDto(movements.getFirst());
     }
 
     /**

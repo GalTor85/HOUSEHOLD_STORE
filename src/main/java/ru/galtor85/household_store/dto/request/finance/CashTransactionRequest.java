@@ -16,6 +16,9 @@ import java.math.BigDecimal;
 
 import static ru.galtor85.household_store.constants.TechnicalConstants.MIN_AMOUNT_STR;
 
+/**
+ * Request DTO for creating a cash transaction.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -80,71 +83,5 @@ public class CashTransactionRequest {
     @Schema(hidden = true)
     public String getNormalizedCurrency() {
         return currency != null ? currency.toUpperCase().trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasPaymentMethod() {
-        return paymentMethod != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasNotes() {
-        return notes != null && !notes.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasDescription() {
-        return description != null && !description.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isIncome() {
-        return transactionType == TransactionType.INCOME;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isExpense() {
-        return transactionType == TransactionType.EXPENSE;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isRefund() {
-        return transactionType == TransactionType.REFUND;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasInvoice() {
-        return invoiceId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasSalesOrder() {
-        return salesOrderId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasPurchaseOrder() {
-        return purchaseOrderId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasCustomer() {
-        return customerId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasOriginalTransaction() {
-        return originalTransactionId != null;
     }
 }

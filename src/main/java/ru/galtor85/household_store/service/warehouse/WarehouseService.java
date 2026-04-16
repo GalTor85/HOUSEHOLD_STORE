@@ -50,7 +50,7 @@ import static ru.galtor85.household_store.constants.PaginationConstants.CODE_DIR
  * </ul>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Service

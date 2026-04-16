@@ -79,75 +79,6 @@ public class PaymentResult {
     }
 
     /**
-     * Creates a successful payment result with payment URL
-     *
-     * @param transactionId provider transaction ID
-     * @param paymentUrl URL for payment completion
-     * @return successful payment result
-     */
-    public static PaymentResult success(String transactionId, String paymentUrl) {
-        return PaymentResult.builder()
-                .success(true)
-                .transactionId(transactionId)
-                .paymentUrl(paymentUrl)
-                .build();
-    }
-
-    /**
-     * Creates a successful payment result with fees
-     *
-     * @param transactionId provider transaction ID
-     * @param fee fee amount
-     * @param netAmount net amount after fees
-     * @return successful payment result
-     */
-    public static PaymentResult success(String transactionId, BigDecimal fee, BigDecimal netAmount) {
-        return PaymentResult.builder()
-                .success(true)
-                .transactionId(transactionId)
-                .fee(fee)
-                .netAmount(netAmount)
-                .build();
-    }
-
-    /**
-     * Creates a failed payment result
-     *
-     * @param errorMessage error description
-     * @return failed payment result
-     */
-    public static PaymentResult failure(String errorMessage) {
-        return PaymentResult.builder()
-                .success(false)
-                .errorMessage(errorMessage)
-                .build();
-    }
-
-    /**
-     * Creates a failed payment result with transaction ID
-     *
-     * @param transactionId provider transaction ID
-     * @param errorMessage error description
-     * @return failed payment result
-     */
-    public static PaymentResult failure(String transactionId, String errorMessage) {
-        return PaymentResult.builder()
-                .success(false)
-                .transactionId(transactionId)
-                .errorMessage(errorMessage)
-                .build();
-    }
-
-    /**
-     * Checks if the result has a payment URL
-     *
-     * @return true if payment URL is present
-     */
-    public boolean hasPaymentUrl() {
-        return paymentUrl != null && !paymentUrl.isEmpty();
-    }
-
-    /**
      * Checks if the result has fee information
      *
      * @return true if fee information is present
@@ -156,21 +87,4 @@ public class PaymentResult {
         return fee != null || netAmount != null;
     }
 
-    /**
-     * Gets formatted fee amount
-     *
-     * @return formatted fee string
-     */
-    public String getFormattedFee() {
-        return fee != null ? String.format("%.2f", fee) : "0.00";
-    }
-
-    /**
-     * Gets formatted net amount
-     *
-     * @return formatted net amount string
-     */
-    public String getFormattedNetAmount() {
-        return netAmount != null ? String.format("%.2f", netAmount) : "0.00";
-    }
 }

@@ -10,6 +10,9 @@ import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.time.LocalDateTime;
 
+/**
+ * Scheduler for cleaning up expired JWT tokens.
+ */
 @Slf4j
 @Component
 @EnableScheduling

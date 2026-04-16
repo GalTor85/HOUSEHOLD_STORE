@@ -9,7 +9,6 @@ import ru.galtor85.household_store.advice.exception.cell.CellNotFoundException;
 import ru.galtor85.household_store.builder.stock.StockMovementBuilder;
 import ru.galtor85.household_store.calculator.ReceivingQuantityCalculator;
 import ru.galtor85.household_store.dto.common.ReceiveStockItem;
-import ru.galtor85.household_store.entity.order.OrderType;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.order.PurchaseOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
@@ -319,7 +318,7 @@ public class CellBasedReceivingProcessor {
                 warehouseId,
                 quantity,
                 MovementType.RECEIPT,
-                OrderType.PURCHASE.name(),
+                order.getOrderType().name(),
                 order.getId(),
                 order.getOrderNumber(),
                 performedBy,

@@ -7,7 +7,6 @@ import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
-import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.time.LocalDateTime;
@@ -36,21 +35,6 @@ public class OrderCancellationHelper {
         cancelPendingInvoices(order.getInvoices());
 
         log.debug(logMsg.get("order.cancellation.purchase.invoices.cancelled", order.getId()));
-    }
-
-    /**
-     * Cancels a sales order and its pending invoices.
-     *
-     * @param order  the sales order
-     * @param reason cancellation reason
-     */
-    public void cancelSalesOrder(SalesOrder order, String reason) {
-        order.setStatus(OrderStatus.CANCELLED);
-        order.setCancelledAt(LocalDateTime.now());
-        order.setCancellationReason(reason);
-        cancelPendingInvoices(order.getInvoices());
-
-        log.debug(logMsg.get("order.cancellation.sales.invoices.cancelled", order.getId()));
     }
 
     private void cancelPendingInvoices(List<Invoice> invoices) {

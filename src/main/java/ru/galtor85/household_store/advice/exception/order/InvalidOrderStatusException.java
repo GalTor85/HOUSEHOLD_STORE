@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.order;
 
+import lombok.Getter;
+
+@Getter
 public class InvalidOrderStatusException extends RuntimeException {
     private final String invalidStatus;
 
@@ -8,7 +11,4 @@ public class InvalidOrderStatusException extends RuntimeException {
         this.invalidStatus = invalidStatus;
     }
 
-    public String getInvalidStatus() {
-        return invalidStatus;
-    }
 }

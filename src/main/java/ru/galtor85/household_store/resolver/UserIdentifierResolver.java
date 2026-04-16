@@ -25,7 +25,7 @@ import ru.galtor85.household_store.util.email.EmailMasker;
  * </ol>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component

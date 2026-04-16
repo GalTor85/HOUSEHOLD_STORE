@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.system;
 
+import lombok.Getter;
+
+@Getter
 public class SystemInfoException extends RuntimeException {
     private final String infoType;
 
@@ -13,7 +16,4 @@ public class SystemInfoException extends RuntimeException {
         this.infoType = infoType;
     }
 
-    public String getInfoType() {
-        return infoType;
-    }
 }

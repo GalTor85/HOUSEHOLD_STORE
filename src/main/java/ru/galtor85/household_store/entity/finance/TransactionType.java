@@ -2,77 +2,54 @@ package ru.galtor85.household_store.entity.finance;
 
 import ru.galtor85.household_store.service.i18n.MessageService;
 
+/**
+ * Transaction type enumeration.
+ */
 public enum TransactionType {
     INCOME,
     EXPENSE,
     REFUND;
 
+    private static final String COLOR_INCOME = "#28a745";
+    private static final String COLOR_EXPENSE = "#dc3545";
+    private static final String COLOR_REFUND = "#ffc107";
+    private static final String ICON_INCOME = "trending-up";
+    private static final String ICON_EXPENSE = "trending-down";
+    private static final String ICON_REFUND = "repeat";
+    private static final String SIGN_PLUS = "+";
+    private static final String SIGN_MINUS = "-";
+
     /**
-     * Получает локализованное название типа операции через MessageService
+     * Returns localized transaction type name.
      */
     public String getLocalizedName(MessageService messageService) {
-        return messageService.get("transaction.type." + this.name());
+        return messageService.get("transaction.type." + name());
     }
 
     /**
-     * Получает локализованное название типа операции с параметрами
-     */
-    public String getLocalizedName(MessageService messageService, Object... args) {
-        return messageService.get("transaction.type." + this.name(), args);
-    }
-
-    /**
-     * Получает описание типа операции
-     */
-    public String getDescription(MessageService messageService) {
-        return messageService.get("transaction.type.description." + this.name());
-    }
-
-    /**
-     * Получает цвет для отображения в UI (HEX)
+     * Returns color for UI display.
      */
     public String getColor() {
         return switch (this) {
-            case INCOME -> "#28a745";   // зеленый
-            case EXPENSE -> "#dc3545";   // красный
-            case REFUND -> "#ffc107";    // желтый
+            case INCOME -> COLOR_INCOME;
+            case EXPENSE -> COLOR_EXPENSE;
+            case REFUND -> COLOR_REFUND;
         };
     }
 
     /**
-     * Получает иконку для отображения
+     * Returns icon name for UI display.
      */
     public String getIcon() {
         return switch (this) {
-            case INCOME -> "trending-up";
-            case EXPENSE -> "trending-down";
-            case REFUND -> "repeat";
+            case INCOME -> ICON_INCOME;
+            case EXPENSE -> ICON_EXPENSE;
+            case REFUND -> ICON_REFUND;
         };
     }
 
     /**
-     * Проверяет, является ли операция приходом
-     */
-    public boolean isIncome() {
-        return this == INCOME;
-    }
-
-    /**
-     * Проверяет, является ли операция расходом
-     */
-    public boolean isExpense() {
-        return this == EXPENSE;
-    }
-
-    /**
-     * Проверяет, является ли операция возвратом
-     */
-    public boolean isRefund() {
-        return this == REFUND;
-    }
-
-    /**
-     * Получает множитель для расчета (1 - приход, -1 - расход)
+     * Returns multiplier for balance calculation.
      */
     public int getMultiplier() {
         return switch (this) {
@@ -82,12 +59,12 @@ public enum TransactionType {
     }
 
     /**
-     * Получает знак для отображения
+     * Returns sign for display.
      */
     public String getSign() {
         return switch (this) {
-            case INCOME, REFUND -> "+";
-            case EXPENSE -> "-";
+            case INCOME, REFUND -> SIGN_PLUS;
+            case EXPENSE -> SIGN_MINUS;
         };
     }
 }

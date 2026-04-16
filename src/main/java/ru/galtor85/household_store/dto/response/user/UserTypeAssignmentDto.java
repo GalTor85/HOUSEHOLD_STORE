@@ -27,7 +27,7 @@ public class UserTypeAssignmentDto {
     @Schema(description = "User type", example = "RETAIL")
     private UserType userType;
 
-    @Schema(description = "Localized user type name", example = "Розничный покупатель")
+    @Schema(description = "Localized user type name", example = " Retail buyer")
     private String userTypeName;
 
     @Schema(description = "Assignment timestamp")

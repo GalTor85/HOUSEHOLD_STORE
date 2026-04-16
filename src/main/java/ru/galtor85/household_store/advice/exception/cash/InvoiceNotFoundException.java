@@ -3,14 +3,23 @@ package ru.galtor85.household_store.advice.exception.cash;
 import lombok.Getter;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
+/**
+ * Exception thrown when an invoice is not found.
+ */
 @Getter
 public class InvoiceNotFoundException extends RuntimeException {
+
+    private static final String MESSAGE_WITH_ID = "Invoice with ID %d not found";
+    private static final String MESSAGE_WITH_NUMBER = "Invoice with number %s not found";
+    private static final String MESSAGE_DEFAULT = "Invoice not found";
 
     private final Long invoiceId;
     private final String invoiceNumber;
 
     /**
-     * Конструктор для поиска по ID
+     * Constructor for lookup by ID.
+     *
+     * @param invoiceId invoice ID
      */
     public InvoiceNotFoundException(Long invoiceId) {
         super();
@@ -19,7 +28,9 @@ public class InvoiceNotFoundException extends RuntimeException {
     }
 
     /**
-     * Конструктор для поиска по номеру
+     * Constructor for lookup by number.
+     *
+     * @param invoiceNumber invoice number
      */
     public InvoiceNotFoundException(String invoiceNumber) {
         super();
@@ -28,7 +39,10 @@ public class InvoiceNotFoundException extends RuntimeException {
     }
 
     /**
-     * Конструктор с кастомным сообщением
+     * Constructor with custom message.
+     *
+     * @param message custom message
+     * @param invoiceId invoice ID
      */
     public InvoiceNotFoundException(String message, Long invoiceId) {
         super(message);
@@ -37,7 +51,11 @@ public class InvoiceNotFoundException extends RuntimeException {
     }
 
     /**
-     * Конструктор с кастомным сообщением и причиной
+     * Constructor with custom message and cause.
+     *
+     * @param message custom message
+     * @param cause the cause
+     * @param invoiceId invoice ID
      */
     public InvoiceNotFoundException(String message, Throwable cause, Long invoiceId) {
         super(message, cause);
@@ -46,7 +64,10 @@ public class InvoiceNotFoundException extends RuntimeException {
     }
 
     /**
-     * Получает локализованное сообщение
+     * Returns localized message using MessageService.
+     *
+     * @param messageService message service for localization
+     * @return localized error message
      */
     public String getLocalizedMessage(MessageService messageService) {
         if (invoiceId != null) {
@@ -58,27 +79,14 @@ public class InvoiceNotFoundException extends RuntimeException {
         return messageService.get("invoice.not.found.unknown");
     }
 
-    /**
-     * Получает локализованное сообщение с параметрами
-     */
-    public String getLocalizedMessage(MessageService messageService, Object... args) {
-        if (invoiceId != null) {
-            return messageService.get("invoice.not.found", args);
-        }
-        if (invoiceNumber != null) {
-            return messageService.get("invoice.not.found.by.number", args);
-        }
-        return messageService.get("invoice.not.found.unknown");
-    }
-
     @Override
     public String getMessage() {
         if (invoiceId != null) {
-            return "Invoice with ID " + invoiceId + " not found";
+            return String.format(MESSAGE_WITH_ID, invoiceId);
         }
         if (invoiceNumber != null) {
-            return "Invoice with number " + invoiceNumber + " not found";
+            return String.format(MESSAGE_WITH_NUMBER, invoiceNumber);
         }
-        return "Invoice not found";
+        return MESSAGE_DEFAULT;
     }
 }

@@ -67,7 +67,7 @@ public class UserStatusValidator {
      */
     public void validateAdminCanManageUser(SecurityUser adminSecurity, SecurityUser targetSecurity,
                                            User adminUser) {
-        if (!adminSecurity.getRole().canManage(targetSecurity.getRole())) {
+        if (adminSecurity.getRole().cannotManage(targetSecurity.getRole())) {
             log.warn(logMsg.get(
                     "user-status-service.log.status.insufficient.rights.manage",
                     emailMasker.maskEmail(adminUser.getEmail()),

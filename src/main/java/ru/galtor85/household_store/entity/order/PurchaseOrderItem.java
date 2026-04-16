@@ -48,21 +48,10 @@ public class PurchaseOrderItem {
     @Column(name = "product_sku")
     private String productSku;
 
-    public boolean isFullyReceived() {
-        return receivedQuantity != null && receivedQuantity >= quantity;
-    }
-
     public int getRemainingQuantity() {
         if (receivedQuantity == null) {
             return quantity;
         }
         return quantity - receivedQuantity;
-    }
-
-    public void addReceived(int quantity) {
-        if (receivedQuantity == null) {
-            receivedQuantity = 0;
-        }
-        receivedQuantity += quantity;
     }
 }

@@ -10,6 +10,7 @@ import ru.galtor85.household_store.entity.user.Role;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Update role request DTO")
 public class UpdateRoleRequest {
 
     @NotNull(message = "{update-role-request.validation.role.empty}")

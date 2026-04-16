@@ -23,17 +23,17 @@ public class ProductAttribute {
     private Product product;
 
     @Column(nullable = false)
-    private String name; // Название характеристики (например, "Цвет", "Размер", "Вес")
+    private String name;
 
     @Column(nullable = false)
-    private String value; // Значение характеристики (например, "Красный", "XL", "1.5 кг")
+    private String value;
 
     @Column(name = "attribute_order")
-    private Integer order; // Порядок отображения
+    private Integer order;
 
     @Column(name = "is_required")
-    private Boolean required; // Обязательная ли характеристика
+    private Boolean required;
 
     @Column(name = "is_variant")
-    private Boolean variant; // Является ли вариантом для выбора (для вариативных товаров)
+    private Boolean variant;
 }

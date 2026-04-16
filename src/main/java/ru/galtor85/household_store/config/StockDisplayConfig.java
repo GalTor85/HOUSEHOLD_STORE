@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * <p>All values are loaded from application.properties with prefix 'app.stock.display'.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Component
@@ -25,19 +25,19 @@ public class StockDisplayConfig {
      * When available quantity is below this value, status is LOW_STOCK.
      * Default: 10
      */
-    private int lowStockThreshold;
+    private int lowStockThreshold = 10;
 
     /**
      * Cache duration in minutes for stock availability.
      * Results are cached to reduce database load.
      * Default: 5
      */
-    private int cacheMinutes;
+    private int cacheMinutes = 5;
 
     /**
      * Whether to show exact quantity to customers.
      * If false, only status is shown.
      * Default: true
      */
-    private boolean showExactQuantity;
+    private boolean showExactQuantity = true;
 }

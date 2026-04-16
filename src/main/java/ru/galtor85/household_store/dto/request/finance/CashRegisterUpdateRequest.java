@@ -6,8 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-
+/**
+ * Request DTO for updating a cash register.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -20,7 +21,4 @@ public class CashRegisterUpdateRequest {
 
     @Schema(description = "Location", example = "Main hall, counter #1")
     private String location;
-
-    @Schema(description = "Opening balance", example = "10000.00")
-    private BigDecimal openingBalance;
 }

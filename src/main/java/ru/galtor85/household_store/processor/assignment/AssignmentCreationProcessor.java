@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.dto.response.user.UserTypeAssignmentDto;
 import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.entity.user.UserTypeAssignment;
 import ru.galtor85.household_store.mapper.user.UserTypeAssignmentMapper;
@@ -34,11 +33,10 @@ public class AssignmentCreationProcessor {
      * @param reason     reason for assignment
      * @param validFrom  validity start date (optional)
      * @param validTo    validity end date (optional)
-     * @return created UserTypeAssignmentDto
      */
     @Transactional
-    public UserTypeAssignmentDto createAssignment(Long userId, UserType userType, String assignedBy,
-                                                  String reason, LocalDateTime validFrom, LocalDateTime validTo) {
+    public void createAssignment(Long userId, UserType userType, String assignedBy,
+                                 String reason, LocalDateTime validFrom, LocalDateTime validTo) {
 
         UserTypeAssignment assignment = mapper.createEntity(
                 userId, userType, assignedBy, reason, validFrom, validTo
@@ -51,6 +49,6 @@ public class AssignmentCreationProcessor {
                 userType, userId, assignedBy
         ));
 
-        return mapper.toDto(saved);
+        mapper.toDto(saved);
     }
 }

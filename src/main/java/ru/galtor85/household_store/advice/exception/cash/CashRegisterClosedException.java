@@ -3,14 +3,22 @@ package ru.galtor85.household_store.advice.exception.cash;
 import lombok.Getter;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
+/**
+ * Exception thrown when attempting to operate on a closed cash register.
+ */
 @Getter
 public class CashRegisterClosedException extends RuntimeException {
+
+    private static final String MESSAGE_WITH_NAME = "Cash register '%s' is closed";
+    private static final String MESSAGE_WITH_ID = "Cash register with ID %d is closed";
 
     private final Long cashRegisterId;
     private final String registerName;
 
     /**
-     * Конструктор
+     * Constructor with cash register ID.
+     *
+     * @param cashRegisterId cash register ID
      */
     public CashRegisterClosedException(Long cashRegisterId) {
         super();
@@ -19,7 +27,10 @@ public class CashRegisterClosedException extends RuntimeException {
     }
 
     /**
-     * Конструктор с именем кассы
+     * Constructor with cash register ID and name.
+     *
+     * @param cashRegisterId cash register ID
+     * @param registerName cash register name
      */
     public CashRegisterClosedException(Long cashRegisterId, String registerName) {
         super();
@@ -28,7 +39,10 @@ public class CashRegisterClosedException extends RuntimeException {
     }
 
     /**
-     * Конструктор с кастомным сообщением
+     * Constructor with custom message.
+     *
+     * @param message custom message
+     * @param cashRegisterId cash register ID
      */
     public CashRegisterClosedException(String message, Long cashRegisterId) {
         super(message);
@@ -37,7 +51,10 @@ public class CashRegisterClosedException extends RuntimeException {
     }
 
     /**
-     * Получает локализованное сообщение
+     * Returns localized message using MessageService.
+     *
+     * @param messageService message service for localization
+     * @return localized error message
      */
     public String getLocalizedMessage(MessageService messageService) {
         if (registerName != null) {
@@ -46,21 +63,11 @@ public class CashRegisterClosedException extends RuntimeException {
         return messageService.get("cash.register.closed", cashRegisterId);
     }
 
-    /**
-     * Получает локализованное сообщение с параметрами
-     */
-    public String getLocalizedMessage(MessageService messageService, Object... args) {
-        if (registerName != null) {
-            return messageService.get("cash.register.closed.with.name", args);
-        }
-        return messageService.get("cash.register.closed", args);
-    }
-
     @Override
     public String getMessage() {
         if (registerName != null) {
-            return "Cash register '" + registerName + "' is closed";
+            return String.format(MESSAGE_WITH_NAME, registerName);
         }
-        return "Cash register with ID " + cashRegisterId + " is closed";
+        return String.format(MESSAGE_WITH_ID, cashRegisterId);
     }
 }

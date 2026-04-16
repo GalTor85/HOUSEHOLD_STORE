@@ -3,8 +3,10 @@ package ru.galtor85.household_store.entity.finance;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.FieldNameConstants;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
@@ -15,11 +17,16 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Data
+/**
+ * Invoice entity.
+ */
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@FieldNameConstants
 @Table(name = "invoices", schema = "household_schema")
 public class Invoice {
 
@@ -80,7 +87,6 @@ public class Invoice {
     @Builder.Default
     private List<CashTransaction> cashTransactions = new ArrayList<>();
 
-    // Invoice.java
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "purchase_order_id", insertable = false, updatable = false)
     private PurchaseOrder purchaseOrder;
@@ -88,10 +94,6 @@ public class Invoice {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sales_order_id", insertable = false, updatable = false)
     private SalesOrder salesOrder;
-
-    // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-    // =========================================================================
 
     public boolean isPurchaseOrder() {
         return purchaseOrderId != null;
@@ -101,73 +103,24 @@ public class Invoice {
         return salesOrderId != null;
     }
 
-    public Long getOrderId() {
-        return purchaseOrderId != null ? purchaseOrderId : salesOrderId;
-    }
-
-    /**
-     * Проверяет, оплачен ли счет
-     */
-    public boolean isPaid() {
-        return status == InvoiceStatus.PAID;
-    }
-
-    /**
-     * Проверяет, можно ли оплатить счет
-     */
     public boolean isPayable() {
         return status == InvoiceStatus.PENDING || status == InvoiceStatus.PARTIALLY_PAID;
     }
 
-    /**
-     * Проверяет, можно ли отменить счет
-     */
+    public boolean isNotPayable() {
+        return !isPayable();
+    }
+
+
     public boolean isCancellable() {
         return status == InvoiceStatus.PENDING || status == InvoiceStatus.PARTIALLY_PAID;
     }
 
-    /**
-     * Проверяет, просрочен ли счет
-     */
-    public boolean isOverdue() {
-        return dueDate != null && LocalDateTime.now().isAfter(dueDate) && !isPaid();
-    }
-
-    /**
-     * Отмечает счет как оплаченный
-     */
     public void markAsPaid() {
         this.status = InvoiceStatus.PAID;
         this.paidDate = LocalDateTime.now();
     }
 
-    /**
-     * Отмечает счет как частично оплаченный
-     */
-    public void markAsPartiallyPaid() {
-        if (this.status != InvoiceStatus.PAID) {
-            this.status = InvoiceStatus.PARTIALLY_PAID;
-        }
-    }
-
-    /**
-     * Отменяет счет
-     */
-    public void cancel() {
-        this.status = InvoiceStatus.CANCELLED;
-    }
-
-    /**
-     * Добавляет кассовую операцию
-     */
-    public void addCashTransaction(CashTransaction transaction) {
-        cashTransactions.add(transaction);
-        transaction.setInvoice(this);
-    }
-
-    /**
-     * Получает общую сумму оплаченных операций
-     */
     public BigDecimal getTotalPaidAmount() {
         return cashTransactions.stream()
                 .map(t -> t.getTransactionType() == TransactionType.REFUND
@@ -176,9 +129,6 @@ public class Invoice {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /**
-     * Получает остаток к оплате
-     */
     public BigDecimal getRemainingAmount() {
         return amount.subtract(getTotalPaidAmount());
     }

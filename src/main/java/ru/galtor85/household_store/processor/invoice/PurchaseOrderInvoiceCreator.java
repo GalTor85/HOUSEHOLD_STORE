@@ -8,10 +8,12 @@ import ru.galtor85.household_store.config.FinancialConfig;
 import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.finance.PaymentMethod;
+import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -20,6 +22,7 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.DATE_FORM
 /**
  * Invoice creator for purchase orders.
  */
+@SuppressWarnings("ALL")
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -67,8 +70,7 @@ public class PurchaseOrderInvoiceCreator implements InvoiceCreator<PurchaseOrder
      * @param order the purchase order
      * @return PaymentMethod (always BANK_TRANSFER for purchases)
      */
-    @Override
-    public PaymentMethod determinePaymentMethod(PurchaseOrder order) {
+    private PaymentMethod determinePaymentMethod(PurchaseOrder order) {
         return PaymentMethod.BANK_TRANSFER;
     }
 
@@ -78,8 +80,7 @@ public class PurchaseOrderInvoiceCreator implements InvoiceCreator<PurchaseOrder
      * @param order the purchase order
      * @return due date (configured days from now)
      */
-    @Override
-    public LocalDateTime calculateDueDate(PurchaseOrder order) {
+    private LocalDateTime calculateDueDate(PurchaseOrder order) {
         return LocalDateTime.now().plusDays(purchaseDueDays);
     }
 
@@ -89,8 +90,7 @@ public class PurchaseOrderInvoiceCreator implements InvoiceCreator<PurchaseOrder
      * @param order the purchase order
      * @return localized description
      */
-    @Override
-    public String getDescription(PurchaseOrder order) {
+    private String getDescription(PurchaseOrder order) {
         return messageService.get("invoice.description.purchase", order.getOrderNumber());
     }
 
@@ -100,8 +100,7 @@ public class PurchaseOrderInvoiceCreator implements InvoiceCreator<PurchaseOrder
      * @param order the purchase order
      * @return localized notes with dates
      */
-    @Override
-    public String getNotes(PurchaseOrder order) {
+    private String getNotes(PurchaseOrder order) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DATE_FORMAT_PATTERN);
         return messageService.get("invoice.notes.purchase",
                 order.getOrderNumber(),
@@ -117,6 +116,8 @@ public class PurchaseOrderInvoiceCreator implements InvoiceCreator<PurchaseOrder
      */
     @Override
     public boolean shouldCreateInvoice(PurchaseOrder order) {
-        return true;
+        return order.getStatus() != OrderStatus.CANCELLED
+                && order.getTotalAmount() != null
+                && order.getTotalAmount().compareTo(BigDecimal.ZERO) > 0;
     }
 }

@@ -11,9 +11,13 @@ import ru.galtor85.household_store.entity.user.Role;
 
 import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
+/**
+ * Request DTO for creating a new user.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "User create request", title = "User Create Request")
 public class UserCreateRequest {
 
     @Email(message = "{user-create-request.validation.email.invalid}")
@@ -58,7 +62,4 @@ public class UserCreateRequest {
 
     @Schema(description = "User role (default: USER)", example = "USER")
     private Role role;
-
-    @Schema(description = "User active status (default: true)", example = "true")
-    private Boolean active;
 }

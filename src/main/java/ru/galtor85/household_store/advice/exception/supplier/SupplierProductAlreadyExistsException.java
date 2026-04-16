@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.supplier;
 
+import lombok.Getter;
+
+@Getter
 public class SupplierProductAlreadyExistsException extends RuntimeException {
     private final Long productId;
     private final Long supplierId;
@@ -10,11 +13,4 @@ public class SupplierProductAlreadyExistsException extends RuntimeException {
         this.supplierId = supplierId;
     }
 
-    public Long getProductId() {
-        return productId;
-    }
-
-    public Long getSupplierId() {
-        return supplierId;
-    }
 }

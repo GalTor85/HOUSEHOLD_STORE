@@ -19,14 +19,14 @@ public class CategoryWarehouse {
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String category; // Категория товара
+    private String category;
 
     @Column(name = "warehouse_id", nullable = false)
-    private Long warehouseId; // ID склада для этой категории
+    private Long warehouseId;
 
     @Column(name = "is_default")
-    private Boolean isDefault; // Склад по умолчанию для этой категории
+    private Boolean isDefault;
 
     @Column(name = "priority")
-    private Integer priority; // Приоритет (если несколько складов)
+    private Integer priority;
 }

@@ -1,7 +1,5 @@
 package ru.galtor85.household_store.constants;
 
-import java.math.BigDecimal;
-
 /**
  * Technical constants for the application.
  *
@@ -14,7 +12,7 @@ import java.math.BigDecimal;
  * loaded via {@link ru.galtor85.household_store.config.BusinessConfig}.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 public final class TechnicalConstants {
 
@@ -30,16 +28,6 @@ public final class TechnicalConstants {
      * Default barcode format for warehouse and cell identification
      */
     public static final String DEFAULT_BARCODE_FORMAT = "CODE_128";
-
-    /**
-     * Standard EAN-13 barcode length
-     */
-    public static final int BARCODE_EAN13_LENGTH = 13;
-
-    /**
-     * Standard UPC-A barcode length
-     */
-    public static final int BARCODE_UPC_LENGTH = 12;
 
     /**
      * Minimum barcode length
@@ -234,11 +222,6 @@ public final class TechnicalConstants {
     public static final boolean DEFAULT_IS_MAIN = false;
 
     /**
-     * Default isThumbnail flag
-     */
-    public static final boolean DEFAULT_IS_THUMBNAIL = false;
-
-    /**
      * Default media type
      */
     public static final String DEFAULT_MEDIA_TYPE = "IMAGE";
@@ -252,11 +235,6 @@ public final class TechnicalConstants {
      * Maximum caption length
      */
     public static final int MAX_CAPTION_LENGTH = 500;
-
-    /**
-     * Maximum metadata JSON length
-     */
-    public static final int MAX_METADATA_LENGTH = 2000;
 
     /**
      * Default unknown file name
@@ -407,21 +385,6 @@ public final class TechnicalConstants {
     // =========================================================================
 
     /**
-     * BCrypt strength for password encoding
-     */
-    public static final int BCRYPT_STRENGTH = 10;
-
-    /**
-     * Minimum password length (technical minimum)
-     */
-    public static final int TECHNICAL_MIN_PASSWORD_LENGTH = 6;
-
-    /**
-     * JWT key length in bytes (256 bits = 32 bytes for AES-256)
-     */
-    public static final int JWT_KEY_LENGTH = 32;
-
-    /**
      * JWT token prefix for Authorization header
      */
     public static final String TOKEN_PREFIX = "Bearer ";
@@ -481,11 +444,6 @@ public final class TechnicalConstants {
      */
     public static final String ROLE_MANAGER = "MANAGER";
 
-    /**
-     * Regular user role – basic access
-     */
-    public static final String ROLE_USER = "USER";
-
     // =========================================================================
     // CORS CONFIGURATION
     // =========================================================================
@@ -520,11 +478,6 @@ public final class TechnicalConstants {
      * Maximum email length
      */
     public static final int MAX_EMAIL_LENGTH = 100;
-
-    /**
-     * Default source for self-registration.
-     */
-    public static final String SELF_REGISTRATION_SOURCE = "self-registration";
 
     // =========================================================================
     // PHONE
@@ -613,11 +566,6 @@ public final class TechnicalConstants {
      */
     public static final int MAX_POSITION_LENGTH = 10;
 
-    /**
-     * Maximum warehouse location length
-     */
-    public static final int MAX_WAREHOUSE_LOCATION_LENGTH = 100;
-
     // =========================================================================
     // SUPPLIER
     // =========================================================================
@@ -655,26 +603,6 @@ public final class TechnicalConstants {
      * Maximum supplier SKU length
      */
     public static final int MAX_SUPPLIER_SKU_LENGTH = 100;
-
-    /**
-     * Maximum supplier category length
-     */
-    public static final int MAX_SUPPLIER_CATEGORY_LENGTH = 100;
-
-    /**
-     * Maximum supplier product name length
-     */
-    public static final int MAX_SUPPLIER_PRODUCT_NAME_LENGTH = 200;
-
-    /**
-     * Maximum country name length
-     */
-    public static final int MAX_COUNTRY_NAME_LENGTH = 100;
-
-    /**
-     * Maximum HS code length
-     */
-    public static final int MAX_HS_CODE_LENGTH = 50;
 
     // =========================================================================
     // CATEGORY
@@ -714,21 +642,6 @@ public final class TechnicalConstants {
     public static final int CURRENCY_CODE_LENGTH = 3;
 
     /**
-     * Maximum currency name length
-     */
-    public static final int MAX_CURRENCY_NAME_LENGTH = 100;
-
-    /**
-     * Minimum currency symbol length
-     */
-    public static final int MIN_SYMBOL_LENGTH = 1;
-
-    /**
-     * Maximum currency symbol length
-     */
-    public static final int MAX_SYMBOL_LENGTH = 5;
-
-    /**
      * Default currency
      */
     public static final String DEFAULT_CURRENCY = "RUB";
@@ -748,16 +661,6 @@ public final class TechnicalConstants {
     // =========================================================================
 
     /**
-     * Maximum cash register number length
-     */
-    public static final int MAX_REGISTER_NUMBER_LENGTH = 20;
-
-    /**
-     * Maximum location length
-     */
-    public static final int MAX_LOCATION_LENGTH = 200;
-
-    /**
      * Minimum balance value
      */
     public static final String MIN_BALANCE_STR = "0.00";
@@ -772,39 +675,14 @@ public final class TechnicalConstants {
      */
     public static final String MIN_AMOUNT_STR = "0.01";
 
-    /**
-     * Minimum amount as BigDecimal
-     */
-    public static final BigDecimal MIN_AMOUNT = new BigDecimal(MIN_AMOUNT_STR);
-
     // =========================================================================
     // STOCK MOVEMENT
     // =========================================================================
 
     /**
-     * Minimum quantity for stock movement
-     */
-    public static final int MIN_MOVEMENT_QUANTITY = 1;
-
-    /**
-     * Maximum reference type length
-     */
-    public static final int MAX_REFERENCE_TYPE_LENGTH = 50;
-
-    /**
      * Maximum batch number length
      */
     public static final int MAX_BATCH_NUMBER_LENGTH = 100;
-
-    /**
-     * Maximum serial number length
-     */
-    public static final int MAX_SERIAL_NUMBER_LENGTH = 100;
-
-    /**
-     * Maximum quality certificate length
-     */
-    public static final int MAX_QUALITY_CERTIFICATE_LENGTH = 100;
 
     // =========================================================================
     // STOCK WRITE-OFF
@@ -832,11 +710,6 @@ public final class TechnicalConstants {
     // =========================================================================
     // ID GENERATION
     // =========================================================================
-
-    /**
-     * Default length for random ID suffix
-     */
-    public static final int DEFAULT_RANDOM_SUFFIX_LENGTH = 8;
 
     // =========================================================================
     // HTTP & ENCODING
@@ -920,24 +793,9 @@ public final class TechnicalConstants {
     public static final int MAX_PAYMENT_METHOD_NAME_LENGTH = 100;
 
     /**
-     * Minimum number of months for installment payment
-     */
-    public static final int MIN_INSTALLMENT_MONTHS = 1;
-
-    /**
-     * Maximum number of months for installment payment
-     */
-    public static final int MAX_INSTALLMENT_MONTHS = 36;
-
-    /**
      * Maximum length for text fields (description, reason, etc.)
      */
     public static final int MAX_TEXT_LENGTH = 500;
-
-    /**
-     * Maximum length for cardholder name
-     */
-    public static final int MAX_CARDHOLDER_NAME_LENGTH = 100;
 
     // =========================================================================
     // RESERVATION CONSTANTS

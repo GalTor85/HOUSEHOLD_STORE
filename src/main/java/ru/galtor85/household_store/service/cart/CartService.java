@@ -26,8 +26,6 @@ import ru.galtor85.household_store.validator.cart.CartValidator;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Service for managing shopping cart operations
@@ -66,19 +64,6 @@ public class CartService {
     public CartDto getActiveCart(Long userId) {
         Cart cart = cartProcessor.findActiveCart(userId);
         return cartMapper.toDto(cart);
-    }
-
-    /**
-     * Retrieves all carts (including inactive) for a user
-     *
-     * @param userId user identifier
-     * @return list of cart DTOs
-     */
-    @Transactional(readOnly = true)
-    public List<CartDto> getUserCarts(Long userId) {
-        return cartRepository.findByUserId(userId).stream()
-                .map(cartMapper::toDto)
-                .collect(Collectors.toList());
     }
 
     // =========================================================================

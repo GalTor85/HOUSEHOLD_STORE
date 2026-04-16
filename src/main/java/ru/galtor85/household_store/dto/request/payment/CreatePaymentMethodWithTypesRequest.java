@@ -23,7 +23,6 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.*;
  * which user types (RETAIL, WHOLESALE, VIP, PARTNER, EMPLOYEE) can use them.</p>
  *
  * @author G@LTor85
- * @since 1.0
  */
 @Data
 @Builder
@@ -123,11 +122,6 @@ public class CreatePaymentMethodWithTypesRequest {
             example = "123")
     private String cvv;
 
-    @Size(max = MAX_BANK_NAME_LENGTH, message = "{payment.validation.bank.name.max}")
-    @Schema(description = "Cardholder name",
-            example = "IVAN IVANOV")
-    private String cardHolderName;
-
     // =========================================================================
     // BANK ACCOUNT SPECIFIC FIELDS
     // =========================================================================
@@ -184,102 +178,6 @@ public class CreatePaymentMethodWithTypesRequest {
     @Schema(hidden = true)
     public boolean isElectronic() {
         return methodType == PaymentMethodType.ELECTRONIC;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isCash() {
-        return methodType == PaymentMethodType.CASH;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedName() {
-        return name != null ? name.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedCardNumber() {
-        if (cardNumber == null) return null;
-        return cardNumber.replaceAll("\\s", "");
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedBankAccountNumber() {
-        if (bankAccountNumber == null) return null;
-        return bankAccountNumber.replaceAll("\\s", "");
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedWalletId() {
-        if (walletId == null) return null;
-        return walletId.trim().toLowerCase();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedWalletPhone() {
-        if (walletPhone == null) return null;
-        return walletPhone.replaceAll("\\D", "");
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedCurrency() {
-        if (currency == null || currency.isBlank()) {
-            return DEFAULT_CURRENCY;
-        }
-        return currency.trim().toUpperCase();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isActiveTrue() {
-        return Boolean.TRUE.equals(active);
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public int getEffectiveSortOrder() {
-        return sortOrder != null ? sortOrder : DEFAULT_SORT_ORDER;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasUserTypesAssigned() {
-        return availableForUserTypes != null && !availableForUserTypes.isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasValidTypeSpecificFields() {
-        if (methodType == null) {
-            return false;
-        }
-
-        return switch (methodType) {
-            case CREDIT_CARD -> cardNumber != null && expiryDate != null && cvv != null;
-            case BANK_ACCOUNT -> bankAccountNumber != null && bankBic != null && bankName != null;
-            case ELECTRONIC -> walletId != null || walletPhone != null || walletEmail != null;
-            case CRYPTO -> walletId != null;
-            case MOBILE_PAYMENT -> walletPhone != null || walletId != null;
-            case CASH -> true;
-            case INSTALLMENT -> true;
-        };
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getUserTypesAsString() {
-        if (availableForUserTypes == null || availableForUserTypes.isEmpty()) {
-            return NONE_USER_TYPES;
-        }
-        return availableForUserTypes.stream()
-                .map(UserType::name)
-                .collect(java.util.stream.Collectors.joining(", "));
     }
 
     @JsonIgnore

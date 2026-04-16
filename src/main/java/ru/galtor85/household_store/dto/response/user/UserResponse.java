@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 import ru.galtor85.household_store.entity.user.Role;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @Data
 @Builder
@@ -60,9 +59,6 @@ public class UserResponse {
 
     @Schema(description = "Last update timestamp", example = "2024-01-02T15:45:00")
     private String updatedAt;
-
-    @Schema(description = "User type assignments")
-    private List<UserTypeAssignmentDto> userTypeAssignments;
 
     @Schema(description = "Current active user type")
     private UserTypeAssignmentDto currentUserType;

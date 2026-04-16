@@ -1,32 +1,37 @@
 package ru.galtor85.household_store.entity.user;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
+/**
+ * User role enumeration with hierarchy management.
+ */
 public enum Role {
     ADMIN,
     USER,
     MANAGER,
     CUSTOMER;
 
-
-    // Метод для проверки прав
+    /**
+     * Checks if this role can manage the target role.
+     *
+     * @param targetRole role to manage
+     * @return true if management is allowed
+     */
     public boolean canManage(Role targetRole) {
-        // Иерархия прав: ADMIN > MANAGER > USER > CUSTOMER
         return switch (this) {
-            case ADMIN -> true;  // Админ может управлять всеми
+            case ADMIN -> true;
             case MANAGER -> targetRole == USER || targetRole == CUSTOMER;
             case USER -> targetRole == CUSTOMER;
-            case CUSTOMER -> false;  // Клиенты не могут управлять никем
-            default -> false;
+            case CUSTOMER -> false;
         };
     }
 
-    // Получить роли, которыми можно управлять
-    public List<Role> getManageableRoles() {
-        return Arrays.stream(Role.values())
-                .filter(role -> this.canManage(role))
-                .collect(Collectors.toList());
+    /**
+     * Checks if this role CANNOT manage the target role.
+     * This method is designed to be used in validation checks without negation.
+     *
+     * @param targetRole role to manage
+     * @return true if management is NOT allowed
+     */
+    public boolean cannotManage(Role targetRole) {
+        return !canManage(targetRole);
     }
 }

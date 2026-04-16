@@ -19,7 +19,7 @@ import java.util.Optional;
  * including stock queries, low stock detection, and warehouse-specific operations.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Repository
 public interface ProductStockRepository extends JpaRepository<ProductStock, Long> {
@@ -173,7 +173,7 @@ public interface ProductStockRepository extends JpaRepository<ProductStock, Long
     @Modifying
     @Query("UPDATE ProductStock ps SET ps.quantity = ps.quantity + :quantity, ps.updatedAt = CURRENT_TIMESTAMP " +
             "WHERE ps.productId = :productId AND ps.warehouseId = :warehouseId")
-    int increaseStock(@Param("productId") Long productId,
+    void increaseStock(@Param("productId") Long productId,
                       @Param("warehouseId") Long warehouseId,
                       @Param("quantity") int quantity);
 }

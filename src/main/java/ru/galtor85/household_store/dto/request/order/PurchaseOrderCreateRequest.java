@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.dto.request.order;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -16,6 +15,9 @@ import ru.galtor85.household_store.dto.common.PurchaseOrderItemCreateDto;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Request DTO for creating a new purchase order.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -50,44 +52,4 @@ public class PurchaseOrderCreateRequest {
     @Size(max = 1000, message = "{purchase.validation.notes.max}")
     @Schema(description = "Notes")
     private String notes;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasExpectedDelivery() {
-        return expectedDelivery != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasWarehouseLocation() {
-        return warehouseLocation != null && !warehouseLocation.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasInvoiceNumber() {
-        return invoiceNumber != null && !invoiceNumber.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasPaymentDue() {
-        return paymentDue != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasNotes() {
-        return notes != null && !notes.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public int getTotalItems() {
-        return items != null ? items.size() : 0;
-    }
 }

@@ -1,16 +1,16 @@
 package ru.galtor85.household_store.advice.exception.validation;
 
+import lombok.Getter;
+
 import java.math.BigDecimal;
 
+@Getter
 public class InvalidPriceException extends RuntimeException {
     private final BigDecimal invalidPrice;
 
     public InvalidPriceException(BigDecimal invalidPrice) {
-        super(); // Не передаем хардкодное сообщение
+        super();
         this.invalidPrice = invalidPrice;
     }
 
-    public BigDecimal getInvalidPrice() {
-        return invalidPrice;
-    }
 }

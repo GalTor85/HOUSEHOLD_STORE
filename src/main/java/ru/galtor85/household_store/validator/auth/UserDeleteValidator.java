@@ -95,7 +95,7 @@ public class UserDeleteValidator {
      * @throws UserAccessException if insufficient rights
      */
     public void validateAdminRights(SecurityUser adminSecurity, SecurityUser targetSecurity) {
-        if (!adminSecurity.getRole().canManage(targetSecurity.getRole())) {
+        if (adminSecurity.getRole().cannotManage(targetSecurity.getRole())) {
             log.warn(logMsg.get(
                     "user-deleted-service.log.user.delete.insufficient.rights",
                     adminSecurity.getUsername(),

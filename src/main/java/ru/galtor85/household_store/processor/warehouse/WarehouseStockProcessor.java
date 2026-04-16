@@ -30,7 +30,7 @@ import static ru.galtor85.household_store.constants.PaginationConstants.DESC_SOR
  * and warehouse summaries.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component

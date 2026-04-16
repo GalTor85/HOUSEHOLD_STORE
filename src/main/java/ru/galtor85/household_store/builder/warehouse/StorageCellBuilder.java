@@ -5,9 +5,22 @@ import ru.galtor85.household_store.dto.request.warehouse.StorageCellCreateReques
 import ru.galtor85.household_store.entity.warehouse.StorageCell;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_BARCODE_FORMAT;
+
+/**
+ * Builder for storage cell entities.
+ */
 @Component
 public class StorageCellBuilder {
 
+    /**
+     * Builds storage cell from creation request.
+     *
+     * @param request creation request
+     * @param warehouse parent warehouse
+     * @param barcode generated barcode
+     * @return storage cell entity
+     */
     public StorageCell buildFromRequest(StorageCellCreateRequest request,
                                         Warehouse warehouse,
                                         String barcode) {
@@ -15,7 +28,7 @@ public class StorageCellBuilder {
                 .warehouse(warehouse)
                 .code(request.getCode())
                 .barcode(barcode)
-                .barcodeFormat("CODE_128")
+                .barcodeFormat(DEFAULT_BARCODE_FORMAT)
                 .section(request.getSection())
                 .rack(request.getRack())
                 .shelf(request.getShelf())
@@ -29,13 +42,11 @@ public class StorageCellBuilder {
                 .build();
     }
 
-    public void assignProductToCell(StorageCell cell, Long productId, int quantity) {
-        cell.setCurrentProductId(productId);
-        cell.setCurrentQuantity(quantity);
-        cell.setIsOccupied(true);
-        cell.setLastInventoryDate(java.time.LocalDateTime.now());
-    }
-
+    /**
+     * Clears cell by removing product and resetting quantity.
+     *
+     * @param cell storage cell to clear
+     */
     public void clearCell(StorageCell cell) {
         cell.setCurrentProductId(null);
         cell.setCurrentQuantity(0);

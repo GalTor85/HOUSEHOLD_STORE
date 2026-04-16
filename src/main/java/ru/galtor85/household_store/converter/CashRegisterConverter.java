@@ -8,9 +8,6 @@ import ru.galtor85.household_store.entity.finance.CashRegister;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Converter for transforming CashRegister entities to DTOs
@@ -92,43 +89,5 @@ public class CashRegisterConverter {
                 .createdAt(cashRegister.getCreatedAt())
                 .updatedAt(cashRegister.getUpdatedAt())
                 .build();
-    }
-
-    // =========================================================================
-    // LIST CONVERSION
-    // =========================================================================
-
-    /**
-     * Converts a list of cash registers to simplified DTOs (without current balance)
-     */
-    public List<CashRegisterDto> toDtoList(List<CashRegister> cashRegisters) {
-        if (cashRegisters == null) {
-            return null;
-        }
-        return cashRegisters.stream()
-                .map(this::toSimpleDto)
-                .collect(Collectors.toList());
-    }
-
-
-
-    /**
-     * Converts a list of cash registers to DTOs with current balances
-     *
-     * @param cashRegisters list of cash register entities
-     * @param currentBalances map of register ID to current balance (provided by service)
-     * @return list of CashRegisterDto with current balances
-     */
-    public List<CashRegisterDto> toDtoListWithBalance(List<CashRegister> cashRegisters,
-                                           Map<Long, BigDecimal> currentBalances) {
-        if (cashRegisters == null) {
-            return null;
-        }
-        return cashRegisters.stream()
-                .map(register -> {
-                    BigDecimal currentBalance = currentBalances.get(register.getId());
-                    return toDto(register, currentBalance);
-                })
-                .collect(Collectors.toList());
     }
 }

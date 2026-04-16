@@ -3,6 +3,7 @@ package ru.galtor85.household_store.advice;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.NoSuchMessageException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -1075,6 +1076,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        String message = messageService.get("error.data.integrity");
+        log.error("DataIntegrityViolationException: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(message));
+    }
+
     // =========================================================================
     // HELPER METHODS
     // =========================================================================
@@ -1131,4 +1139,5 @@ public class GlobalExceptionHandler {
         }
         return String.format("%,.2f", amount);
     }
+
 }

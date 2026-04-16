@@ -14,12 +14,4 @@ public class CellAlreadyOccupiedException extends RuntimeException {
         this.currentProductId = currentProductId;
         this.cellCode = null;
     }
-
-    public CellAlreadyOccupiedException(String cellCode, Long warehouseId, Long currentProductId) {
-        super();
-        this.cellCode = cellCode;
-        this.currentProductId = currentProductId;
-        this.cellId = null;
-    }
-
 }

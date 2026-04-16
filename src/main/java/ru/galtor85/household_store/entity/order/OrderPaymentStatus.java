@@ -22,42 +22,5 @@ public enum OrderPaymentStatus {
     REFUNDED,
 
     /** Payment was cancelled */
-    CANCELLED;
-
-    /**
-     * Checks if the order is fully paid.
-     *
-     * @return true if status is PAID
-     */
-    public boolean isPaid() {
-        return this == PAID;
-    }
-
-
-    /**
-     * Checks if the order can be paid.
-     *
-     * @return true if status is PENDING or PARTIALLY_PAID
-     */
-    public boolean isPayable() {
-        return this == PENDING || this == PARTIALLY_PAID;
-    }
-
-    /**
-     * Checks if the order can be cancelled.
-     *
-     * @return true if status is PENDING
-     */
-    public boolean isCancellable() {
-        return this == PENDING;
-    }
-
-    /**
-     * Checks if the status is final (cannot be changed).
-     *
-     * @return true if status is PAID, REFUNDED, or CANCELLED
-     */
-    public boolean isFinal() {
-        return this == PAID || this == REFUNDED || this == CANCELLED;
-    }
+    CANCELLED
 }

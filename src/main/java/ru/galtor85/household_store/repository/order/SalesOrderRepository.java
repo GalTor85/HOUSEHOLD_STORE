@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.SalesOrder;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -20,10 +19,6 @@ import java.util.Optional;
  */
 @Repository
 public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
-
-    // =========================================================================
-    // BASIC QUERIES
-    // =========================================================================
 
     /**
      * Finds a sales order by its unique order number.
@@ -40,10 +35,6 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
      * @return list of sales orders
      */
     List<SalesOrder> findByUserId(Long userId);
-
-    // =========================================================================
-    // ADVANCED SEARCH
-    // =========================================================================
 
     /**
      * Searches sales orders with optional filters.
@@ -66,33 +57,6 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
                             @Param("startDate") LocalDateTime startDate,
                             @Param("endDate") LocalDateTime endDate,
                             Pageable pageable);
-
-    // =========================================================================
-    // STATISTICAL QUERIES
-    // =========================================================================
-
-    /**
-     * Counts the number of sales orders created within a date range.
-     *
-     * @param startDate start date (inclusive)
-     * @param endDate   end date (inclusive)
-     * @return total count of orders in the period
-     */
-    @Query("SELECT COUNT(so) FROM SalesOrder so WHERE so.createdAt BETWEEN :startDate AND :endDate")
-    long countByCreatedAtBetween(@Param("startDate") LocalDateTime startDate,
-                                 @Param("endDate") LocalDateTime endDate);
-
-    /**
-     * Sums the total amount of sales orders created within a date range.
-     *
-     * @param startDate start date (inclusive)
-     * @param endDate   end date (inclusive)
-     * @return total amount of orders in the period, or 0 if none
-     */
-    @Query("SELECT COALESCE(SUM(so.totalAmount), 0) FROM SalesOrder so " +
-            "WHERE so.createdAt BETWEEN :startDate AND :endDate")
-    BigDecimal sumTotalAmountByCreatedAtBetween(@Param("startDate") LocalDateTime startDate,
-                                                @Param("endDate") LocalDateTime endDate);
 
     /**
      * Counts the number of sales orders for a specific user.

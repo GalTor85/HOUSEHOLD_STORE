@@ -24,7 +24,7 @@ import ru.galtor85.household_store.validator.auth.UserValidator;
  * and include proper validation.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Service

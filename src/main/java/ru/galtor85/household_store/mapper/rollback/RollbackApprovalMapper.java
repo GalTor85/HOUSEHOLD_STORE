@@ -4,25 +4,38 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.response.order.RollbackApprovalDto;
 import ru.galtor85.household_store.entity.rollback.RollbackApproval;
+import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.repository.user.UserRepository;
 
+/**
+ * Mapper for rollback approval entity to DTO.
+ */
 @Component
 @RequiredArgsConstructor
 public class RollbackApprovalMapper {
 
     private final UserRepository userRepository;
 
+    /**
+     * Converts rollback approval entity to DTO.
+     *
+     * @param approval rollback approval entity
+     * @return rollback approval DTO
+     */
     public RollbackApprovalDto toDto(RollbackApproval approval) {
-        if (approval == null) return null;
+        if (approval == null) {
+            return null;
+        }
 
         String requestedByEmail = userRepository.findById(approval.getRequestedById())
-                .map(user -> user.getEmail())
+                .map(User::getEmail)
                 .orElse(null);
 
-        String reviewedByEmail = approval.getReviewedById() != null ?
-                userRepository.findById(approval.getReviewedById())
-                        .map(user -> user.getEmail())
-                        .orElse(null) : null;
+        String reviewedByEmail = approval.getReviewedById() != null
+                ? userRepository.findById(approval.getReviewedById())
+                .map(User::getEmail)
+                .orElse(null)
+                : null;
 
         return RollbackApprovalDto.builder()
                 .id(approval.getId())

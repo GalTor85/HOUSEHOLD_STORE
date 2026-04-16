@@ -9,12 +9,9 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.security.BlacklistedToken;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Repository
 public interface BlacklistedTokenRepository extends JpaRepository<BlacklistedToken, Long> {
-
-    Optional<BlacklistedToken> findByToken(String token);
 
     boolean existsByToken(String token);
 

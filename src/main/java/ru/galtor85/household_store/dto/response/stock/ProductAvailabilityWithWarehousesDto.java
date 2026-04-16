@@ -14,7 +14,7 @@ import java.util.List;
  * DTO for product availability with warehouse details for manager view.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder

@@ -6,10 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 @Data
 @Builder
@@ -36,35 +34,4 @@ public class HomeInfo {
 
     @Schema(description = "Available API endpoints")
     private String[] endpoints;
-
-    /**
-     * Получить отформатированное время
-     */
-    public String getFormattedTime() {
-        if (currentTime == null) return "";
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        return currentTime.format(formatter);
-    }
-
-    /**
-     * Получить локализованный статус через MessageService
-     */
-    public String getLocalizedStatus(MessageService messageService) {
-        if (status == null) return "";
-        return messageService.get("home-info.status." + status.toLowerCase());
-    }
-
-    /**
-     * Получить локализованное название приложения (если нужно)
-     */
-    public String getLocalizedApplicationName(MessageService messageService) {
-        return messageService.get("home-info.application.name");
-    }
-
-    /**
-     * Получить локализованную версию (если нужно)
-     */
-    public String getLocalizedVersion(MessageService messageService) {
-        return messageService.get("home-info.application.version");
-    }
 }

@@ -1,7 +1,9 @@
 package ru.galtor85.household_store.advice.exception.cell;
 
+import lombok.Getter;
 import ru.galtor85.household_store.entity.warehouse.CellType;
 
+@Getter
 public class NoAvailableCellException extends RuntimeException {
     private final Long warehouseId;
     private final CellType requiredType;
@@ -12,11 +14,4 @@ public class NoAvailableCellException extends RuntimeException {
         this.requiredType = requiredType;
     }
 
-    public Long getWarehouseId() {
-        return warehouseId;
-    }
-
-    public CellType getRequiredType() {
-        return requiredType;
-    }
 }

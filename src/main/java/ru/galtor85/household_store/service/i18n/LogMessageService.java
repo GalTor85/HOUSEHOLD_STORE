@@ -77,17 +77,6 @@ public class LogMessageService {
     }
 
     /**
-     * Returns localized message with explicit default fallback.
-     */
-    public String getOrDefault(String code, String defaultMessage, Object... args) {
-        try {
-            return messageSource.getMessage(code, args, defaultMessage, logLocale);
-        } catch (Exception e) {
-            return defaultMessage;
-        }
-    }
-
-    /**
      * Builds smart readable fallback from message key.
      */
     private String buildSmartFallback(String code, Object... args) {

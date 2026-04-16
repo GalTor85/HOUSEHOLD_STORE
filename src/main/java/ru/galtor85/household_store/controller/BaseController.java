@@ -11,7 +11,9 @@ import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.user.UserSearchService;
 
-
+/**
+ * Base controller for handling common business logic and security checks.
+ */
 @Setter
 public abstract class BaseController {
 

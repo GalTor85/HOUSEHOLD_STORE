@@ -58,7 +58,7 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.TOKEN_TYP
  * @see JwtTokenProvider
  * @see AuthenticationManager
  * @see BlacklistedTokenRepository
- * @since 1.0
+ 
  */
 @Slf4j
 @Service
@@ -119,7 +119,7 @@ public class AuthService {
     public AuthResponse register(UserCreateRequest request) {
         log.debug(logMsg.get("auth.log.register.attempt", request.getEmail()));
 
-        User user = userToEntity.build(request,null);
+        User user = userToEntity.build(request, null);
         User registeredUser = userService.register(user, request.getPassword());
 
         SecurityUser securityUser = securityUserRepository.findById(registeredUser.getId())
@@ -154,8 +154,8 @@ public class AuthService {
      *
      * @param request login request containing identifier and password
      * @return authentication response with access token and user details
-     * @throws InvalidCredentialsException      if credentials are invalid
-     * @throws AccountDeactivatedException      if account is disabled
+     * @throws InvalidCredentialsException if credentials are invalid
+     * @throws AccountDeactivatedException if account is disabled
      */
     public AuthResponse login(LoginFormRequest request) {
         String identify = userIdentifierResolver.resolve(request);
@@ -205,11 +205,9 @@ public class AuthService {
      *
      * <p><b>Note:</b> The token is blacklisted but not physically deleted.
      * It will be rejected on subsequent requests until it expires.</p>
-     *
-     * @return new authentication response with fresh tokens for next session
      */
     @Transactional
-    public AuthResponse logout() {
+    public void logout() {
         String currentToken = JwtTokenHolder.getToken();
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -227,19 +225,11 @@ public class AuthService {
 
             SecurityContextHolder.clearContext();
 
-            AuthResponse newTokens = buildAuthResponse(securityUser, user);
-
             log.info(logMsg.get("auth.log.logout.success", user.getEmail()));
-
-            return newTokens;
         }
 
         log.info(logMsg.get("auth.log.logout.success"));
         SecurityContextHolder.clearContext();
-
-        return AuthResponse.builder()
-                .tokenType(TOKEN_TYPE)
-                .build();
     }
 
     // =========================================================================

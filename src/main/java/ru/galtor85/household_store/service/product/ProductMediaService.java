@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import ru.galtor85.household_store.advice.exception.product.ProductMediaException;
 import ru.galtor85.household_store.advice.exception.product.ProductMediaNotFoundException;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.dto.common.ProductMediaUploadDto;
@@ -21,7 +20,6 @@ import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.util.json.MediaMetadataParser;
 
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -80,16 +78,8 @@ public class ProductMediaService {
 
         ProductMedia media = findMediaById(mediaId);
 
-        try {
-            deleteProcessor.deleteMedia(media, deletedBy);
-            log.info(logMsg.get("product.media.service.delete.success", mediaId, deletedBy));
-        } catch (IOException e) {
-            log.error(logMsg.get("product.media.service.delete.error", mediaId, e.getMessage()), e);
-            throw new ProductMediaException(
-                    messageService.get("product.media.service.error.delete", mediaId, e.getMessage()),
-                    e, media.getProductId(), null
-            );
-        }
+        deleteProcessor.deleteMedia(media);
+        log.info(logMsg.get("product.media.service.delete.success", mediaId, deletedBy));
     }
 
     /**
@@ -109,36 +99,6 @@ public class ProductMediaService {
             log.error(logMsg.get("product.media.service.setmain.error", mediaId, e.getMessage()), e);
             throw e;
         }
-    }
-
-    /**
-     * Gets all media for a product.
-     *
-     * @param productId product ID
-     * @return list of media DTOs
-     */
-    @Transactional(readOnly = true)
-    public List<ProductMediaDto> getProductMedia(Long productId) {
-        log.debug(logMsg.get("product.media.service.getmedia.start", productId));
-        List<ProductMedia> mediaList = mediaRepository.findByProductIdOrdered(productId);
-        log.debug(logMsg.get("product.media.service.getmedia.found", productId, mediaList.size()));
-        return mediaList.stream()
-                .map(m -> ProductMediaDto.builder()
-                        .id(m.getId())
-                        .mediaType(m.getMediaType())
-                        .fileName(m.getFileName())
-                        .fileUrl(m.getFilePath())
-                        .fileSize(m.getFileSize())
-                        .mimeType(m.getMimeType())
-                        .altText(m.getAltText())
-                        .caption(m.getCaption())
-                        .sortOrder(m.getSortOrder())
-                        .isMain(m.getIsMain())
-                        .width(m.getWidth())
-                        .height(m.getHeight())
-                        .duration(m.getDuration())
-                        .build())
-                .toList();
     }
 
     private Product findProductById(Long productId) {

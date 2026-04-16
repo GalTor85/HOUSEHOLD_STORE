@@ -7,6 +7,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Request DTO for refreshing JWT tokens.
+ */
 @Data
 @Builder
 @NoArgsConstructor

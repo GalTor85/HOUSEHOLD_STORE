@@ -30,7 +30,7 @@ import static ru.galtor85.household_store.constants.PaymentConstants.*;
  * @see UniversalPaymentGateway
  * @see PaymentProviderConfig
  * @see PaymentConfig
- * @since 1.0
+ 
  */
 @Slf4j
 @Component
@@ -56,6 +56,7 @@ public class PaymentGatewayFactory {
      * @param provider the payment provider
      * @return the UniversalPaymentGateway instance for the provider
      */
+    @SuppressWarnings("unused")
     public UniversalPaymentGateway getGateway(PaymentProvider provider) {
         if (provider == PaymentProvider.CASH_REGISTER) {
             PaymentProviderConfig cashConfig = buildCashRegisterConfig();

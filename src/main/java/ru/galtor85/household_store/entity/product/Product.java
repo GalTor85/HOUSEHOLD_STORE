@@ -13,9 +13,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Entity representing a product in the system.
@@ -25,7 +23,7 @@ import java.util.stream.Collectors;
  * variants, attributes, and media.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Getter
 @Setter
@@ -147,107 +145,4 @@ public class Product {
     @OneToMany(mappedBy = "productId", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<ProductMedia> media = new ArrayList<>();
-
-    /**
-     * Adds an attribute to the product.
-     *
-     * @param attribute the attribute to add
-     */
-    public void addAttribute(ProductAttribute attribute) {
-        attributes.add(attribute);
-        attribute.setProduct(this);
-    }
-
-    /**
-     * Removes an attribute from the product.
-     *
-     * @param attribute the attribute to remove
-     */
-    public void removeAttribute(ProductAttribute attribute) {
-        attributes.remove(attribute);
-        attribute.setProduct(null);
-    }
-
-    /**
-     * Adds a variant to the product.
-     *
-     * @param variant the variant to add
-     */
-    public void addVariant(Product variant) {
-        variants.add(variant);
-        variant.setParentProduct(this);
-    }
-
-    /**
-     * Removes a variant from the product.
-     *
-     * @param variant the variant to remove
-     */
-    public void removeVariant(Product variant) {
-        variants.remove(variant);
-        variant.setParentProduct(null);
-    }
-
-    /**
-     * Adds media to the product.
-     *
-     * @param mediaItem the media item to add
-     */
-    public void addMedia(ProductMedia mediaItem) {
-        media.add(mediaItem);
-        mediaItem.setProductId(this.id);
-    }
-
-    /**
-     * Removes media from the product.
-     *
-     * @param mediaItem the media item to remove
-     */
-    public void removeMedia(ProductMedia mediaItem) {
-        media.remove(mediaItem);
-        mediaItem.setProductId(null);
-    }
-
-    /**
-     * Gets all main images for the product.
-     *
-     * @return list of main product images
-     */
-    public List<ProductMedia> getMainImages() {
-        return media.stream()
-                .filter(m -> m.getMediaType() == MediaType.IMAGE && Boolean.TRUE.equals(m.getIsMain()))
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Gets all images for the product sorted by sort order.
-     *
-     * @return list of all product images
-     */
-    public List<ProductMedia> getAllImages() {
-        return media.stream()
-                .filter(m -> m.getMediaType() == MediaType.IMAGE)
-                .sorted(Comparator.comparing(ProductMedia::getSortOrder))
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Gets all videos for the product.
-     *
-     * @return list of product videos
-     */
-    public List<ProductMedia> getVideos() {
-        return media.stream()
-                .filter(m -> m.getMediaType() == MediaType.VIDEO)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Checks if the product has variants.
-     *
-     * @return true if product has variants
-     */
-    public boolean hasVariants() {
-        return Boolean.TRUE.equals(hasVariants);
-    }
 }

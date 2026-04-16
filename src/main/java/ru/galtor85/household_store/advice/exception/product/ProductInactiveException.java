@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.product;
 
+import lombok.Getter;
+
+@Getter
 public class ProductInactiveException extends RuntimeException {
   private final Long productId;
 
@@ -8,7 +11,4 @@ public class ProductInactiveException extends RuntimeException {
     this.productId = productId;
   }
 
-  public Long getProductId() {
-    return productId;
-  }
 }

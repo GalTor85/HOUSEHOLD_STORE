@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.order;
 
+import lombok.Getter;
+
+@Getter
 public class OrderItemNotFoundException extends RuntimeException {
     private final Long itemId;
 
@@ -8,7 +11,4 @@ public class OrderItemNotFoundException extends RuntimeException {
         this.itemId = itemId;
     }
 
-    public Long getItemId() {
-        return itemId;
-    }
 }

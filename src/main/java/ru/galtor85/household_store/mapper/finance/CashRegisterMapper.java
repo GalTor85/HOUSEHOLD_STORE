@@ -7,17 +7,25 @@ import ru.galtor85.household_store.entity.finance.CashRegister;
 
 import java.math.BigDecimal;
 
+/**
+ * Mapper for cash register entity to/from DTO.
+ */
 @Component
 public class CashRegisterMapper {
 
+
+
     /**
-     * Преобразует запрос на создание в сущность
+     * Converts creation request to entity.
+     *
+     * @param request creation request
+     * @param createdBy ID of user creating
+     * @return cash register entity
      */
     public CashRegister toEntity(CashRegisterCreateRequest request, Long createdBy) {
         if (request == null) {
             return null;
         }
-
         return CashRegister.builder()
                 .registerNumber(request.getRegisterNumber())
                 .name(request.getName())
@@ -29,50 +37,20 @@ public class CashRegisterMapper {
     }
 
     /**
-     * Обновляет сущность из запроса на обновление
+     * Updates entity from update request.
+     *
+     * @param cashRegister existing entity
+     * @param request update request
      */
     public void updateEntity(CashRegister cashRegister, CashRegisterUpdateRequest request) {
         if (cashRegister == null || request == null) {
             return;
         }
-
         if (request.getName() != null) {
             cashRegister.setName(request.getName());
         }
         if (request.getLocation() != null) {
             cashRegister.setLocation(request.getLocation());
         }
-        // Примечание: openingBalance не обновляется через этот метод,
-        // так как начальный баланс устанавливается только при открытии кассы
-    }
-
-    /**
-     * Обновляет начальный баланс кассы (при открытии)
-     */
-    public void updateOpeningBalance(CashRegister cashRegister, BigDecimal openingBalance) {
-        if (cashRegister != null && openingBalance != null) {
-            cashRegister.setOpeningBalance(openingBalance);
-        }
-    }
-
-    /**
-     * Создает копию сущности
-     */
-    public CashRegister copy(CashRegister source) {
-        if (source == null) {
-            return null;
-        }
-
-        return CashRegister.builder()
-                .registerNumber(source.getRegisterNumber())
-                .name(source.getName())
-                .location(source.getLocation())
-                .openingBalance(source.getOpeningBalance())
-                .isActive(source.getIsActive())
-                .cashierId(source.getCashierId())
-                .openedAt(source.getOpenedAt())
-                .closedAt(source.getClosedAt())
-                .createdBy(source.getCreatedBy())
-                .build();
     }
 }

@@ -18,6 +18,9 @@ import java.util.List;
 
 import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
+/**
+ * Request DTO for creating a new sales order.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -75,18 +78,6 @@ public class SalesOrderCreateRequest {
 
     @JsonIgnore
     @Schema(hidden = true)
-    public boolean hasShipping() {
-        return shippingAmount != null && shippingAmount.compareTo(BigDecimal.ZERO) > 0;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasTax() {
-        return taxAmount != null && taxAmount.compareTo(BigDecimal.ZERO) > 0;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
     public BigDecimal getEffectiveDiscountAmount() {
         return discountAmount != null ? discountAmount : BigDecimal.ZERO;
     }
@@ -101,41 +92,5 @@ public class SalesOrderCreateRequest {
     @Schema(hidden = true)
     public BigDecimal getEffectiveTaxAmount() {
         return taxAmount != null ? taxAmount : BigDecimal.ZERO;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasShippingAddress() {
-        return shippingAddress != null && !shippingAddress.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasBillingAddress() {
-        return billingAddress != null && !billingAddress.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasPaymentMethod() {
-        return paymentMethod != null && !paymentMethod.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasNotes() {
-        return notes != null && !notes.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasItems() {
-        return items != null && !items.isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public int getTotalItems() {
-        return items != null ? items.size() : 0;
     }
 }

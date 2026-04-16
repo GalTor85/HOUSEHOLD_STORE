@@ -9,14 +9,17 @@ import lombok.NoArgsConstructor;
 
 import static ru.galtor85.household_store.constants.TechnicalConstants.MIN_QUANTITY;
 
+/**
+ * Request DTO for updating an item in shopping cart.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Update cart item request DTO", title = "Update Cart Item Request")
+@Schema(description = "Update cart item request")
 public class UpdateCartItemRequest {
 
     @NotNull(message = "{cart.validation.quantity.empty}")
     @Min(value = MIN_QUANTITY, message = "{cart.validation.quantity.min}")
-    @Schema(description = "New quantity (0 to remove)", example = "3")
+    @Schema(description = "New quantity (0 to remove)", example = "3", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer quantity;
 }

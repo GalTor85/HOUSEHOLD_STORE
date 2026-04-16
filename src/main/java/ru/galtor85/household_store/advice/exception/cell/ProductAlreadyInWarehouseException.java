@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.cell;
 
+import lombok.Getter;
+
+@Getter
 public class ProductAlreadyInWarehouseException extends RuntimeException {
     private final Long productId;
     private final Long warehouseId;
@@ -12,15 +15,4 @@ public class ProductAlreadyInWarehouseException extends RuntimeException {
         this.cellCode = cellCode;
     }
 
-    public Long getProductId() {
-        return productId;
-    }
-
-    public Long getWarehouseId() {
-        return warehouseId;
-    }
-
-    public String getCellCode() {
-        return cellCode;
-    }
 }

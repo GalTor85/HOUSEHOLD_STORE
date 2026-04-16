@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.dto.request.finance;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -14,11 +13,14 @@ import java.math.BigDecimal;
 
 import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
+/**
+ * Request DTO for creating a new cash register.
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Request DTO for creating a new cash register", title = "Cash Register Create Request")
+@Schema(description = "Cash register create request", title = "Cash Register Create Request")
 public class CashRegisterCreateRequest {
 
     @NotBlank(message = "{cash.register.validation.number.empty}")
@@ -44,38 +46,4 @@ public class CashRegisterCreateRequest {
             defaultValue = DEFAULT_BALANCE_STR)
     @Builder.Default
     private BigDecimal openingBalance = BigDecimal.ZERO;
-
-    // =========================================================================
-    // HELPER METHODS
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedRegisterNumber() {
-        return registerNumber != null ? registerNumber.toUpperCase().trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedName() {
-        return name != null ? name.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedLocation() {
-        return location != null ? location.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasPositiveOpeningBalance() {
-        return openingBalance != null && openingBalance.compareTo(BigDecimal.ZERO) > 0;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasZeroOpeningBalance() {
-        return openingBalance != null && openingBalance.compareTo(BigDecimal.ZERO) == 0;
-    }
 }

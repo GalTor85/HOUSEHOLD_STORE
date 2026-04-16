@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.entity.payment.PaymentMethod;
 import ru.galtor85.household_store.entity.payment.PaymentMethodType;
@@ -29,12 +30,13 @@ import java.time.LocalDateTime;
  * {@code app.payment-methods.initialize=false}.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "app.payment-methods.initialize", havingValue = "true", matchIfMissing = true)
+@Order(2)
 public class PaymentMethodInitializer {
 
     // =========================================================================
@@ -52,6 +54,7 @@ public class PaymentMethodInitializer {
     private static final int CREDIT_CARD_SORT_ORDER = 2;
     private static final int BANK_TRANSFER_SORT_ORDER = 3;
     private static final int SORT_ORDER_INCREMENT = 10;
+    private final DatabaseInitializer databaseInitializer;
 
     // =========================================================================
     // FIELDS
@@ -166,6 +169,8 @@ public class PaymentMethodInitializer {
         paymentMethod.setActive(true);
         paymentMethod.setDefault(isDefault);
         paymentMethod.setCurrency(getDefaultCurrency());
+        paymentMethod.setCreatedBy(getAdminUserId());
+        paymentMethod.setCreatedAt(LocalDateTime.now());
         paymentMethod.setProcessingFee(DEFAULT_PROCESSING_FEE);
         paymentMethod.setMaskedIdentifier(DEFAULT_MASKED_IDENTIFIER);
 
@@ -201,10 +206,19 @@ public class PaymentMethodInitializer {
                 .userType(userType)
                 .active(true)
                 .sortOrder(sortOrder)
+                .createdBy(getAdminUserId())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
         paymentMethodUserTypeRepository.save(assignment);
+    }
+
+    private Long getAdminUserId() {
+        if (databaseInitializer.getAdminUserId() == null) {
+            log.info(logMsg.get("payment.method.error.admin.not.found"));
+            return 0L;
+        }
+        return databaseInitializer.getAdminUserId();
     }
 }

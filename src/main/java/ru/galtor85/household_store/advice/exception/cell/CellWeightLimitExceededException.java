@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.cell;
 
+import lombok.Getter;
+
+@Getter
 public class CellWeightLimitExceededException extends RuntimeException {
     private final Long cellId;
     private final String cellCode;
@@ -14,19 +17,4 @@ public class CellWeightLimitExceededException extends RuntimeException {
         this.requestedWeight = requestedWeight;
     }
 
-    public Long getCellId() {
-        return cellId;
-    }
-
-    public String getCellCode() {
-        return cellCode;
-    }
-
-    public double getMaxWeight() {
-        return maxWeight;
-    }
-
-    public double getRequestedWeight() {
-        return requestedWeight;
-    }
 }

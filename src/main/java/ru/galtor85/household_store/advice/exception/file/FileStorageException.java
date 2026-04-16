@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.file;
 
+import lombok.Getter;
+
+@Getter
 public class FileStorageException extends RuntimeException {
 
   private final String fileName;
@@ -17,11 +20,4 @@ public class FileStorageException extends RuntimeException {
     this.productId = productId;
   }
 
-  public String getFileName() {
-    return fileName;
-  }
-
-  public Long getProductId() {
-    return productId;
-  }
 }

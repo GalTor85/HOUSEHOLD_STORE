@@ -20,7 +20,7 @@ import java.util.Set;
  * associated user types and additional metadata.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder

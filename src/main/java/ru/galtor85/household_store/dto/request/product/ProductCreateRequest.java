@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.dto.request.product;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -95,9 +94,6 @@ public class ProductCreateRequest {
     // RELATIONSHIPS
     // =========================================================================
 
-    @Schema(description = "Parent product ID", example = "1")
-    private Long parentProductId;
-
     @Schema(description = "Product attributes")
     private List<AttributeCreateRequest> attributes;
 
@@ -139,86 +135,4 @@ public class ProductCreateRequest {
 
     @Schema(description = "Is palletized", example = "false")
     private Boolean palletized = DEFAULT_PALLETIZED;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasBarcode() {
-        return barcode != null && !barcode.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasBarcodeFormat() {
-        return barcodeFormat != null && !barcodeFormat.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasDescription() {
-        return description != null && !description.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasCategory() {
-        return category != null && !category.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasBrand() {
-        return brand != null && !brand.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasImageUrl() {
-        return imageUrl != null && !imageUrl.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasAttributes() {
-        return attributes != null && !attributes.isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasVariants() {
-        return variants != null && !variants.isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasParentProduct() {
-        return parentProductId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasWeight() {
-        return weightKg != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasVolume() {
-        return volumeM3 != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isActiveTrue() {
-        return Boolean.TRUE.equals(active);
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasVariantsTrue() {
-        return Boolean.TRUE.equals(hasVariants);
-    }
 }

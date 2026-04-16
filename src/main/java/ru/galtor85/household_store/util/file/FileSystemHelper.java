@@ -37,9 +37,8 @@ public class FileSystemHelper {
      *
      * @param productId product ID
      * @return path to product directory
-     * @throws IOException if directory creation fails
      */
-    public Path createProductDirectory(Long productId) throws IOException {
+    public Path createProductDirectory(Long productId) {
         Path productUploadPath = Paths.get(uploadDir, String.valueOf(productId))
                 .toAbsolutePath().normalize();
 
@@ -60,25 +59,22 @@ public class FileSystemHelper {
     /**
      * Saves file to disk.
      *
-     * @param inputStream file input stream
+     * @param inputStream    file input stream
      * @param targetLocation target path
-     * @return path to saved file
      * @throws IOException if save fails
      */
-    public Path saveFile(InputStream inputStream, Path targetLocation) throws IOException {
+    public void saveFile(InputStream inputStream, Path targetLocation) throws IOException {
         Files.copy(inputStream, targetLocation, StandardCopyOption.REPLACE_EXISTING);
-        return targetLocation;
     }
 
     /**
      * Deletes file from disk.
      *
      * @param path path to file
-     * @return true if file was deleted
      * @throws IOException if deletion fails
      */
-    public boolean deleteFile(Path path) throws IOException {
-        return Files.deleteIfExists(path);
+    public void deleteFile(Path path) throws IOException {
+        Files.deleteIfExists(path);
     }
 
     /**

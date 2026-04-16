@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * Handles transactional database operations for payment methods.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component
@@ -52,30 +52,6 @@ public class PaymentMethodProcessor {
     }
 
     // =========================================================================
-    // UPDATE OPERATIONS
-    // =========================================================================
-
-    /**
-     * Updates an existing payment method.
-     *
-     * @param paymentMethod the payment method entity with updated values
-     * @return updated PaymentMethod entity
-     */
-    @Transactional
-    public PaymentMethod updatePaymentMethod(PaymentMethod paymentMethod) {
-        log.info(logMsg.get("payment.processor.update.method.start",
-                paymentMethod.getId()));
-
-        paymentMethod.setUpdatedAt(LocalDateTime.now());
-        PaymentMethod saved = paymentMethodRepository.save(paymentMethod);
-
-        log.info(logMsg.get("payment.processor.update.method.success",
-                saved.getId()));
-
-        return saved;
-    }
-
-    // =========================================================================
     // ACTIVATION OPERATIONS
     // =========================================================================
 
@@ -83,10 +59,9 @@ public class PaymentMethodProcessor {
      * Activates a payment method.
      *
      * @param paymentMethod the payment method entity
-     * @return activated PaymentMethod entity
      */
     @Transactional
-    public PaymentMethod activatePaymentMethod(PaymentMethod paymentMethod) {
+    public void activatePaymentMethod(PaymentMethod paymentMethod) {
         log.info(logMsg.get("payment.processor.activate.method.start",
                 paymentMethod.getId()));
 
@@ -97,17 +72,15 @@ public class PaymentMethodProcessor {
         log.info(logMsg.get("payment.processor.activate.method.success",
                 saved.getId()));
 
-        return saved;
     }
 
     /**
      * Deactivates a payment method.
      *
      * @param paymentMethod the payment method entity
-     * @return deactivated PaymentMethod entity
      */
     @Transactional
-    public PaymentMethod deactivatePaymentMethod(PaymentMethod paymentMethod) {
+    public void deactivatePaymentMethod(PaymentMethod paymentMethod) {
         log.info(logMsg.get("payment.processor.deactivate.method.start",
                 paymentMethod.getId()));
 
@@ -118,6 +91,5 @@ public class PaymentMethodProcessor {
         log.info(logMsg.get("payment.processor.deactivate.method.success",
                 saved.getId()));
 
-        return saved;
     }
 }

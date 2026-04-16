@@ -39,7 +39,6 @@ import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_BA
  * <p>All endpoints require ADMIN or MANAGER role for access.</p>
  *
  * @author G@LTor85
- * @since 1.0
  */
 @SecurityRequirement(name = "Bearer Authentication")
 @Slf4j

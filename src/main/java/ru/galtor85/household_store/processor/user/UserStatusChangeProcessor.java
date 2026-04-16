@@ -24,7 +24,7 @@ import ru.galtor85.household_store.util.email.EmailMasker;
  * by the calling service.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component
@@ -44,17 +44,16 @@ public class UserStatusChangeProcessor {
      * the change to the database. Logs the status change with both old
      * and new status values for audit trail.</p>
      *
-     * @param targetUser the domain user entity whose status is being changed
+     * @param targetUser     the domain user entity whose status is being changed
      * @param targetSecurity the security user entity to update
-     * @param active true to activate, false to deactivate
-     * @param adminUser the admin user performing the status change
-     * @return the updated SecurityUser entity
+     * @param active         true to activate, false to deactivate
+     * @param adminUser      the admin user performing the status change
      */
     @Transactional
-    public SecurityUser changeStatus(User targetUser,
-                                     SecurityUser targetSecurity,
-                                     boolean active,
-                                     User adminUser) {
+    public void changeStatus(User targetUser,
+                             SecurityUser targetSecurity,
+                             boolean active,
+                             User adminUser) {
 
         String maskedAdminEmail = emailMasker.maskEmail(adminUser.getEmail());
         String maskedTargetEmail = emailMasker.maskEmail(targetUser.getEmail());
@@ -71,7 +70,7 @@ public class UserStatusChangeProcessor {
                 active
         );
 
-        SecurityUser saved = securityUserRepository.save(updatedSecurityUser);
+        securityUserRepository.save(updatedSecurityUser);
 
         logStatusChange(adminUser.getEmail(), targetUser.getEmail(), oldStatus, active);
 
@@ -79,7 +78,6 @@ public class UserStatusChangeProcessor {
                 maskedTargetEmail,
                 active ? "activated" : "deactivated"));
 
-        return saved;
     }
 
     /**

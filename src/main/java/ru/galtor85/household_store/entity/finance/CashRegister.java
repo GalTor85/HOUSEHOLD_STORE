@@ -13,6 +13,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Cash register entity.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -53,7 +56,7 @@ public class CashRegister {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
-    @Column(name = "created_by")  // ← ДОБАВИТЬ ЭТО ПОЛЕ
+    @Column(name = "created_by")
     private Long createdBy;
 
     @CreationTimestamp
@@ -69,7 +72,7 @@ public class CashRegister {
     private List<CashTransaction> transactions = new ArrayList<>();
 
     // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // HELPER METHODS
     // =========================================================================
 
     public BigDecimal getCurrentBalance() {
@@ -79,24 +82,5 @@ public class CashRegister {
         return transactions.stream()
                 .map(t -> t.getTransactionType() == TransactionType.INCOME ? t.getAmount() : t.getAmount().negate())
                 .reduce(openingBalance, BigDecimal::add);
-    }
-
-    public void close(BigDecimal closingBalance) {
-        this.closingBalance = closingBalance;
-        this.isActive = false;
-        this.closedAt = LocalDateTime.now();
-    }
-
-    public void addTransaction(CashTransaction transaction) {
-        transactions.add(transaction);
-        transaction.setCashRegister(this);
-    }
-
-    public boolean isOpen() {
-        return Boolean.TRUE.equals(isActive);
-    }
-
-    public boolean isClosed() {
-        return !isOpen();
     }
 }

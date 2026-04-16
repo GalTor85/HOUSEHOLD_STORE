@@ -32,6 +32,12 @@ public class PriceCalculationResult {
     @Schema(description = "List of applied discounts")
     private List<AppliedDiscount> appliedDiscounts = new ArrayList<>();
 
+    @Schema(description = "Applied promo code ID", example = "5")
+    private Long appliedPromoCodeId;
+
+    @Schema(description = "Applied promo code", example = "SUMMER20")
+    private String appliedPromoCode;
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -51,42 +57,5 @@ public class PriceCalculationResult {
         @Schema(description = "Discount type", example = "USER_TYPE",
                 allowableValues = {"RULE", "PROMO_CODE", "USER_TYPE"})
         private String type;
-
-        @Schema(description = "Discount code (for promo codes)", example = "WELCOME10")
-        private String code;
-
-        @Schema(description = "Discount percentage (if applicable)", example = "10")
-        private Integer percentage;
-    }
-
-    // Вспомогательный метод для добавления скидки
-    public void addDiscount(String name, String description, BigDecimal amount, String type) {
-        if (this.appliedDiscounts == null) {
-            this.appliedDiscounts = new ArrayList<>();
-        }
-        this.appliedDiscounts.add(AppliedDiscount.builder()
-                .name(name)
-                .description(description)
-                .discountAmount(amount)
-                .type(type)
-                .build());
-    }
-
-    // Вспомогательный метод для расчета итога
-    public void calculateFinalTotal() {
-        if (originalTotal == null) {
-            this.finalTotal = BigDecimal.ZERO;
-            this.totalDiscount = BigDecimal.ZERO;
-            return;
-        }
-
-        this.totalDiscount = appliedDiscounts.stream()
-                .map(AppliedDiscount::getDiscountAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        this.finalTotal = originalTotal.subtract(totalDiscount);
-        if (this.finalTotal.compareTo(BigDecimal.ZERO) < 0) {
-            this.finalTotal = BigDecimal.ZERO;
-        }
     }
 }

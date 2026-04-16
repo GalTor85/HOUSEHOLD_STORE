@@ -17,7 +17,6 @@ import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.entity.order.SalesOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
-import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.repository.user.UserRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
@@ -85,11 +84,10 @@ public class SalesOrderValidator {
      * Validates user exists.
      *
      * @param userId user ID
-     * @return user entity
      * @throws UserNotFoundException if not found
      */
-    public User validateUserExists(Long userId) {
-        return userRepository.findById(userId)
+    public void validateUserExists(Long userId) {
+        userRepository.findById(userId)
                 .orElseThrow(() -> {
                     log.error(logMsg.get("user.not.found", userId));
                     return new UserNotFoundException(userId.toString());

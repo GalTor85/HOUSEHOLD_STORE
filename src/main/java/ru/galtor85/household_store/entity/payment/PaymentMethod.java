@@ -3,24 +3,33 @@ package ru.galtor85.household_store.entity.payment;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.FieldNameConstants;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_CURRENCY_CODE;
+
 /**
- * Entity for all payment methods
+ * Payment method entity.
  */
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@FieldNameConstants
 @Table(name = "payment_methods", schema = "household_schema")
 public class PaymentMethod {
+
+    private static final String DEFAULT_MASKED_IDENTIFIER = "***";
+    private static final String CREDIT_CARD_MASK_PATTERN = ".*\\d{4}$";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,7 +56,7 @@ public class PaymentMethod {
 
     @Column(nullable = false)
     @Builder.Default
-    private String currency = "RUB";
+    private String currency = DEFAULT_CURRENCY_CODE;
 
     @Column(name = "processing_fee", precision = 5, scale = 2)
     @Builder.Default
@@ -67,17 +76,36 @@ public class PaymentMethod {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    /**
+     * Validates payment method based on its type.
+     *
+     * @return true if valid
+     */
     public boolean validate() {
-        return true;
+        return !switch (methodType) {
+            case CREDIT_CARD -> maskedIdentifier != null && maskedIdentifier.matches(CREDIT_CARD_MASK_PATTERN);
+            case BANK_ACCOUNT -> maskedIdentifier != null && !maskedIdentifier.isBlank();
+            default -> true;
+        };
     }
 
+    /**
+     * Returns masked identifier for display.
+     *
+     * @return masked identifier
+     */
     public String getMaskedIdentifier() {
         if (maskedIdentifier != null && !maskedIdentifier.isEmpty()) {
             return maskedIdentifier;
         }
-        return "***";
+        return DEFAULT_MASKED_IDENTIFIER;
     }
 
+    /**
+     * Returns payment provider with fallback.
+     *
+     * @return payment provider
+     */
     public PaymentProvider getProvider() {
         return provider != null ? provider : PaymentProvider.SBERBANK;
     }

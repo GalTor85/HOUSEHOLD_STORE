@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  * <p>User methods are available for authenticated customers.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Service
@@ -87,6 +87,12 @@ public class PaymentMethodService {
 
         // Convert request to entity using converter
         PaymentMethod paymentMethod = converter.toEntityWithTypes(request, createdBy);
+
+        // Validate before saving
+        if (paymentMethod.validate()) {
+            throw new IllegalArgumentException(
+                    messageService.get("payment.method.invalid.data"));
+        }
 
         // Save payment method using processor
         PaymentMethod saved = processor.createPaymentMethod(paymentMethod);
@@ -253,42 +259,6 @@ public class PaymentMethodService {
     // =========================================================================
     // MANAGER METHODS - UPDATE
     // =========================================================================
-
-    /**
-     * Updates a payment method.
-     *
-     * <p>Updates payment method details and optionally updates user type
-     * assignments if provided in the request.</p>
-     *
-     * @param methodId payment method ID
-     * @param request  update request with new values
-     * @return updated payment method DTO with user type assignments
-     * @throws IllegalArgumentException if payment method not found
-     */
-    @Transactional
-    public PaymentMethodWithUserTypesDto updatePaymentMethod(Long methodId,
-                                                             CreatePaymentMethodWithTypesRequest request) {
-        log.info(logMsg.get("payment.service.update.method.start", methodId));
-
-        // Validate payment method exists
-        PaymentMethod paymentMethod = validator.validatePaymentMethodExists(methodId);
-
-        // Update entity using converter
-        converter.updateEntityWithTypes(paymentMethod, request);
-
-        // Save using processor
-        processor.updatePaymentMethod(paymentMethod);
-
-        // Update user type assignments if provided
-        if (request.getAvailableForUserTypes() != null) {
-            assignPaymentMethodToUserTypes(methodId, request.getAvailableForUserTypes(),
-                    request.getSortOrder(), paymentMethod.getCreatedBy());
-        }
-
-        log.info(logMsg.get("payment.service.update.method.success", methodId));
-
-        return getPaymentMethodWithUserTypes(methodId);
-    }
 
     /**
      * Deactivates a payment method.

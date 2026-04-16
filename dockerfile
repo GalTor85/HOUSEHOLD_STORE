@@ -7,10 +7,10 @@ WORKDIR /build
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copy source code (включая миграции в src/main/resources/db/)
+# Copy source code
 COPY src ./src
 
-# Build JAR (миграции упакуются в JAR)
+# Build JAR
 RUN mvn clean package -DskipTests -B
 
 # Stage 2: Runtime
@@ -18,14 +18,18 @@ FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 # Create non-root user
 RUN addgroup -S spring && adduser -S spring -G spring
 
-# Copy JAR from builder (миграции уже внутри JAR)
+# Copy JAR from builder
 COPY --from=builder --chown=spring:spring /build/target/*.jar app.jar
 
-# Create directories
-RUN mkdir -p /app/logs /app/uploads && chown spring:spring /app/logs /app/uploads
+# Create directories and set permissions
+RUN mkdir -p /app/logs /app/uploads /app/keystore && \
+    chown -R spring:spring /app/logs /app/uploads /app/keystore
 
 # Switch to non-root user
 USER spring:spring
@@ -33,5 +37,5 @@ USER spring:spring
 # Expose port
 EXPOSE 8443
 
-# Run application (Liquibase выполнится при старте)
+# Run application
 ENTRYPOINT ["java", "-jar", "app.jar"]

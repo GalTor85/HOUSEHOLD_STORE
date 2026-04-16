@@ -1,4 +1,4 @@
--- Индексы для производительности
+-- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON household_schema.users(email);
 CREATE INDEX IF NOT EXISTS idx_users_mobile ON household_schema.users(mobile_number);
 

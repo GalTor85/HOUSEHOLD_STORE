@@ -13,6 +13,9 @@ import ru.galtor85.household_store.entity.finance.PaymentMethod;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Request DTO for creating a new invoice.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -76,43 +79,7 @@ public class InvoiceCreateRequest {
 
     @JsonIgnore
     @Schema(hidden = true)
-    public boolean isPurchaseOrder() {
-        return purchaseOrderId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isSalesOrder() {
-        return salesOrderId != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public Long getOrderId() {
-        return purchaseOrderId != null ? purchaseOrderId : salesOrderId;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
     public String getNormalizedCurrency() {
         return currency != null ? currency.trim().toUpperCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasDueDate() {
-        return dueDate != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasDescription() {
-        return description != null && !description.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasNotes() {
-        return notes != null && !notes.trim().isEmpty();
     }
 }

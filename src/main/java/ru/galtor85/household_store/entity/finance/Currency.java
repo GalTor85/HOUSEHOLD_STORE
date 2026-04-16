@@ -9,6 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Data
@@ -24,20 +25,20 @@ public class Currency {
     private Long id;
 
     @Column(name = "code", nullable = false, unique = true, length = 3)
-    private String code; // RUB, USD, EUR, KZT, etc.
+    private String code;
 
     @Column(name = "name", nullable = false)
-    private String name; // Российский рубль, Доллар США, etc.
+    private String name;
 
     @Column(name = "symbol", nullable = false, length = 5)
-    private String symbol; // ₽, $, €, ₸, etc.
+    private String symbol;
 
     @Column(name = "is_base")
     @Builder.Default
-    private Boolean isBase = false; // Базовая валюта системы
+    private Boolean isBase = false;
 
     @Column(name = "exchange_rate", precision = 10, scale = 4)
-    private BigDecimal exchangeRate; // Курс к базовой валюте
+    private BigDecimal exchangeRate;
 
     @Column(name = "is_active")
     @Builder.Default
@@ -62,17 +63,6 @@ public class Currency {
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // =========================================================================
 
-    public boolean isBaseCurrency() {
-        return Boolean.TRUE.equals(isBase);
-    }
-
-    public String getFormattedAmount(BigDecimal amount) {
-        if (amount == null) {
-            return "0.00 " + symbol;
-        }
-        return String.format("%,." + decimalPlaces + "f %s", amount, symbol);
-    }
-
     public BigDecimal convertToBase(BigDecimal amount) {
         if (exchangeRate == null || amount == null) {
             return amount;
@@ -84,6 +74,6 @@ public class Currency {
         if (exchangeRate == null || amount == null || exchangeRate.compareTo(BigDecimal.ZERO) == 0) {
             return amount;
         }
-        return amount.divide(exchangeRate, decimalPlaces, BigDecimal.ROUND_HALF_UP);
+        return amount.divide(exchangeRate, decimalPlaces, RoundingMode.HALF_UP);
     }
 }

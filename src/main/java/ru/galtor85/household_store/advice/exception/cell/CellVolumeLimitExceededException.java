@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.cell;
 
+import lombok.Getter;
+
+@Getter
 public class CellVolumeLimitExceededException extends RuntimeException {
     private final Long cellId;
     private final String cellCode;
@@ -14,19 +17,4 @@ public class CellVolumeLimitExceededException extends RuntimeException {
         this.requestedVolume = requestedVolume;
     }
 
-    public Long getCellId() {
-        return cellId;
-    }
-
-    public String getCellCode() {
-        return cellCode;
-    }
-
-    public double getMaxVolume() {
-        return maxVolume;
-    }
-
-    public double getRequestedVolume() {
-        return requestedVolume;
-    }
 }

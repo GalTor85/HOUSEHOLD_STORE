@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.supplier;
 
+import lombok.Getter;
+
+@Getter
 public class SupplierAlreadyExistsException extends RuntimeException {
     private final String field;
     private final String value;
@@ -10,11 +13,4 @@ public class SupplierAlreadyExistsException extends RuntimeException {
         this.value = value;
     }
 
-    public String getField() {
-        return field;
-    }
-
-    public String getValue() {
-        return value;
-    }
 }

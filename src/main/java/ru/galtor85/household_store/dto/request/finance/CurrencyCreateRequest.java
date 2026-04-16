@@ -15,6 +15,9 @@ import java.math.BigDecimal;
 import static ru.galtor85.household_store.constants.FinancialConstants.*;
 import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_ACTIVE_STATUS;
 
+/**
+ * Request DTO for creating a new currency.
+ */
 @Data
 @Builder
 @NoArgsConstructor

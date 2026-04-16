@@ -34,24 +34,23 @@ public class UserTypeAssignmentService {
     /**
      * Assigns a user type to a user.
      *
-     * @param userId user ID
-     * @param userType user type to assign
+     * @param userId     user ID
+     * @param userType   user type to assign
      * @param assignedBy who assigned the type
-     * @param reason reason for assignment
-     * @param validFrom validity start date
-     * @param validTo validity end date
-     * @return created assignment DTO
+     * @param reason     reason for assignment
+     * @param validFrom  validity start date
+     * @param validTo    validity end date
      */
     @Transactional
-    public UserTypeAssignmentDto assignUserType(Long userId, UserType userType, String assignedBy,
-                                                String reason, LocalDateTime validFrom, LocalDateTime validTo) {
+    public void assignUserType(Long userId, UserType userType, String assignedBy,
+                               String reason, LocalDateTime validFrom, LocalDateTime validTo) {
         log.debug(logMsg.get("user-type.log.assignment.start", userId, userType, assignedBy));
 
         validator.validateDateRange(validFrom, validTo);
 
         try {
             deactivator.deactivatePrevious(userId);
-            return creationProcessor.createAssignment(
+            creationProcessor.createAssignment(
                     userId, userType, assignedBy, reason, validFrom, validTo);
         } catch (Exception e) {
             log.error(logMsg.get("user-type.log.assignment.error", userId, userType, e.getMessage()), e);
@@ -63,15 +62,14 @@ public class UserTypeAssignmentService {
     /**
      * Assigns a user type without validity dates.
      *
-     * @param userId user ID
-     * @param userType user type to assign
+     * @param userId     user ID
+     * @param userType   user type to assign
      * @param assignedBy who assigned the type
-     * @param reason reason for assignment
-     * @return created assignment DTO
+     * @param reason     reason for assignment
      */
     @Transactional
-    public UserTypeAssignmentDto assignUserType(Long userId, UserType userType, String assignedBy, String reason) {
-        return assignUserType(userId, userType, assignedBy, reason, null, null);
+    public void assignUserType(Long userId, UserType userType, String assignedBy, String reason) {
+        assignUserType(userId, userType, assignedBy, reason, null, null);
     }
 
     /**

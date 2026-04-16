@@ -28,50 +28,50 @@ public class ProductMedia {
     private Long id;
 
     @Column(name = "product_id", nullable = false)
-    private Long productId; // ID товара (связь по ID)
+    private Long productId;
 
     @Column(name = "uploaded_by")
-    private Long uploadedBy; // ID пользователя, загрузившего файл
+    private Long uploadedBy;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "media_type", nullable = false)
     private MediaType mediaType;
 
     @Column(name = "file_name", nullable = false)
-    private String fileName; // Имя файла
+    private String fileName;
 
     @Column(name = "original_file_name")
     private String originalFileName;
 
     @Column(name = "file_path", nullable = false)
-    private String filePath; // Путь к файлу (URL)
+    private String filePath;
 
     @Column(name = "file_size")
-    private Long fileSize; // Размер в байтах
+    private Long fileSize;
 
     @Column(name = "mime_type")
-    private String mimeType; // MIME тип (image/jpeg, video/mp4)
+    private String mimeType;
 
     @Column(name = "alt_text")
-    private String altText; // Альтернативный текст (для SEO)
+    private String altText;
 
     @Column(name = "caption")
-    private String caption; // Подпись к изображению
+    private String caption;
 
     @Column(name = "sort_order")
-    private Integer sortOrder; // Порядок сортировки
+    private Integer sortOrder;
 
     @Column(name = "is_main")
-    private Boolean isMain; // Главное изображение
+    private Boolean isMain;
 
     @Column(name = "width")
-    private Integer width; // Ширина (для изображений)
+    private Integer width;
 
     @Column(name = "height")
-    private Integer height; // Высота (для изображений)
+    private Integer height;
 
     @Column(name = "duration")
-    private Integer duration; // Длительность видео (в секундах)
+    private Integer duration;
 
     @Column(name = "created_at")
     @CreationTimestamp

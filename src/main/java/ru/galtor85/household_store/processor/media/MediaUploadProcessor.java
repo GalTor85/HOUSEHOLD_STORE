@@ -14,10 +14,8 @@ import ru.galtor85.household_store.mapper.product.ProductMediaMapper;
 import ru.galtor85.household_store.repository.product.ProductMediaRepository;
 import ru.galtor85.household_store.service.file.FileStorageService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
-import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.media.MediaValidator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,10 +33,7 @@ public class MediaUploadProcessor {
     private final ProductMediaRepository mediaRepository;
     private final ProductMediaMapper mediaMapper;
     private final MediaValidator validator;
-    private final MessageService messageService;
     private final LogMessageService logMsg;
-
-    private static final int SINGLE_FILE_COUNT = 1;
 
     /**
      * Processes upload of multiple media files.
@@ -88,16 +83,6 @@ public class MediaUploadProcessor {
 
                 log.debug(logMsg.get("product.media.service.file.saved", fileName, savedMedia.getId()));
 
-            } catch (IOException e) {
-                log.error(logMsg.get("product.media.service.file.error", fileName, e.getMessage()), e);
-                failedFiles.add(fileName);
-
-                if (files.size() == SINGLE_FILE_COUNT) {
-                    throw new ProductMediaException(
-                            messageService.get("product.media.service.error.single", fileName, e.getMessage()),
-                            e, productId, fileName
-                    );
-                }
             } catch (ProductMediaException e) {
                 failedFiles.add(fileName);
                 log.error(logMsg.get("product.media.service.file.failed", fileName, e.getMessage()));

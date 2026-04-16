@@ -30,11 +30,10 @@ public class RoleChangeProcessor {
      * @param targetSecurity the target security user
      * @param newRole        the new role
      * @param adminUser      the admin performing the change
-     * @return updated SecurityUser
      */
     @Transactional
-    public SecurityUser changeRole(User targetUser, SecurityUser targetSecurity,
-                                   Role newRole, User adminUser) {
+    public void changeRole(User targetUser, SecurityUser targetSecurity,
+                           Role newRole, User adminUser) {
 
         Role oldRole = targetSecurity.getRole();
 
@@ -43,7 +42,7 @@ public class RoleChangeProcessor {
                 newRole
         );
 
-        SecurityUser saved = securityUserRepository.save(updatedSecurityUser);
+        securityUserRepository.save(updatedSecurityUser);
 
         log.info(logMsg.get(
                 "user-role-service.log.role.changed",
@@ -53,6 +52,5 @@ public class RoleChangeProcessor {
                 newRole
         ));
 
-        return saved;
     }
 }

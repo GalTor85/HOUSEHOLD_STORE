@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.stock;
 
+import lombok.Getter;
+
+@Getter
 public class StockMovementNotFoundException extends RuntimeException {
     private final Long movementId;
 
@@ -8,7 +11,4 @@ public class StockMovementNotFoundException extends RuntimeException {
         this.movementId = movementId;
     }
 
-    public Long getMovementId() {
-        return movementId;
-    }
 }

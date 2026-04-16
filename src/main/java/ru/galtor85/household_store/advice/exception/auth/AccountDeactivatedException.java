@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.auth;
 
+import lombok.Getter;
+
+@Getter
 public class AccountDeactivatedException extends RuntimeException {
     private final Long userId;
 
@@ -8,7 +11,4 @@ public class AccountDeactivatedException extends RuntimeException {
         this.userId = userId;
     }
 
-    public Long getUserId() {
-        return userId;
-    }
 }

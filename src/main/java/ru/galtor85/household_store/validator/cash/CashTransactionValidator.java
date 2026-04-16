@@ -154,7 +154,7 @@ public class CashTransactionValidator {
                     messageService.get("cash.transaction.validation.invoice.not.found")
             );
         }
-        if (!invoice.isPayable()) {
+        if (invoice.isNotPayable()) {
             log.error(logMsg.get("invoice.not.payable", invoice.getId(), invoice.getStatus()));
             throw new IllegalStateException(
                     messageService.get("invoice.not.payable", invoice.getId(), invoice.getStatus())

@@ -4,6 +4,11 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+
+/**
+ * Configuration for financial settings including currency and discounts.
+ */
 @Data
 @Component
 @ConfigurationProperties(prefix = "app.financial")
@@ -11,8 +16,11 @@ public class FinancialConfig {
 
     private String defaultCurrency = "RUB";
     private Integer defaultDecimalPlaces = 2;
+    private BigDecimal defaultExchangeRate = BigDecimal.ONE;
     private InvoiceConfig invoice = new InvoiceConfig();
     private DiscountsConfig discounts = new DiscountsConfig();
+    private boolean defaultActive = true;
+    private boolean defaultBase = true;
 
     @Data
     public static class InvoiceConfig {

@@ -1,7 +1,9 @@
 package ru.galtor85.household_store.advice.exception.cell;
 
+import lombok.Getter;
 import ru.galtor85.household_store.entity.warehouse.CellType;
 
+@Getter
 public class IncompatibleCellTypeException extends RuntimeException {
     private final Long cellId;
     private final String cellCode;
@@ -16,7 +18,7 @@ public class IncompatibleCellTypeException extends RuntimeException {
         this.requiredType = requiredType;
     }
 
-    public IncompatibleCellTypeException(String cellCode, Long warehouseId,
+    public IncompatibleCellTypeException(String cellCode,
                                          CellType cellType, String requiredType) {
         super();
         this.cellCode = cellCode;
@@ -25,19 +27,4 @@ public class IncompatibleCellTypeException extends RuntimeException {
         this.cellId = null;
     }
 
-    public Long getCellId() {
-        return cellId;
-    }
-
-    public String getCellCode() {
-        return cellCode;
-    }
-
-    public CellType getCellType() {
-        return cellType;
-    }
-
-    public String getRequiredType() {
-        return requiredType;
-    }
 }

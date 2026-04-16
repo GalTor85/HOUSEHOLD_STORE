@@ -7,7 +7,6 @@ import ru.galtor85.household_store.dto.common.ProductMediaUploadDto;
 import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
 import ru.galtor85.household_store.entity.product.MediaType;
 import ru.galtor85.household_store.entity.product.ProductMedia;
-import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,8 +20,6 @@ import static ru.galtor85.household_store.constants.ApiConstants.MEDIA_PATH;
 @Component
 @RequiredArgsConstructor
 public class ProductMediaMapper {
-
-    private final LogMessageService logMsg;
 
     /**
      * Converts ProductMedia entity to DTO.
@@ -130,47 +127,6 @@ public class ProductMediaMapper {
                 .sortOrder(sortOrder != null ? sortOrder : 0)
                 .isMain(isMain != null ? isMain : false)
                 .build();
-    }
-
-    /**
-     * Updates an existing ProductMedia entity from upload DTO.
-     *
-     * @param media     the existing product media entity
-     * @param uploadDto the upload DTO with updated values
-     */
-    public void updateEntity(ProductMedia media, ProductMediaUploadDto uploadDto) {
-        if (media == null || uploadDto == null) {
-            return;
-        }
-
-        if (uploadDto.getAltText() != null) {
-            media.setAltText(uploadDto.getAltText());
-        }
-        if (uploadDto.getCaption() != null) {
-            media.setCaption(uploadDto.getCaption());
-        }
-        if (uploadDto.getSortOrder() != null) {
-            media.setSortOrder(uploadDto.getSortOrder());
-        }
-        if (uploadDto.getIsMain() != null) {
-            media.setIsMain(uploadDto.getIsMain());
-        }
-        if (uploadDto.getMediaType() != null) {
-            try {
-                media.setMediaType(MediaType.valueOf(uploadDto.getMediaType().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                log.warn(logMsg.get("media.type.invalid", uploadDto.getMediaType()));
-            }
-        }
-        if (uploadDto.getWidth() != null) {
-            media.setWidth(uploadDto.getWidth());
-        }
-        if (uploadDto.getHeight() != null) {
-            media.setHeight(uploadDto.getHeight());
-        }
-        if (uploadDto.getDuration() != null) {
-            media.setDuration(uploadDto.getDuration());
-        }
     }
 
     /**

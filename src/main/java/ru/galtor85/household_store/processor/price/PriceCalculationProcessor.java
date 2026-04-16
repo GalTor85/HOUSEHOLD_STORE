@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.builder.price.PriceCalculationResultBuilder;
 import ru.galtor85.household_store.calculator.BasePriceCalculator;
 import ru.galtor85.household_store.dto.request.price.PriceCalculationRequest;
-import ru.galtor85.household_store.dto.response.cart.CartItemDto;
 import ru.galtor85.household_store.dto.response.finance.PriceCalculationResult;
 import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.processor.user.UserTypeDiscountProcessor;
@@ -53,6 +52,9 @@ public class PriceCalculationProcessor {
         currentTotal = priceRuleProcessor.applyPriceRules(
                 currentTotal, userType, request.getItems(), appliedDiscounts);
 
+        Long appliedPromoCodeId = null;
+        String appliedPromoCode = null;
+
         if (request.getPromoCode() != null && !request.getPromoCode().isEmpty()) {
             PromoCodeProcessor.PromoCodeResult promoResult = promoCodeProcessor.applyPromoCode(
                     currentTotal, request.getPromoCode(), request.getUserId(),
@@ -60,11 +62,16 @@ public class PriceCalculationProcessor {
 
             if (promoResult.applied()) {
                 currentTotal = promoResult.totalAfterDiscount();
+                appliedPromoCodeId = promoResult.promoCode().getId();
+                appliedPromoCode = promoResult.promoCode().getCode();
             }
         }
 
         PriceCalculationResult result = resultBuilder.build(
                 originalTotal, currentTotal, appliedDiscounts);
+
+        result.setAppliedPromoCodeId(appliedPromoCodeId);
+        result.setAppliedPromoCode(appliedPromoCode);
 
         log.info(logMsg.get("price.calculation.processor.complete",
                 originalTotal, result.getFinalTotal(), appliedDiscounts.size()));
@@ -72,55 +79,4 @@ public class PriceCalculationProcessor {
         return result;
     }
 
-    /**
-     * Calculates price for a list of items.
-     *
-     * @param items  cart items
-     * @param userId user ID
-     * @return PriceCalculationResult
-     */
-    public PriceCalculationResult calculatePriceForItems(List<CartItemDto> items, Long userId) {
-        PriceCalculationRequest request = PriceCalculationRequest.builder()
-                .userId(userId)
-                .items(items)
-                .applyUserTypeDiscounts(true)
-                .applyPriceRules(true)
-                .applyPromoCode(true)
-                .build();
-
-        return calculatePrice(request);
-    }
-
-    /**
-     * Calculates price with promo code.
-     *
-     * @param items     cart items
-     * @param userId    user ID
-     * @param promoCode promo code
-     * @return PriceCalculationResult
-     */
-    public PriceCalculationResult calculatePriceWithPromoCode(List<CartItemDto> items,
-                                                              Long userId,
-                                                              String promoCode) {
-        PriceCalculationRequest request = PriceCalculationRequest.builder()
-                .userId(userId)
-                .items(items)
-                .promoCode(promoCode)
-                .applyUserTypeDiscounts(true)
-                .applyPriceRules(true)
-                .applyPromoCode(true)
-                .build();
-
-        return calculatePrice(request);
-    }
-
-    /**
-     * Calculates base price without discounts.
-     *
-     * @param items cart items
-     * @return base total
-     */
-    public BigDecimal calculateBasePrice(List<CartItemDto> items) {
-        return basePriceCalculator.calculateOriginalTotal(items);
-    }
 }

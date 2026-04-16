@@ -12,6 +12,9 @@ import java.math.BigDecimal;
 
 import static ru.galtor85.household_store.constants.FinancialConstants.MIN_EXCHANGE_RATE_STR;
 
+/**
+ * Request DTO for updating an existing currency.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -38,13 +41,6 @@ public class CurrencyUpdateRequest {
     // =========================================================================
     // HELPER METHODS - hidden from Swagger
     // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasUpdates() {
-        return name != null || symbol != null || exchangeRate != null ||
-                decimalPlaces != null || isActive != null;
-    }
 
     @JsonIgnore
     @Schema(hidden = true)

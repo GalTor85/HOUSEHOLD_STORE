@@ -18,10 +18,13 @@ import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.entity.order.SalesOrderItem;
 import ru.galtor85.household_store.entity.order.SalesOrderType;
 import ru.galtor85.household_store.entity.product.Product;
+import ru.galtor85.household_store.entity.promotion.PromoCodeUsage;
 import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.processor.invoice.InvoiceAutoCreationProcessor;
 import ru.galtor85.household_store.processor.price.PriceCalculationProcessor;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
+import ru.galtor85.household_store.repository.promotion.PromoCodeRepository;
+import ru.galtor85.household_store.repository.promotion.PromoCodeUsageRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
 import ru.galtor85.household_store.validator.order.SalesOrderValidator;
@@ -45,6 +48,8 @@ public class SalesOrderProcessor {
     private final SalesOrderValidator validator;
     private final UserTypeAssignmentService userTypeAssignmentService;
     private final PriceCalculationProcessor priceCalculationProcessor;
+    private final PromoCodeUsageRepository promoCodeUsageRepository;
+    private final PromoCodeRepository promoCodeRepository;
 
     // =========================================================================
     // CREATE ORDER FROM CART
@@ -85,6 +90,17 @@ public class SalesOrderProcessor {
                 .build();
 
         SalesOrder savedOrder = createAndSaveOrder(createRequest, priceResult, userId, cart.getItems(), null);
+
+        if (priceResult.getAppliedPromoCodeId() != null) {
+            PromoCodeUsage usage = PromoCodeUsage.builder()
+                    .promoCodeId(priceResult.getAppliedPromoCodeId())
+                    .userId(userId)
+                    .orderId(savedOrder.getId())
+                    .build();
+            promoCodeUsageRepository.save(usage);
+
+            promoCodeRepository.incrementUsedCount(priceResult.getAppliedPromoCodeId());
+        }
 
         log.info(logMsg.get("sales.order.processor.create.from.cart.complete",
                 savedOrder.getOrderNumber(), userId, priceResult.getFinalTotal()));

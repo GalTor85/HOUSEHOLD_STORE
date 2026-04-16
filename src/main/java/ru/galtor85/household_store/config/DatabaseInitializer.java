@@ -6,11 +6,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.entity.finance.Currency;
 import ru.galtor85.household_store.entity.user.Role;
 import ru.galtor85.household_store.entity.user.User;
@@ -25,6 +25,7 @@ import ru.galtor85.household_store.security.SecurityUserFactory;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
+import ru.galtor85.household_store.util.generator.NumberGenerator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -65,15 +66,16 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.SYSTEM_CR
  * @author G@LTor85
  * @version 1.0
  * @see WarehouseConfig
- * @see CurrencyConfig
+ * @see FinancialConfig
  * @see DefaultsUserConfig
- * @since 1.0
+ 
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 @Profile("!test")
 @ConditionalOnProperty(name = "app.data.initialize", havingValue = "true")
+@Order(1)
 public class DatabaseInitializer {
 
     private final UserRepository userRepository;
@@ -86,9 +88,11 @@ public class DatabaseInitializer {
     private final WarehouseRepository warehouseRepository;
     private final WarehouseConfig warehouseConfig;
     private final CurrencyRepository currencyRepository;
-    private final CurrencyConfig currencyConfig;
+    private final FinancialConfig financialConfig;
     private final DefaultsUserConfig defaultsUserConfig;
     private final LogMessageService logMsg;
+    private final NumberGenerator numberGenerator;
+
     /**
      * Initializes default data after application is fully ready.
      * This runs after Liquibase migrations are complete.
@@ -268,7 +272,7 @@ public class DatabaseInitializer {
      *
      * @return admin user ID, or null if not found
      */
-    private Long getAdminUserId() {
+    public Long getAdminUserId() {
         String adminEmail = defaultsUserConfig.getAdmin().getEmail();
         return userRepository.findByEmail(adminEmail)
                 .map(User::getId)
@@ -290,7 +294,7 @@ public class DatabaseInitializer {
     private void createDefaultWarehouse() {
         try {
             Long defaultId = warehouseConfig.getDefaultWarehouseId();
-            String defaultName = messageService.get("warehouse.default.name");
+            String defaultName = warehouseConfig.getDefaultWarehouseName();
 
             if (!warehouseRepository.existsById(defaultId)) {
                 log.info(logMsg.get("database-initializer.log.creating.warehouse", defaultName));
@@ -298,14 +302,15 @@ public class DatabaseInitializer {
                 Warehouse defaultWarehouse = Warehouse.builder()
                         .code(warehouseConfig.getDefaultWarehouseCode())
                         .name(defaultName)
-                        .description(messageService.get("warehouse.default.description"))
-                        .barcode(warehouseConfig.getDefaultWarehouseBarcodePrefix() + System.currentTimeMillis())
+                        .description(warehouseConfig.getDefaultWarehouseDescription())
+                        .barcode(numberGenerator.generateWarehouseBarcode())
                         .barcodeFormat(warehouseConfig.getDefaultWarehouseBarcodeFormat())
-                        .address(messageService.get("warehouse.default.address"))
+                        .address(warehouseConfig.getDefaultWarehouseAddress())
                         .isActive(true)
                         .totalCapacity(warehouseConfig.getDefaultWarehouseCapacity())
-                        .usedCapacity(0)
+                        .usedCapacity(warehouseConfig.getDefaultWarehouseCapacity())
                         .createdBy(getAdminUserId())
+                        .isVisibleForSale(warehouseConfig.getDefaultWarehouseVisibleForSale())
                         .build();
 
                 warehouseRepository.save(defaultWarehouse);
@@ -336,7 +341,7 @@ public class DatabaseInitializer {
      */
     private void createDefaultCurrency() {
         try {
-            String defaultCode = currencyConfig.getDefaultCode();
+            String defaultCode = financialConfig.getDefaultCurrency();
             String defaultName = messageService.get("currency.default.name");
             String defaultSymbol = messageService.get("currency.default.symbol");
 
@@ -350,9 +355,9 @@ public class DatabaseInitializer {
                         .name(defaultName)
                         .symbol(defaultSymbol)
                         .isBase(!hasBaseCurrency)
-                        .exchangeRate(currencyConfig.getDefaultExchangeRate())
-                        .decimalPlaces(currencyConfig.getDefaultDecimalPlaces())
-                        .isActive(currencyConfig.isDefaultActive())
+                        .exchangeRate(financialConfig.getDefaultExchangeRate())
+                        .decimalPlaces(financialConfig.getDefaultDecimalPlaces())
+                        .isActive(financialConfig.isDefaultActive())
                         .createdBy(getAdminUserId())
                         .createdAt(LocalDateTime.now())
                         .updatedAt(LocalDateTime.now())
@@ -371,44 +376,5 @@ public class DatabaseInitializer {
         } catch (Exception e) {
             log.error(logMsg.get("database-initializer.log.currency.create.failed", e.getMessage()), e);
         }
-    }
-
-    /**
-     * Forces immediate initialization of default data.
-     *
-     * <p>This method can be called programmatically when immediate initialization
-     * is required, bypassing the normal lifecycle timing.</p>
-     *
-     * <p><b>Use Cases:</b></p>
-     * <ul>
-     *   <li>When the database is created after application startup</li>
-     *   <li>When manual re-initialization is needed for testing</li>
-     *   <li>When recovering from a failed initial migration</li>
-     * </ul>
-     *
-     * <p><b>Example Usage:</b></p>
-     * <pre>
-     * {@code
-     * @Autowired
-     * private DatabaseInitializer initializer;
-     *
-     * public void resetDatabase() {
-     *     initializer.forceInitialize();
-     * }
-     * }
-     * </pre>
-     */
-    @Transactional
-    public void forceInitialize() {
-        log.info(logMsg.get("database-initializer.log.force.start"));
-
-        if (isDatabaseNotReady()) {
-            log.error(logMsg.get("database-initializer.log.force.not.ready"));
-            return;
-        }
-
-        initializeAll();
-
-        log.info(logMsg.get("database-initializer.log.force.completed"));
     }
 }

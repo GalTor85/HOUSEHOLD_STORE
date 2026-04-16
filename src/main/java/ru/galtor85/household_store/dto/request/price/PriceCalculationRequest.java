@@ -43,9 +43,6 @@ public class PriceCalculationRequest {
     @Schema(description = "Shipping address for delivery cost calculation", example = "123 Main St, Moscow")
     private String shippingAddress;
 
-    @Schema(description = "Currency code", example = "RUB")
-    private String currency;
-
     @Schema(description = "Apply user type discounts", example = "true", defaultValue = "true")
     @Builder.Default
     private boolean applyUserTypeDiscounts = true;

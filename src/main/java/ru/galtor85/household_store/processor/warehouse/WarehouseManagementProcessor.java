@@ -4,16 +4,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.config.WarehouseConfig;
 import ru.galtor85.household_store.dto.request.warehouse.WarehouseCreateRequest;
 import ru.galtor85.household_store.dto.response.warehouse.WarehouseDto;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.mapper.warehouse.WarehouseMapper;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
+import ru.galtor85.household_store.util.generator.NumberGenerator;
 
 import java.util.UUID;
 
-import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_BARCODE_FORMAT;
 
 /**
  * Processor for warehouse management operations.
@@ -22,7 +23,7 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_B
  * barcode generation and persistence.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component
@@ -36,6 +37,8 @@ public class WarehouseManagementProcessor {
     private final WarehouseRepository warehouseRepository;
     private final WarehouseMapper warehouseMapper;
     private final LogMessageService logMsg;
+    private final NumberGenerator numberGenerator;
+    private final WarehouseConfig warehouseConfig;
 
     /**
      * Creates a new warehouse.
@@ -54,7 +57,22 @@ public class WarehouseManagementProcessor {
         Warehouse warehouse = warehouseMapper.toEntity(request, createdBy);
 
         if (warehouse.getBarcodeFormat() == null) {
-            warehouse.setBarcodeFormat(DEFAULT_BARCODE_FORMAT);
+            warehouse.setBarcodeFormat(warehouseConfig.getDefaultWarehouseBarcodeFormat());
+        }
+
+        if (warehouse.getBarcode() == null) {
+            warehouse.setBarcode(numberGenerator.generateWarehouseBarcode());
+        }
+
+        if (warehouse.getTotalCapacity() == null) {
+            warehouse.setTotalCapacity(warehouseConfig.getDefaultWarehouseCapacity());
+        }
+        if (warehouse.getUsedCapacity() == null) {
+            warehouse.setUsedCapacity(warehouseConfig.getDefaultWarehouseCapacity());
+        }
+
+        if (warehouse.getIsVisibleForSale() == null) {
+            warehouse.setIsVisibleForSale(warehouseConfig.getDefaultWarehouseVisibleForSale());
         }
 
         Warehouse savedWarehouse = warehouseRepository.save(warehouse);

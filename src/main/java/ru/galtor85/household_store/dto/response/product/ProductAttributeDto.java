@@ -27,11 +27,9 @@ public class ProductAttributeDto {
     @Schema(description = "Display salesOrder", example = "1")
     private Integer order;
 
-    // ИСПРАВЛЕНО: boolean -> Boolean
     @Schema(description = "Is required", example = "true", defaultValue = "false")
     private Boolean required;
 
-    // ИСПРАВЛЕНО: boolean -> Boolean
     @Schema(description = "Is variant attribute", example = "false", defaultValue = "false")
     private Boolean variant;
 }

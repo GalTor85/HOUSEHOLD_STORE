@@ -11,6 +11,9 @@ import ru.galtor85.household_store.entity.finance.PaymentMethod;
 
 import java.math.BigDecimal;
 
+/**
+ * Request DTO for manager cash payment from customer.
+ */
 @Data
 @Builder
 @NoArgsConstructor

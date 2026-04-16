@@ -53,10 +53,9 @@ public class StockWriteOffProcessor {
      *
      * @param request   the write-off request
      * @param managerId the manager ID
-     * @return WriteOffResult with success and failed items
      */
     @Transactional
-    public WriteOffResult processWriteOff(StockWriteOffRequest request, Long managerId) {
+    public void processWriteOff(StockWriteOffRequest request, Long managerId) {
 
         log.info(logMsg.get("writeoff.processor.start",
                 request.getItems().size(), request.getReason(), managerId));
@@ -112,7 +111,7 @@ public class StockWriteOffProcessor {
         log.info(logMsg.get("writeoff.processor.complete",
                 successItems.size(), movements.size(), failedItems.size()));
 
-        return WriteOffResult.builder()
+        WriteOffResult.builder()
                 .movements(movements)
                 .successItems(successItems)
                 .failedItems(failedItems)

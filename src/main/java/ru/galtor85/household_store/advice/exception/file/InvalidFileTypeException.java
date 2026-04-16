@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.file;
 
+import lombok.Getter;
+
+@Getter
 public class InvalidFileTypeException extends FileStorageException {
 
     private final String contentType;
@@ -12,11 +15,4 @@ public class InvalidFileTypeException extends FileStorageException {
         this.allowedTypes = allowedTypes;
     }
 
-    public String getContentType() {
-        return contentType;
-    }
-
-    public String getAllowedTypes() {
-        return allowedTypes;
-    }
 }

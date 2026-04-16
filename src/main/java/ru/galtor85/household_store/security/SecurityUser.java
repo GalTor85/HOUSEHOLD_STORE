@@ -1,10 +1,7 @@
 package ru.galtor85.household_store.security;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
@@ -16,7 +13,11 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
 
-@Data
+/**
+ * Security user entity for Spring Security authentication.
+ */
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,11 +25,12 @@ import java.util.Collections;
 @Table(name = "security_users", schema = "household_schema")
 public class SecurityUser implements UserDetails {
 
+    private static final String ROLE_PREFIX = "ROLE_";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ИСПРАВЛЕНО: только ID пользователя, без ссылки на сущность
     @Column(name = "user_id", nullable = false, unique = true)
     private Long userId;
 
@@ -42,17 +44,18 @@ public class SecurityUser implements UserDetails {
     @Column(nullable = false)
     private boolean active;
 
-    @Column(name = "created_at")
     @CreationTimestamp
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @Override
+    @NonNull
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        return Collections.singletonList(new SimpleGrantedAuthority(ROLE_PREFIX + role.name()));
     }
 
     @Override
@@ -61,8 +64,8 @@ public class SecurityUser implements UserDetails {
     }
 
     @Override
+    @NonNull
     public String getUsername() {
-        // Временно возвращаем userId, пока нет доступа к User
         return String.valueOf(userId);
     }
 
@@ -84,9 +87,5 @@ public class SecurityUser implements UserDetails {
     @Override
     public boolean isEnabled() {
         return active;
-    }
-
-    public boolean canManage(Role targetRole) {
-        return this.role.canManage(targetRole);
     }
 }

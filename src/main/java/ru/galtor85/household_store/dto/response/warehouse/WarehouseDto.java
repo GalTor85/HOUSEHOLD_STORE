@@ -14,7 +14,7 @@ import java.util.List;
  * DTO for warehouse details.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder

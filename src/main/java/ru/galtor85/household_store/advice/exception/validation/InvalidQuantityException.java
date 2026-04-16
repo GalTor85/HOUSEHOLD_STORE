@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.validation;
 
+import lombok.Getter;
+
+@Getter
 public class InvalidQuantityException extends RuntimeException {
     private final Integer invalidQuantity;
 
@@ -8,7 +11,4 @@ public class InvalidQuantityException extends RuntimeException {
         this.invalidQuantity = invalidQuantity;
     }
 
-    public Integer getInvalidQuantity() {
-        return invalidQuantity;
-    }
 }

@@ -13,33 +13,36 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Purchase order DTO.
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(description = "Purchase salesOrder DTO")
+@Schema(description = "Purchase order information")
 public class PurchaseOrderDto {
 
-    @Schema(description = "Purchase salesOrder ID", example = "1")
+    @Schema(description = "Purchase order ID", example = "1")
     private Long id;
 
-    @Schema(description = "SalesOrder number", example = "PO-20240322-001")
+    @Schema(description = "Order number", example = "PO-20240322-001")
     private String orderNumber;
 
     @Schema(description = "Supplier ID", example = "1")
     private Long supplierId;
 
-    @Schema(description = "Supplier name", example = "ООО ТехноПост")
+    @Schema(description = "Supplier name", example = "TechnoPost LLC")
     private String supplierName;
 
-    @Schema(description = "SalesOrder status")
+    @Schema(description = "Order status")
     private OrderStatus status;
 
-    @Schema(description = "Localized status", example = "Ожидает оплаты")
+    @Schema(description = "Localized status", example = "Awaiting payment")
     private String localizedStatus;
 
-    @Schema(description = "SalesOrder items")
+    @Schema(description = "Order items")
     private List<PurchaseOrderItemDto> items;
 
     @Schema(description = "Expected delivery date", example = "2024-03-25")
@@ -51,7 +54,7 @@ public class PurchaseOrderDto {
     @Schema(description = "Warehouse location", example = "Warehouse A, Section 3")
     private String warehouseLocation;
 
-    @Schema(description = "Who received the goods", example = "1")
+    @Schema(description = "Receiver user ID", example = "1")
     private Long receivedBy;
 
     @Schema(description = "Quality check passed", example = "true")

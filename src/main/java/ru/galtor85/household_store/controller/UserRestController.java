@@ -45,24 +45,30 @@ import ru.galtor85.household_store.service.stock.StockDisplayService;
 import ru.galtor85.household_store.service.user.UserSearchService;
 import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_USERS;
 
 /**
- * REST controller for user profile, cart, and order operations.
+ * REST controller for user profile, shopping cart, order management and payment operations.
  *
- * <p>This controller provides endpoints for:</p>
+ * <p>This controller provides endpoints for authenticated users to:</p>
  * <ul>
- *   <li>User profile management (view, edit, password change)</li>
- *   <li>Shopping cart operations (add, update, remove, clear, checkout)</li>
- *   <li>Order creation from cart (with or without promo code)</li>
- *   <li>Viewing user's orders and order details</li>
- *   <li>Cancelling orders</li>
- *   <li>User spending statistics</li>
+ *   <li>View and update their profile information</li>
+ *   <li>Manage shopping cart (add, update, remove items)</li>
+ *   <li>Create orders from cart</li>
+ *   <li>View order history and order details</li>
+ *   <li>Cancel pending orders</li>
+ *   <li>Pay invoices</li>
+ *   <li>View available payment methods</li>
+ *   <li>Browse products with availability information</li>
  * </ul>
  *
- * <p>All endpoints require authentication via Bearer token.</p>
+ * <p>All endpoints require authentication via JWT token.</p>
+ *
+ * @author G@LTor85
  */
 @SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
@@ -70,7 +76,7 @@ import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_US
 @RequestMapping(CONTROL_USERS)
 @RequiredArgsConstructor
 @Tag(name = "Users", description = "API for Users")
-public class UserRestController extends BaseController{
+public class UserRestController extends BaseController {
 
     private final UserService userService;
     private final UserMapper userMapper;
@@ -86,21 +92,18 @@ public class UserRestController extends BaseController{
     private final ProductRepository productRepository;
     private final InvoiceService invoiceService;
 
-
     // =========================================================================
     // USER PROFILE OPERATIONS
     // =========================================================================
 
     /**
-     * Retrieves the profile of the currently authenticated user.
+     * Retrieves the current authenticated user's profile information.
      *
-     * @return user profile DTO
+     * @return user profile data
      */
     @GetMapping("/me")
-    @Operation(summary = "Get current user information",
-            description = "Retrieves the profile of the currently authenticated user")
+    @Operation(summary = "Get current user information")
     public ResponseEntity<ApiResponse<UserResponse>> getUserInfo() {
-
         log.info(logMsg.get("user-rest-controller.log.profile.fetch.start"));
 
         User user = getCurrentUser();
@@ -116,14 +119,13 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Updates the profile of the currently authenticated user.
+     * Updates the current user's profile information.
      *
-     * @param request profile update request with fields to update
-     * @return updated user profile DTO
+     * @param request the edit request containing updated fields
+     * @return updated user profile data
      */
     @PutMapping("/profile")
-    @Operation(summary = "Update user profile",
-            description = "Updates the profile of the currently authenticated user")
+    @Operation(summary = "Update user profile")
     public ResponseEntity<ApiResponse<UserResponse>> editUser(
             @Valid @RequestBody UserEditRequest request) {
 
@@ -146,14 +148,13 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Updates the password of the currently authenticated user.
+     * Updates the current user's password.
      *
-     * @param request password update request with current and new password
-     * @return updated user profile DTO
+     * @param request the password update request containing current and new passwords
+     * @return updated user profile data
      */
     @PutMapping("/password")
-    @Operation(summary = "Update user password",
-            description = "Updates the password of the currently authenticated user")
+    @Operation(summary = "Update user password")
     public ResponseEntity<ApiResponse<UserResponse>> updatePassword(
             @Valid @RequestBody UserUpdatePasswordRequest request) {
 
@@ -176,19 +177,17 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Gets all products with availability for customers.
-     * Shows products from warehouses visible for sale only.
+     * Retrieves a paginated list of products with availability information.
      *
-     * @param category category filter (optional)
-     * @param page page number (0-indexed)
-     * @param size page size
-     * @param sortBy sort field
-     * @param sortDir sort direction
-     * @return page of products with availability information
+     * @param category optional category filter
+     * @param page     page number (0-indexed)
+     * @param size     page size
+     * @param sortBy   field to sort by
+     * @param sortDir  sort direction (asc/desc)
+     * @return page of products with availability status
      */
     @GetMapping("/products")
-    @Operation(summary = "Get all products with availability",
-            description = "Returns paginated list of products with stock availability from visible warehouses")
+    @Operation(summary = "Get all products with availability")
     public ResponseEntity<ApiResponse<Page<ProductAvailabilityDto>>> getAllProductsWithAvailability(
             @Parameter(description = "Category filter", example = "Electronics")
             @RequestParam(required = false) String category,
@@ -214,15 +213,13 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Gets all available product categories.
+     * Retrieves all available product categories.
      *
-     * @return list of categories
+     * @return list of category names
      */
     @GetMapping("/products/categories")
-    @Operation(summary = "Get all product categories",
-            description = "Returns list of all available product categories")
+    @Operation(summary = "Get all product categories")
     public ResponseEntity<ApiResponse<List<String>>> getProductCategories() {
-
         log.debug(logMsg.get("user.stock.categories.start"));
 
         List<String> categories = productRepository.findAllCategories();
@@ -239,13 +236,12 @@ public class UserRestController extends BaseController{
     // =========================================================================
 
     /**
-     * Retrieves the active shopping cart for the authenticated user.
+     * Retrieves the current user's active shopping cart.
      *
-     * @return cart DTO with items and totals
+     * @return cart data with items and total amount
      */
     @GetMapping("/cart")
-    @Operation(summary = "Get current user's cart",
-            description = "Retrieves the active shopping cart for the authenticated user")
+    @Operation(summary = "Get current user's cart")
     public ResponseEntity<ApiResponse<CartDto>> getCart() {
         Long userId = getCurrentUserId();
         log.debug(logMsg.get("cart.controller.get", userId));
@@ -261,11 +257,10 @@ public class UserRestController extends BaseController{
      * Adds a product to the user's shopping cart.
      *
      * @param request add to cart request with product ID and quantity
-     * @return updated cart DTO
+     * @return updated cart data
      */
     @PostMapping("/cart/items")
-    @Operation(summary = "Add item to cart",
-            description = "Adds a product to the user's shopping cart")
+    @Operation(summary = "Add item to cart")
     public ResponseEntity<ApiResponse<CartDto>> addToCart(
             @Valid @RequestBody AddToCartRequest request) {
 
@@ -281,15 +276,14 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Updates the quantity of a specific item in the shopping cart.
+     * Updates the quantity of an item in the shopping cart.
      *
-     * @param productId product ID to update
-     * @param request   update request with new quantity (0 to remove)
-     * @return updated cart DTO
+     * @param productId ID of the product to update
+     * @param request   update request with new quantity
+     * @return updated cart data
      */
     @PutMapping("/cart/items/{productId}")
-    @Operation(summary = "Update cart item quantity",
-            description = "Updates the quantity of a specific item in the shopping cart")
+    @Operation(summary = "Update cart item quantity")
     public ResponseEntity<ApiResponse<CartDto>> updateCartItem(
             @Parameter(description = "Product ID", example = "1", required = true)
             @PathVariable Long productId,
@@ -306,14 +300,13 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Removes a specific product from the shopping cart.
+     * Removes an item from the shopping cart.
      *
-     * @param productId product ID to remove
-     * @return updated cart DTO
+     * @param productId ID of the product to remove
+     * @return updated cart data
      */
     @DeleteMapping("/cart/items/{productId}")
-    @Operation(summary = "Remove item from cart",
-            description = "Removes a specific product from the shopping cart")
+    @Operation(summary = "Remove item from cart")
     public ResponseEntity<ApiResponse<CartDto>> removeFromCart(
             @Parameter(description = "Product ID", example = "1", required = true)
             @PathVariable Long productId) {
@@ -329,13 +322,12 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Removes all items from the user's shopping cart.
+     * Clears all items from the shopping cart.
      *
-     * @return success response
+     * @return empty response
      */
     @DeleteMapping("/cart")
-    @Operation(summary = "Clear cart",
-            description = "Removes all items from the user's shopping cart")
+    @Operation(summary = "Clear cart")
     public ResponseEntity<ApiResponse<Void>> clearCart() {
         Long userId = getCurrentUserId();
         log.info(logMsg.get("cart.controller.clear.start", userId));
@@ -348,13 +340,12 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Prepares the cart for checkout (changes status to check out).
+     * Prepares the cart for checkout.
      *
-     * @return cart DTO with CHECKOUT status
+     * @return cart data with CHECKOUT status
      */
     @PostMapping("/cart/checkout")
-    @Operation(summary = "Checkout cart (prepare for order)",
-            description = "Prepares the cart for checkout and initiates the ordering process")
+    @Operation(summary = "Checkout cart (prepare for order)")
     public ResponseEntity<ApiResponse<CartDto>> checkoutCart() {
         Long userId = getCurrentUserId();
         log.info(logMsg.get("cart.controller.checkout.start", userId));
@@ -371,14 +362,13 @@ public class UserRestController extends BaseController{
     // =========================================================================
 
     /**
-     * Creates a new sales order from the items in the user's shopping cart.
+     * Creates a new order from the user's active cart.
      *
-     * @param shippingAddress shipping address for the order
-     * @return created sales order DTO
+     * @param shippingAddress the shipping address for the order
+     * @return created order data
      */
     @PostMapping("/orders/from-cart")
-    @Operation(summary = "Create order from cart",
-            description = "Creates a new sales order from the items in the user's shopping cart")
+    @Operation(summary = "Create order from cart")
     public ResponseEntity<ApiResponse<SalesOrderDto>> createOrderFromCart(
             @Parameter(description = "Shipping address", example = "123 Main St, Moscow, Russia", required = true)
             @RequestParam String shippingAddress) {
@@ -395,15 +385,14 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Creates a new sales order from the cart with a promo code discount.
+     * Creates a new order from the user's active cart with a promo code.
      *
-     * @param shippingAddress shipping address for the order
+     * @param shippingAddress the shipping address for the order
      * @param promoCode       promo code to apply
-     * @return created sales order DTO
+     * @return created order data with applied discount
      */
     @PostMapping("/orders/from-cart/promo")
-    @Operation(summary = "Create order from cart with promo code",
-            description = "Creates a new sales order from the cart with an optional promo code discount")
+    @Operation(summary = "Create order from cart with promo code")
     public ResponseEntity<ApiResponse<SalesOrderDto>> createOrderFromCartWithPromo(
             @Parameter(description = "Shipping address", example = "123 Main St, Moscow, Russia", required = true)
             @RequestParam String shippingAddress,
@@ -426,15 +415,14 @@ public class UserRestController extends BaseController{
     // =========================================================================
 
     /**
-     * Retrieves a paginated list of all orders for the authenticated user.
+     * Retrieves a paginated list of the user's orders.
      *
      * @param page page number (0-indexed)
      * @param size page size
-     * @return page of sales order DTOs
+     * @return page of order data
      */
     @GetMapping("/orders")
-    @Operation(summary = "Get user's orders",
-            description = "Retrieves a paginated list of all orders for the authenticated user")
+    @Operation(summary = "Get user's orders")
     public ResponseEntity<ApiResponse<Page<SalesOrderDto>>> getUserOrders(
             @Parameter(description = "Page number (0-indexed)", example = "0")
             @RequestParam(defaultValue = "0") int page,
@@ -452,14 +440,13 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Retrieves detailed information about a specific order by its ID.
+     * Retrieves a specific order by its ID.
      *
-     * @param orderId order ID
-     * @return sales order DTO
+     * @param orderId the order ID
+     * @return order data (only if owned by the current user)
      */
     @GetMapping("/orders/{orderId}")
-    @Operation(summary = "Get order by ID",
-            description = "Retrieves detailed information about a specific order by its ID")
+    @Operation(summary = "Get order by ID")
     public ResponseEntity<ApiResponse<SalesOrderDto>> getOrder(
             @Parameter(description = "Order ID", example = "1", required = true)
             @PathVariable Long orderId) {
@@ -469,27 +456,20 @@ public class UserRestController extends BaseController{
 
         SalesOrderDto order = salesOrderService.getSalesOrderById(orderId);
 
-        // Verify order belongs to the user
-        if (!order.getUserId().equals(userId)) {
-            	log.warn(logMsg.get("user.order.access.denied", userId, orderId));
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ApiResponse.error(messageService.get("user.order.access.denied.message")));
-        }
-
-        return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("user.order.fetched"),
-                order));
+        return validateOrderAccess(order, userId, orderId,
+                () -> ResponseEntity.ok(ApiResponse.success(
+                        messageService.get("user.order.fetched"),
+                        order)));
     }
 
     /**
-     * Retrieves detailed information about a specific order by its order number.
+     * Retrieves a specific order by its order number.
      *
-     * @param orderNumber order number
-     * @return sales order DTO
+     * @param orderNumber the unique order number
+     * @return order data (only if owned by the current user)
      */
     @GetMapping("/orders/by-number/{orderNumber}")
-    @Operation(summary = "Get order by number",
-            description = "Retrieves detailed information about a specific order by its order number")
+    @Operation(summary = "Get order by number")
     public ResponseEntity<ApiResponse<SalesOrderDto>> getOrderByNumber(
             @Parameter(description = "Order number", example = "SO-20240330-001", required = true)
             @PathVariable String orderNumber) {
@@ -499,27 +479,21 @@ public class UserRestController extends BaseController{
 
         SalesOrderDto order = salesOrderService.getSalesOrderByNumber(orderNumber);
 
-        if (!order.getUserId().equals(userId)) {
-            	log.warn(logMsg.get("user.order.access.denied", userId, orderNumber));
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ApiResponse.error(messageService.get("user.order.access.denied.message")));
-        }
-
-        return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("user.order.fetched"),
-                order));
+        return validateOrderAccess(order, userId, orderNumber,
+                () -> ResponseEntity.ok(ApiResponse.success(
+                        messageService.get("user.order.fetched"),
+                        order)));
     }
 
     /**
-     * Cancels an existing order that is in a cancellable state.
+     * Cancels a pending order.
      *
-     * @param orderId order ID
+     * @param orderId the order ID
      * @param reason  cancellation reason
-     * @return cancelled sales order DTO
+     * @return cancelled order data or error response
      */
     @PostMapping("/orders/{orderId}/cancel")
-    @Operation(summary = "Cancel order",
-            description = "Cancels an existing order that is in a cancellable state")
+    @Operation(summary = "Cancel order")
     public ResponseEntity<ApiResponse<SalesOrderDto>> cancelOrder(
             @PathVariable Long orderId,
             @RequestParam String reason) {
@@ -544,15 +518,18 @@ public class UserRestController extends BaseController{
     }
 
     // =========================================================================
-    // INVOICE PAYMENT (NEW)
+    // INVOICE PAYMENT
     // =========================================================================
 
     /**
-     * Pay invoice by invoice number
+     * Pays an invoice by its invoice number.
+     *
+     * @param invoiceNumber the invoice number
+     * @param request       payment method selection
+     * @return payment transaction data
      */
     @PostMapping("/invoices/{invoiceNumber}/pay")
-    @Operation(summary = "Pay invoice by number",
-            description = "Process payment for a specific invoice using its unique number")
+    @Operation(summary = "Pay invoice by number")
     public ResponseEntity<ApiResponse<PaymentTransactionDto>> payInvoiceByNumber(
             @Parameter(description = "Invoice number", example = "INV-20240330-001", required = true)
             @PathVariable String invoiceNumber,
@@ -561,24 +538,20 @@ public class UserRestController extends BaseController{
         Long currentUserId = getCurrentUserId();
         log.info(logMsg.get("user.payment.start.by.invoice", invoiceNumber, currentUserId));
 
-        // 1. Find invoice by number
         InvoiceDto invoice = invoiceService.getInvoiceByNumber(invoiceNumber);
 
-        // 2. Check if invoice is related to a sales order
         if (invoice.getSalesOrderId() == null) {
             throw new IllegalArgumentException(messageService.get("payment.error.invoice.not.sales"));
         }
 
-        // 3. Get order and check if it belongs to the current user
         SalesOrderDto order = salesOrderService.getSalesOrderById(invoice.getSalesOrderId());
         if (!order.getUserId().equals(currentUserId)) {
-            	log.warn(logMsg.get("payment.security.invoice.access.denied",
+            log.warn(logMsg.get("payment.security.invoice.access.denied",
                     currentUserId, invoiceNumber, order.getUserId()));
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error(messageService.get("payment.error.access.denied")));
         }
 
-        // 4. Check if payment is allowed
         if (invoice.getStatus() == InvoiceStatus.PAID) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error(messageService.get("payment.error.invoice.already.paid")));
@@ -588,7 +561,6 @@ public class UserRestController extends BaseController{
                     .body(ApiResponse.error(messageService.get("payment.error.invoice.cancelled")));
         }
 
-        // 5. Create payment request
         PaymentProcessRequest paymentRequest = PaymentProcessRequest.builder()
                 .invoiceId(invoice.getId())
                 .paymentMethodId(request.getPaymentMethodId())
@@ -602,11 +574,13 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Get order invoices
+     * Retrieves all invoices for a specific order.
+     *
+     * @param orderNumber the order number
+     * @return list of invoices (only if order belongs to current user)
      */
     @GetMapping("/orders/{orderNumber}/invoices")
-    @Operation(summary = "Get order invoices",
-            description = "Get all invoices for a specific order")
+    @Operation(summary = "Get order invoices")
     public ResponseEntity<ApiResponse<List<InvoiceDto>>> getOrderInvoices(
             @Parameter(description = "Order number", example = "SO-20240330-001", required = true)
             @PathVariable String orderNumber) {
@@ -614,26 +588,24 @@ public class UserRestController extends BaseController{
         Long currentUserId = getCurrentUserId();
         log.debug(logMsg.get("user.order.invoices.fetch.start", currentUserId, orderNumber));
 
-        // Check access to the order
         SalesOrderDto order = salesOrderService.getSalesOrderByNumber(orderNumber);
-        if (!order.getUserId().equals(currentUserId)) {
-            	log.warn(logMsg.get("user.order.access.denied", currentUserId, orderNumber));
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ApiResponse.error(messageService.get("user.order.access.denied.message")));
-        }
 
-        List<InvoiceDto> invoices = invoiceService.getInvoicesBySalesOrder(order.getId());
-
-        return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("user.order.invoices.fetched"), invoices));
+        return validateOrderAccess(order, currentUserId, orderNumber,
+                () -> {
+                    List<InvoiceDto> invoices = invoiceService.getInvoicesBySalesOrder(order.getId());
+                    return ResponseEntity.ok(ApiResponse.success(
+                            messageService.get("user.order.invoices.fetched"), invoices));
+                });
     }
 
     /**
-     * Get invoice details
+     * Retrieves detailed information about an invoice.
+     *
+     * @param invoiceNumber the invoice number
+     * @return invoice details (only if accessible by current user)
      */
     @GetMapping("/invoices/{invoiceNumber}")
-    @Operation(summary = "Get invoice details",
-            description = "Get detailed information about a specific invoice")
+    @Operation(summary = "Get invoice details")
     public ResponseEntity<ApiResponse<InvoiceDto>> getInvoiceDetails(
             @Parameter(description = "Invoice number", example = "INV-20240330-001", required = true)
             @PathVariable String invoiceNumber) {
@@ -643,11 +615,10 @@ public class UserRestController extends BaseController{
 
         InvoiceDto invoice = invoiceService.getInvoiceByNumber(invoiceNumber);
 
-        // Check access (if the account is associated with the order)
         if (invoice.getSalesOrderId() != null) {
             SalesOrderDto order = salesOrderService.getSalesOrderById(invoice.getSalesOrderId());
             if (!order.getUserId().equals(currentUserId)) {
-                	log.warn(logMsg.get("user.invoice.access.denied", currentUserId, invoiceNumber));
+                log.warn(logMsg.get("user.invoice.access.denied", currentUserId, invoiceNumber));
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(ApiResponse.error(messageService.get("user.order.access.denied.message")));
             }
@@ -662,13 +633,12 @@ public class UserRestController extends BaseController{
     // =========================================================================
 
     /**
-     * Gets available payment methods for the current user.
+     * Retrieves available payment methods for the current user based on their user type.
      *
-     * @return list of payment methods available for user's type
+     * @return list of available payment methods
      */
     @GetMapping("/payment-methods")
-    @Operation(summary = "Get available payment methods",
-            description = "Retrieves all payment methods available for the current user's type")
+    @Operation(summary = "Get available payment methods")
     public ResponseEntity<ApiResponse<List<PaymentMethodForUserDto>>> getAvailablePaymentMethods() {
 
         User user = getCurrentUser();
@@ -684,14 +654,13 @@ public class UserRestController extends BaseController{
     }
 
     /**
-     * Gets payment method details by ID.
+     * Retrieves detailed information about a specific payment method.
      *
-     * @param methodId payment method ID
-     * @return payment method details
+     * @param methodId the payment method ID
+     * @return payment method details (only if available for the user's type)
      */
     @GetMapping("/payment-methods/{methodId}")
-    @Operation(summary = "Get payment method details",
-            description = "Retrieves details of a specific payment method")
+    @Operation(summary = "Get payment method details")
     public ResponseEntity<ApiResponse<PaymentMethodForUserDto>> getPaymentMethodDetails(
             @Parameter(description = "Payment method ID", example = "1", required = true)
             @PathVariable Long methodId) {
@@ -708,42 +677,50 @@ public class UserRestController extends BaseController{
                 result));
     }
 
-    /**
-     * Helper method to get user type.
-     */
-    private UserType getUserType(User user) {
-        if (user == null) {
-            return UserType.RETAIL;
-        }
-
-        UserTypeAssignmentDto assignment = userTypeAssignmentService.getCurrentUserType(user.getId());
-        if (assignment != null && assignment.getUserType() != null) {
-            return assignment.getUserType();
-        }
-
-        return UserType.RETAIL;
-    }
-
     // =========================================================================
     // STATISTICS
     // =========================================================================
 
     /**
-     * Calculates the total amount of money the user has spent on all completed orders.
+     * Retrieves the total amount spent by the current user across all orders.
      *
-     * @return total amount spent
+     * @return total spent amount
      */
     @GetMapping("/stats/spent")
-    @Operation(summary = "Get total amount spent by user",
-            description = "Calculates the total amount of money the user has spent on all completed orders")
-    public ResponseEntity<ApiResponse<java.math.BigDecimal>> getTotalSpent() {
+    @Operation(summary = "Get total amount spent by user")
+    public ResponseEntity<ApiResponse<BigDecimal>> getTotalSpent() {
         Long userId = getCurrentUserId();
         log.debug(logMsg.get("user.stats.spent.start", userId));
 
-        java.math.BigDecimal totalSpent = salesOrderService.getUserTotalSpent(userId);
+        BigDecimal totalSpent = salesOrderService.getUserTotalSpent(userId);
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("user.stats.spent.fetched"),
                 totalSpent));
+    }
+
+    // =========================================================================
+    // HELPER METHODS
+    // =========================================================================
+
+    private UserType getUserType(User user) {
+        if (user == null) {
+            return UserType.RETAIL;
+        }
+        UserTypeAssignmentDto assignment = userTypeAssignmentService.getCurrentUserType(user.getId());
+        if (assignment != null && assignment.getUserType() != null) {
+            return assignment.getUserType();
+        }
+        return UserType.RETAIL;
+    }
+
+    private <T> ResponseEntity<ApiResponse<T>> validateOrderAccess(
+            SalesOrderDto order, Long userId, Object identifier, Supplier<ResponseEntity<ApiResponse<T>>> successResponse) {
+        if (!order.getUserId().equals(userId)) {
+            log.warn(logMsg.get("user.order.access.denied", userId, identifier));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(messageService.get("user.order.access.denied.message")));
+        }
+        return successResponse.get();
     }
 }

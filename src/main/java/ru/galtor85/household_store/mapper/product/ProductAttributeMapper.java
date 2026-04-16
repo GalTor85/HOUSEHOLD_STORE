@@ -5,40 +5,58 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.request.product.AttributeCreateRequest;
 import ru.galtor85.household_store.dto.request.product.AttributeUpdateRequest;
-import ru.galtor85.household_store.dto.response.product.ProductAttributeDto;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.product.ProductAttribute;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
+/**
+ * Mapper for product attribute entity to/from DTO.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ProductAttributeMapper {
 
+    private static final int DEFAULT_ORDER = 0;
+    private static final boolean DEFAULT_REQUIRED = false;
+    private static final boolean DEFAULT_VARIANT = false;
+
+    /**
+     * Converts creation request to entity.
+     *
+     * @param request creation request
+     * @param product parent product
+     * @return product attribute entity
+     */
     public ProductAttribute toEntity(AttributeCreateRequest request, Product product) {
         if (request == null) {
             return null;
         }
-
         return ProductAttribute.builder()
                 .name(request.getName())
                 .value(request.getValue())
-                .order(request.getOrder() != null ? request.getOrder() : 0)
-                .required(request.getRequired() != null ? request.getRequired() : false)
-                .variant(request.getVariant() != null ? request.getVariant() : false)
+                .order(request.getOrder() != null ? request.getOrder() : DEFAULT_ORDER)
+                .required(request.getRequired() != null ? request.getRequired() : DEFAULT_REQUIRED)
+                .variant(request.getVariant() != null ? request.getVariant() : DEFAULT_VARIANT)
                 .product(product)
                 .build();
     }
 
+    /**
+     * Converts update request to entity.
+     *
+     * @param request update request
+     * @param product parent product
+     * @return product attribute entity
+     */
     public ProductAttribute toEntity(AttributeUpdateRequest request, Product product) {
         if (request == null) {
             return null;
         }
-
         return ProductAttribute.builder()
-                .id(request.getId())  // ID нужен для обновления
+                .id(request.getId())
                 .name(request.getName())
                 .value(request.getValue())
                 .order(request.getOrder())
@@ -48,67 +66,30 @@ public class ProductAttributeMapper {
                 .build();
     }
 
-    public void updateEntity(ProductAttribute attribute, AttributeUpdateRequest request) {
-        if (attribute == null || request == null) {
-            return;
-        }
-
-        if (request.getName() != null) {
-            attribute.setName(request.getName());
-        }
-        if (request.getValue() != null) {
-            attribute.setValue(request.getValue());
-        }
-        if (request.getOrder() != null) {
-            attribute.setOrder(request.getOrder());
-        }
-        if (request.getRequired() != null) {
-            attribute.setRequired(request.getRequired());
-        }
-        if (request.getVariant() != null) {
-            attribute.setVariant(request.getVariant());
-        }
-    }
-
+    /**
+     * Converts list of requests to list of entities.
+     *
+     * @param requests list of create or update requests
+     * @param product parent product
+     * @return list of product attribute entities
+     */
     public List<ProductAttribute> toEntityList(List<?> requests, Product product) {
         if (requests == null) {
             return null;
         }
-
         return requests.stream()
-                .map(req -> {
-                    if (req instanceof AttributeCreateRequest) {
-                        return toEntity((AttributeCreateRequest) req, product);
-                    } else if (req instanceof AttributeUpdateRequest) {
-                        return toEntity((AttributeUpdateRequest) req, product);
-                    }
-                    return null;
-                })
-                .collect(Collectors.toList());
+                .map(req -> mapRequest(req, product))
+                .filter(Objects::nonNull)
+                .toList();
     }
 
-    public ProductAttributeDto toDto(ProductAttribute attribute) {
-        if (attribute == null) {
-            return null;
+    private ProductAttribute mapRequest(Object request, Product product) {
+        if (request instanceof AttributeCreateRequest createRequest) {
+            return toEntity(createRequest, product);
         }
-
-        return ProductAttributeDto.builder()
-                .id(attribute.getId())
-                .name(attribute.getName())
-                .value(attribute.getValue())
-                .order(attribute.getOrder())
-                .required(attribute.getRequired())
-                .variant(attribute.getVariant())
-                .build();
-    }
-
-    public List<ProductAttributeDto> toDtoList(List<ProductAttribute> attributes) {
-        if (attributes == null) {
-            return null;
+        if (request instanceof AttributeUpdateRequest updateRequest) {
+            return toEntity(updateRequest, product);
         }
-
-        return attributes.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        return null;
     }
 }

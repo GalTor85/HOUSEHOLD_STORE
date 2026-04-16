@@ -3,27 +3,21 @@
         xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <!-- Create schema -->
-    <changeSet id="0" author="household">
-        <sql>
-            CREATE SCHEMA IF NOT EXISTS household_schema;
-        </sql>
-    </changeSet>
 
     <!-- 1. Create tables -->
-    <changeSet id="1" author="household">
-        <sqlFile path="db/changelog/01-initial-schema.sql"
-                 relativeToChangelogFile="false"
+    <changeSet id="1" author="household" context="!test">
+        <sqlFile path="01-initial-schema.sql"
+                 relativeToChangelogFile="true"
                  splitStatements="true"
                  stripComments="true"/>
     </changeSet>
 
-    <!-- 2. Default data -->
-    <changeSet id="2" author="household">
-        <sqlFile path="db/changelog/02-default-data.sql"
-                 relativeToChangelogFile="false"
+    <!-- 2. Default data - -->
+    <changeSet id="2" author="household" context="!test">
+        <sqlFile path="02-default-data.sql"
+                 relativeToChangelogFile="true"
                  splitStatements="true"
                  stripComments="true"/>
     </changeSet>
@@ -76,5 +70,24 @@
     <include file="db/changelog/xxx-add-payment-status-to-sales-orders.xml"/>
 
     <include file="db/changelog/xxx-add-payment-status-to-purchase-orders.xml"/>
+
+    <include file="db/changelog/remove-unused-bank-transactions.xml"/>
+
+    <changeSet id="remove-purchase-order-type-enum" author="G@LTor85">
+        <comment>Remove unused purchase_order_type enum</comment>
+        <sql splitStatements="false">
+            DO $$
+            BEGIN
+            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'purchase_order_type') THEN
+            DROP TYPE household_schema.purchase_order_type CASCADE;
+            END IF;
+            END $$;
+        </sql>
+    </changeSet>
+
+    <include file="db/changelog/remove-product-price-rules.xml"/>
+
+    <include file="db/changelog/remove-supplier-ratings.xml"/>
+
 
 </databaseChangeLog>

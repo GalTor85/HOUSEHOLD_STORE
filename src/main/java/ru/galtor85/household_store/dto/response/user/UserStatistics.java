@@ -7,13 +7,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * User statistics DTO.
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(description = "User statistics data", title = "User Statistics")
+@Schema(description = "User statistics data")
 public class UserStatistics {
+
+    private static final double PERCENTAGE_MULTIPLIER = 100.0;
 
     @Schema(description = "Total number of users", example = "150")
     private long totalUsers;
@@ -39,7 +44,9 @@ public class UserStatistics {
     @Schema(description = "Percentage of administrators", example = "3.33")
     private double adminPercentage;
 
-    // Конструктор с автоматическим расчетом процентов
+    /**
+     * Constructor with automatic percentage calculation.
+     */
     public UserStatistics(long totalUsers, long activeUsers, long inactiveUsers,
                           long admins, long managers, long regularUsers) {
         this.totalUsers = totalUsers;
@@ -48,39 +55,14 @@ public class UserStatistics {
         this.admins = admins;
         this.managers = managers;
         this.regularUsers = regularUsers;
-
-        // Рассчитываем проценты
-        this.activePercentage = totalUsers > 0 ?
-                Math.round((activeUsers * 100.0 / totalUsers) * 100) / 100.0 : 0;
-        this.adminPercentage = totalUsers > 0 ?
-                Math.round((admins * 100.0 / totalUsers) * 100) / 100.0 : 0;
+        this.activePercentage = calculatePercentage(activeUsers, totalUsers);
+        this.adminPercentage = calculatePercentage(admins, totalUsers);
     }
 
-    // Статический фабричный метод
-    public static UserStatistics of(long totalUsers, long activeUsers, long inactiveUsers,
-                                    long admins, long managers, long regularUsers) {
-        return new UserStatistics(totalUsers, activeUsers, inactiveUsers,
-                admins, managers, regularUsers);
-    }
-
-    // Методы для проверки
-    public boolean hasAdmins() {
-        return admins > 0;
-    }
-
-    public boolean hasManagers() {
-        return managers > 0;
-    }
-
-    public boolean hasRegularUsers() {
-        return regularUsers > 0;
-    }
-
-    public boolean isAllUsersActive() {
-        return totalUsers > 0 && activeUsers == totalUsers;
-    }
-
-    public boolean hasNoUsers() {
-        return totalUsers == 0;
+    private double calculatePercentage(long part, long total) {
+        if (total <= 0) {
+            return 0.0;
+        }
+        return Math.round((part * PERCENTAGE_MULTIPLIER / total) * PERCENTAGE_MULTIPLIER) / PERCENTAGE_MULTIPLIER;
     }
 }

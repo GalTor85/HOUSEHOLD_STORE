@@ -68,12 +68,4 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    public static <T> ApiResponse<T> error(String message, String path) {
-        return ApiResponse.<T>builder()
-                .success(false)
-                .message(message)
-                .path(path)
-                .timestamp(LocalDateTime.now())
-                .build();
-    }
 }

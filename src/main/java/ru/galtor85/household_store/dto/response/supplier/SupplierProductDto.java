@@ -23,7 +23,7 @@ public class SupplierProductDto {
     @Schema(description = "Supplier ID", example = "1")
     private Long supplierId;
 
-    @Schema(description = "Supplier name", example = "ООО 'ТехноПост'")
+    @Schema(description = "Supplier name", example = "OOO TechnoPost")
     private String supplierName;
 
     @Schema(description = "Product ID", example = "1")
@@ -51,29 +51,4 @@ public class SupplierProductDto {
 
     @Schema(description = "Minimum salesOrder quantity", example = "10")
     private Integer minOrderQuantity;
-
-
-    @Schema(description = "Notes about product from supplier")
-    private String notes;
-
-    @Schema(description = "Supplier's product category")
-    private String supplierCategory;
-
-    @Schema(description = "Supplier's product name")
-    private String supplierProductName;
-
-    @Schema(description = "Country of origin", example = "China")
-    private String countryOfOrigin;
-
-    @Schema(description = "HS Code", example = "8517.12.00")
-    private String hsCode;
-
-    @Schema(description = "In stock at supplier", example = "true")
-    private Boolean inStockAtSupplier;
-
-    @Schema(description = "Supplier stock quantity", example = "500")
-    private Integer supplierStockQuantity;
-
-    @Schema(description = "Estimated restock date", example = "2024-03-15")
-    private String estimatedRestockDate;
 }

@@ -7,8 +7,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-
 @Data
 @Builder
 @NoArgsConstructor
@@ -34,19 +32,4 @@ public class WarehouseStockDto {
 
     @Schema(description = "Percentage of total stock in this warehouse", example = "45.5")
     private Double percentage;
-
-    @Schema(description = "Product name", example = "iPhone 13 Pro")
-    private String productName;
-
-    @Schema(description = "Product category", example = "Electronics")
-    private String category;
-
-    @Schema(description = "Product SKU (Stock Keeping Unit)", example = "IPHONE-13-PRO-128")
-    private String sku;
-
-    @Schema(description = "Product brand", example = "Apple")
-    private String brand;
-
-    @Schema(description = "Product price", example = "999.99")
-    private BigDecimal price;
 }

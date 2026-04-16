@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.stock;
 
+import lombok.Getter;
+
+@Getter
 public class InvalidStockOperationException extends RuntimeException {
     private final int currentStock;
     private final int requestedChange;
@@ -10,11 +13,4 @@ public class InvalidStockOperationException extends RuntimeException {
         this.requestedChange = requestedChange;
     }
 
-    public int getCurrentStock() {
-        return currentStock;
-    }
-
-    public int getRequestedChange() {
-        return requestedChange;
-    }
 }

@@ -1,18 +1,26 @@
+-- noinspection SpellCheckingInspectionForFile
+
+-- noinspection SpellCheckingInspectionForFile
+
+-- noinspection SpellCheckingInspectionForFile
+
+-- noinspection SpellCheckingInspectionForFile
+
 -- ====================================================
--- Инициализация базы данных для Docker
--- Выполняется при первом запуске контейнера
+-- Database initialization for Docker
+-- Executed on first container startup
 -- ====================================================
 
--- Устанавливаем кодировку
+-- Set encoding
 SET client_encoding = 'UTF8';
 
--- Создаем схему (Liquibase тоже создаст, но пусть будет)
+-- Create schema (Liquibase will also create it, but just in case)
 CREATE SCHEMA IF NOT EXISTS household_schema;
 
--- Устанавливаем права
+-- Grant permissions
 GRANT ALL ON SCHEMA household_schema TO postgres;
 
--- Создаем отдельного пользователя для приложения (опционально)
+-- Create application user (optional)
 -- DO $$
 -- BEGIN
 --    IF NOT EXISTS (SELECT FROM pg_user WHERE usename = 'household_app') THEN
@@ -26,5 +34,5 @@ GRANT ALL ON SCHEMA household_schema TO postgres;
 -- GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA household_schema TO household_app;
 -- GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA household_schema TO household_app;
 
--- Устанавливаем русскую локаль
+-- Set Russian locale (commented out - requires superuser)
 -- UPDATE pg_database SET datcollate = 'ru_RU.UTF-8', datctype = 'ru_RU.UTF-8' WHERE datname = 'household_store';

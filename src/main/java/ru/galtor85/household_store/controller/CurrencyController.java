@@ -44,7 +44,6 @@ import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_CU
  * require ADMIN role.</p>
  *
  * @author G@LTor85
- * @since 1.0
  */
 @Slf4j
 @RestController

@@ -64,14 +64,14 @@ public class PromoCodeProcessor {
 
         if (promoOpt.isEmpty()) {
             log.warn(logMsg.get("promo.code.not.found", promoCode));
-            return new PromoCodeResult(currentTotal, false, STATUS_NOT_FOUND);
+            return new PromoCodeResult(currentTotal, false, STATUS_NOT_FOUND, null, BigDecimal.ZERO);
         }
 
         PromoCode promo = promoOpt.get();
         PromoCodeValidationResult validation = validatePromoCode(promo, userId, userType, currentTotal);
 
         if (!validation.valid()) {
-            return new PromoCodeResult(currentTotal, false, validation.reason());
+            return new PromoCodeResult(currentTotal, false, validation.reason(), promo, BigDecimal.ZERO);
         }
 
         BigDecimal discount = calculatePromoDiscount(currentTotal, promo);
@@ -88,7 +88,9 @@ public class PromoCodeProcessor {
         return new PromoCodeResult(
                 currentTotal.subtract(discount),
                 true,
-                STATUS_APPLIED
+                STATUS_APPLIED,
+                promo,
+                discount
         );
     }
 
@@ -197,9 +199,10 @@ public class PromoCodeProcessor {
     /**
      * Result of promo code application.
      */
-    public record PromoCodeResult(BigDecimal totalAfterDiscount, boolean applied, String status) {
+    public record PromoCodeResult(BigDecimal totalAfterDiscount, boolean applied, String status, PromoCode promoCode, BigDecimal discountAmount) {
     }
 
+    @SuppressWarnings("unused")
     private record PromoCodeValidationResult(boolean valid, String reason) {
     }
 }

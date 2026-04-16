@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 import ru.galtor85.household_store.config.PaymentConfig;
 import ru.galtor85.household_store.entity.payment.PaymentMethod;
-import ru.galtor85.household_store.entity.payment.PaymentTransactionStatus;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.payment.PaymentGateway;
@@ -22,7 +21,6 @@ import java.util.UUID;
 
 import static ru.galtor85.household_store.constants.PaymentConstants.*;
 import static ru.galtor85.household_store.constants.TechnicalConstants.FALLBACK_TXN_PREFIX;
-import static ru.galtor85.household_store.constants.TechnicalConstants.REFUND_TXN_PREFIX;
 
 /**
  * Universal payment gateway that can be configured for different providers.
@@ -46,13 +44,12 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.REFUND_TX
  * </ul>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 public class UniversalPaymentGateway implements PaymentGateway {
 
     private static final String PAYMENT_FAILED_PREFIX = "Payment failed: ";
-    private static final String REFUND_FAILED_PREFIX = "Refund failed: ";
 
     // =========================================================================
     // FIELDS
@@ -90,6 +87,7 @@ public class UniversalPaymentGateway implements PaymentGateway {
     // PAYMENT PROCESSING
     // =========================================================================
 
+    @SuppressWarnings("unused")
     @Override
     public PaymentResult processPayment(PaymentMethod paymentMethod, BigDecimal amount,
                                         String currency, String description) {
@@ -153,92 +151,6 @@ public class UniversalPaymentGateway implements PaymentGateway {
     }
 
     // =========================================================================
-    // REFUND PROCESSING
-    // =========================================================================
-
-    @Override
-    public PaymentResult refundPayment(PaymentMethod paymentMethod, String transactionId,
-                                       BigDecimal amount, String reason) {
-        try {
-            String refundId = REFUND_TXN_PREFIX + generateTransactionId();
-
-            log.info(logMsg.get("payment.gateway.refund.start",
-                    config.getProviderName(), transactionId, amount, reason));
-
-            HttpEntity<?> requestEntity = buildRefundRequest(transactionId, amount, reason);
-            ResponseEntity<String> response = restTemplate.exchange(
-                    config.getRefundUrl(),
-                    config.getHttpMethod(),
-                    requestEntity,
-                    String.class
-            );
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                log.info(logMsg.get("payment.gateway.refund.success",
-                        config.getProviderName(), refundId));
-
-                return PaymentResult.builder()
-                        .success(true)
-                        .transactionId(refundId)
-                        .build();
-            } else {
-                log.warn(logMsg.get("payment.gateway.refund.http.error",
-                        config.getProviderName(), response.getStatusCode(), response.getBody()));
-
-                return PaymentResult.builder()
-                        .success(false)
-                        .errorMessage(REFUND_FAILED_PREFIX + response.getBody())
-                        .build();
-            }
-
-        } catch (Exception e) {
-            log.error(logMsg.get("payment.gateway.refund.error",
-                    config.getProviderName(), e.getMessage()), e);
-            return PaymentResult.builder()
-                    .success(false)
-                    .errorMessage(e.getMessage())
-                    .build();
-        }
-    }
-
-    // =========================================================================
-    // STATUS CHECKING
-    // =========================================================================
-
-    @Override
-    public PaymentTransactionStatus checkStatus(String transactionId) {
-        try {
-            log.debug(logMsg.get("payment.gateway.status.check.start",
-                    config.getProviderName(), transactionId));
-
-            HttpEntity<?> requestEntity = buildStatusRequest(transactionId);
-            ResponseEntity<String> response = restTemplate.exchange(
-                    config.getStatusUrl(),
-                    config.getHttpMethod(),
-                    requestEntity,
-                    String.class
-            );
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                PaymentTransactionStatus status = extractStatus();
-                log.debug(logMsg.get("payment.gateway.status.check.success",
-                        config.getProviderName(), transactionId, status));
-                return status;
-            }
-
-            log.warn(logMsg.get("payment.gateway.status.check.http.error",
-                    config.getProviderName(), response.getStatusCode()));
-
-            return PaymentTransactionStatus.FAILED;
-
-        } catch (Exception e) {
-            log.error(logMsg.get("payment.gateway.status.check.error",
-                    config.getProviderName(), e.getMessage()), e);
-            return PaymentTransactionStatus.FAILED;
-        }
-    }
-
-    // =========================================================================
     // REQUEST BUILDERS
     // =========================================================================
 
@@ -248,22 +160,6 @@ public class UniversalPaymentGateway implements PaymentGateway {
         Map<String, Object> body = buildPaymentBody(paymentMethod, amount, currency, description);
 
         log.debug(logMsg.get("payment.gateway.request.built", config.getProviderName()));
-        return new HttpEntity<>(body, headers);
-    }
-
-    private HttpEntity<?> buildRefundRequest(String transactionId, BigDecimal amount, String reason) {
-        HttpHeaders headers = buildHeaders();
-        Map<String, Object> body = buildRefundBody(transactionId, amount, reason);
-
-        log.debug(logMsg.get("payment.gateway.refund.request.built", config.getProviderName()));
-        return new HttpEntity<>(body, headers);
-    }
-
-    private HttpEntity<?> buildStatusRequest(String transactionId) {
-        HttpHeaders headers = buildHeaders();
-        Map<String, Object> body = new HashMap<>();
-        body.put(JSON_TRANSACTION_ID, transactionId);
-
         return new HttpEntity<>(body, headers);
     }
 
@@ -301,15 +197,6 @@ public class UniversalPaymentGateway implements PaymentGateway {
         if (paymentMethod.getMaskedIdentifier() != null) {
             body.put(JSON_PAYMENT_IDENTIFIER, paymentMethod.getMaskedIdentifier());
         }
-
-        return body;
-    }
-
-    private Map<String, Object> buildRefundBody(String transactionId, BigDecimal amount, String reason) {
-        Map<String, Object> body = new HashMap<>(config.getRefundParams());
-        body.put(JSON_TRANSACTION_ID, transactionId);
-        body.put(JSON_AMOUNT, amount);
-        body.put(JSON_REASON, reason);
 
         return body;
     }
@@ -366,11 +253,6 @@ public class UniversalPaymentGateway implements PaymentGateway {
 
         log.debug(logMsg.get("payment.gateway.extract.payment.url.placeholder", paymentUrl));
         return paymentUrl;
-    }
-
-    private PaymentTransactionStatus extractStatus() {
-        log.debug(logMsg.get("payment.gateway.extract.status.placeholder"));
-        return PaymentTransactionStatus.COMPLETED;
     }
 
     // =========================================================================

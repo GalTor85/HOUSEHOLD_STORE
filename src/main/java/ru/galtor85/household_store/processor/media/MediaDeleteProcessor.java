@@ -8,8 +8,10 @@ import ru.galtor85.household_store.entity.product.ProductMedia;
 import ru.galtor85.household_store.repository.product.ProductMediaRepository;
 import ru.galtor85.household_store.service.file.FileStorageService;
 
-import java.io.IOException;
 
+/**
+ * Processor for deleting media files.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -19,15 +21,16 @@ public class MediaDeleteProcessor {
     private final ProductMediaRepository mediaRepository;
     private final MainImageProcessor mainImageProcessor;
 
+    /**
+     * Deletes media file from disk and database.
+     *
+     * @param media product media entity to delete
+     */
     @Transactional
-    public void deleteMedia(ProductMedia media, Long deletedBy) throws IOException {
-        // Удаляем файл с диска
+    public void deleteMedia(ProductMedia media) {
         fileStorageService.deleteFile(media.getFilePath(), media.getProductId());
-
-        // Удаляем запись из БД
         mediaRepository.delete(media);
 
-        // Если это было главное изображение, сбрасываем imageUrl у продукта
         if (Boolean.TRUE.equals(media.getIsMain())) {
             mainImageProcessor.resetMainImage(media.getProductId());
         }

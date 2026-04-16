@@ -20,7 +20,7 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.KEEP_ONLY
  * </ul>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Component
 public class EmailMasker {

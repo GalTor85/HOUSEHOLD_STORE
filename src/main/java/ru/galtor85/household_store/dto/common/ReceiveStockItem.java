@@ -9,8 +9,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
 /**
@@ -52,22 +50,4 @@ public class ReceiveStockItem {
     @Size(max = MAX_BATCH_NUMBER_LENGTH, message = "{receive.validation.batch.number.max}")
     @Schema(description = "Batch/Lot number", example = "BATCH-20240318-ABC123")
     private String batchNumber;
-
-    @Schema(description = "Expiry date for perishable goods", example = "2025-03-18T00:00:00")
-    private LocalDateTime expiryDate;
-
-    @Schema(description = "Manufacturing date", example = "2024-03-18T00:00:00")
-    private LocalDateTime manufacturingDate;
-
-    @Size(max = MAX_SERIAL_NUMBER_LENGTH, message = "{receive.validation.serial.number.max}")
-    @Schema(description = "Serial number (for individual items)", example = "SN123456789")
-    private String serialNumber;
-
-    @Size(max = MAX_QUALITY_CERTIFICATE_LENGTH, message = "{receive.validation.quality.certificate.max}")
-    @Schema(description = "Quality certificate number", example = "QC-2024-001")
-    private String qualityCertificateNumber;
-
-    @Size(max = MAX_NOTES_LENGTH, message = "{receive.validation.notes.max}")
-    @Schema(description = "Additional notes", example = "Fragile items, handle with care")
-    private String notes;
 }

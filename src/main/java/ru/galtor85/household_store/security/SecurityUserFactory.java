@@ -6,11 +6,19 @@ import ru.galtor85.household_store.entity.user.User;
 
 import java.time.LocalDateTime;
 
+/**
+ * Factory for creating and updating SecurityUser entities.
+ */
 @Component
 public class SecurityUserFactory {
 
     /**
-     * Создание нового SecurityUser (для регистрации)
+     * Creates new SecurityUser for registration.
+     *
+     * @param user domain user entity
+     * @param encodedPassword encoded password
+     * @param role security role
+     * @return new SecurityUser entity
      */
     public SecurityUser createNew(User user, String encodedPassword, Role role) {
         return SecurityUser.builder()
@@ -24,7 +32,11 @@ public class SecurityUserFactory {
     }
 
     /**
-     * ✅ Обновление роли - модифицируем существующий объект
+     * Updates role on existing SecurityUser.
+     *
+     * @param existingSecurityUser existing security user
+     * @param newRole new role to assign
+     * @return updated SecurityUser
      */
     public SecurityUser withUpdatedRole(SecurityUser existingSecurityUser, Role newRole) {
         existingSecurityUser.setRole(newRole);
@@ -33,7 +45,11 @@ public class SecurityUserFactory {
     }
 
     /**
-     * ✅ Обновление статуса - модифицируем существующий объект
+     * Updates active status on existing SecurityUser.
+     *
+     * @param existingSecurityUser existing security user
+     * @param active new active status
+     * @return updated SecurityUser
      */
     public SecurityUser withUpdatedStatus(SecurityUser existingSecurityUser, boolean active) {
         existingSecurityUser.setActive(active);
@@ -42,31 +58,15 @@ public class SecurityUserFactory {
     }
 
     /**
-     * ✅ Обновление пароля - модифицируем существующий объект
+     * Updates password on existing SecurityUser.
+     *
+     * @param existingSecurityUser existing security user
+     * @param newEncodedPassword new encoded password
+     * @return updated SecurityUser
      */
     public SecurityUser withUpdatedPassword(SecurityUser existingSecurityUser, String newEncodedPassword) {
         existingSecurityUser.setPassword(newEncodedPassword);
         existingSecurityUser.setUpdatedAt(LocalDateTime.now());
         return existingSecurityUser;
-    }
-
-    /**
-     * ✅ Обновление нескольких полей сразу
-     */
-    public SecurityUser updateFromExisting(SecurityUser existing,
-                                           String newPassword,
-                                           Role newRole,
-                                           Boolean newActive) {
-        if (newPassword != null) {
-            existing.setPassword(newPassword);
-        }
-        if (newRole != null) {
-            existing.setRole(newRole);
-        }
-        if (newActive != null) {
-            existing.setActive(newActive);
-        }
-        existing.setUpdatedAt(LocalDateTime.now());
-        return existing;
     }
 }

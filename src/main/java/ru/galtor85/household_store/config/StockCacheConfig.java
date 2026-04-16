@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
  * Cache configuration for stock display.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Configuration
 @EnableCaching

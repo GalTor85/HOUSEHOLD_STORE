@@ -22,7 +22,7 @@ import java.util.List;
  * information for cash payments.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder
@@ -180,17 +180,6 @@ public class SalesOrder {
     }
 
     /**
-     * Removes an item from the order and recalculates totals.
-     *
-     * @param item the order item to remove
-     */
-    public void removeItem(SalesOrderItem item) {
-        items.remove(item);
-        item.setSalesOrder(null);
-        recalculateTotals();
-    }
-
-    /**
      * Recalculates subtotal and total amounts based on current items.
      */
     public void recalculateTotals() {
@@ -225,8 +214,6 @@ public class SalesOrder {
         ACTIVE,
         /** Reservation period has expired */
         EXPIRED,
-        /** Reservation was cancelled */
-        CANCELLED,
         /** Products were paid and received */
         COMPLETED
     }

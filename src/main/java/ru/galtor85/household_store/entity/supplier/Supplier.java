@@ -29,69 +29,69 @@ public class Supplier {
     private Long id;
 
     @Column(nullable = false)
-    private String name; // Название компании
+    private String name;
 
     @Column(unique = true)
-    private String email; // Контактный email
+    private String email;
 
     @Column(name = "phone")
-    private String phone; // Телефон
+    private String phone;
 
     @Column(name = "website")
-    private String website; // Сайт
+    private String website;
 
     @Column(name = "contact_person")
-    private String contactPerson; // Контактное лицо
+    private String contactPerson;
 
     @Column(name = "inn", unique = true)
-    private String inn; // ИНН (для России)
+    private String inn;
 
     @Column(name = "kpp")
-    private String kpp; // КПП (для России)
+    private String kpp;
 
     @Column(name = "ogrn")
-    private String ogrn; // ОГРН
+    private String ogrn;
 
     @Column(name = "legal_address")
-    private String legalAddress; // Юридический адрес
+    private String legalAddress;
 
     @Column(name = "actual_address")
-    private String actualAddress; // Фактический адрес
+    private String actualAddress;
 
     @Column(name = "bank_name")
-    private String bankName; // Название банка
+    private String bankName;
 
     @Column(name = "bank_bic")
-    private String bankBic; // БИК
+    private String bankBic;
 
     @Column(name = "bank_account")
-    private String bankAccount; // Расчетный счет
+    private String bankAccount;
 
     @Column(name = "correspondent_account")
-    private String correspondentAccount; // Корреспондентский счет
+    private String correspondentAccount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private SupplierStatus status = SupplierStatus.PENDING; // ACTIVE, INACTIVE, PENDING, BLOCKED
+    private SupplierStatus status = SupplierStatus.PENDING;
 
     @Column(name = "rating")
-    private Double rating; // Средний рейтинг (0-5)
+    private Double rating;
 
     @Column(name = "rating_count")
-    private Integer ratingCount; // Количество оценок
+    private Integer ratingCount;
 
     @Column(name = "delivery_time")
-    private Integer deliveryTime; // Среднее время доставки (в днях)
+    private Integer deliveryTime;
 
     @Column(name = "min_order_amount")
-    private java.math.BigDecimal minOrderAmount; // Минимальная сумма заказа
+    private java.math.BigDecimal minOrderAmount;
 
     @Column(name = "payment_delay")
-    private Integer paymentDelay; // Отсрочка платежа (в днях)
+    private Integer paymentDelay;
 
     @Column(name = "created_by")
-    private Long createdBy; // ID пользователя, создавшего запись
+    private Long createdBy;
 
     @Column(name = "created_at")
     @CreationTimestamp
@@ -103,5 +103,5 @@ public class Supplier {
 
     @OneToMany(mappedBy = "supplierId", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
-    private List<SupplierProduct> products = new ArrayList<>(); // Поставляемые товары
+    private List<SupplierProduct> products = new ArrayList<>();
 }

@@ -6,7 +6,7 @@ import java.math.BigDecimal;
  * Payment-related constants.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 public final class PaymentConstants {
 

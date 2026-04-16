@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * top products by value.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component
@@ -60,7 +60,7 @@ public class WarehouseSummaryProcessor {
     public WarehouseStockSummaryDto buildSummary(Warehouse warehouse, List<ProductStock> stocks) {
         int totalProducts = stocks.size();
         int totalItems = stockCalculator.sumQuantity(stocks);
-        double totalValue = stockCalculator.calculateTotalValue(stocks);
+        double totalValue = stockCalculator.calculateTotalValue();
         int lowStockCount = stockCalculator.countLowStock(stocks);
         int outOfStockCount = stockCalculator.countOutOfStock(stocks);
         double utilizationPercentage = stockCalculator.calculateUtilization(warehouse, stocks);

@@ -29,10 +29,10 @@ public class CartDto {
     @Schema(description = "Cart status")
     private CartStatus status;
 
-    @Schema(description = "Localized status", example = "Активная")
+    @Schema(description = "Localized status", example = "Active")
     private String localizedStatus;
 
-    @Schema(description = "Cart category", example = "Электроника")
+    @Schema(description = "Cart category", example = "Electronics")
     private String category;
 
     @Schema(description = "Cart items")

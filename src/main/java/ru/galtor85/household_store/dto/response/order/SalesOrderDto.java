@@ -19,7 +19,7 @@ import java.util.List;
  * payment, and reservation information for cash payments.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder
@@ -49,7 +49,7 @@ public class SalesOrderDto {
     @Schema(description = "Order status")
     private OrderStatus status;
 
-    @Schema(description = "Localized order status", example = "Ожидает оплаты")
+    @Schema(description = "Localized order status", example = "Waiting for payment")
     private String localizedStatus;
 
     // =========================================================================
@@ -136,7 +136,7 @@ public class SalesOrderDto {
     @Schema(description = "Reserved until", example = "2026-04-19T15:52:42")
     private LocalDateTime reservedUntil;
 
-    @Schema(description = "Localized reservation status", example = "Товар зарезервирован до 19.04.2026")
+    @Schema(description = "Localized reservation status", example ="Reserved until 19.04.2026")
     private String localizedReservationStatus;
 
     // =========================================================================

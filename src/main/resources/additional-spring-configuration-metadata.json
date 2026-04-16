@@ -1,0 +1,28 @@
+{
+  "properties": [
+    {
+      "name": "app.data.initialize",
+      "type": "java.lang.Boolean",
+      "description": "Enable database initialization with default data.",
+      "defaultValue": true
+    },
+    {
+      "name": "springdoc.api-docs.lazy-load",
+      "type": "java.lang.Boolean",
+      "description": "Enable lazy loading for OpenAPI documentation.",
+      "defaultValue": true
+    },
+    {
+      "name": "springdoc.swagger-ui.lazy-load",
+      "type": "java.lang.Boolean",
+      "description": "Enable lazy loading for Swagger UI.",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.liquibase.lock-wait-time-in-seconds",
+      "type": "java.lang.Integer",
+      "description": "Time to wait for changelog lock in seconds.",
+      "defaultValue": 300
+    }
+  ]
+}

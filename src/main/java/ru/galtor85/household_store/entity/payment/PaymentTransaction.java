@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
  * status, processing fees, and links to invoices and orders.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder
@@ -93,69 +93,4 @@ public class PaymentTransaction {
 
     @Column(name = "refund_transaction_id")
     private Long refundTransactionId;
-
-    // =========================================================================
-    // BUSINESS METHODS
-    // =========================================================================
-
-    /**
-     * Checks if transaction is completed successfully.
-     *
-     * @return true if status is COMPLETED
-     */
-    public boolean isCompleted() {
-        return status == PaymentTransactionStatus.COMPLETED;
-    }
-
-    /**
-     * Checks if transaction has failed.
-     *
-     * @return true if status is FAILED
-     */
-    public boolean isFailed() {
-        return status == PaymentTransactionStatus.FAILED;
-    }
-
-    /**
-     * Checks if transaction is pending.
-     *
-     * @return true if status is PENDING
-     */
-    public boolean isPending() {
-        return status == PaymentTransactionStatus.PENDING;
-    }
-
-    /**
-     * Checks if transaction is refunded.
-     *
-     * @return true if status is REFUNDED
-     */
-    public boolean isRefunded() {
-        return status == PaymentTransactionStatus.REFUNDED;
-    }
-
-    /**
-     * Marks transaction as completed.
-     */
-    public void markAsCompleted() {
-        this.status = PaymentTransactionStatus.COMPLETED;
-        this.completedAt = LocalDateTime.now();
-    }
-
-    /**
-     * Marks transaction as failed with error message.
-     *
-     * @param errorMessage the error description
-     */
-    public void markAsFailed(String errorMessage) {
-        this.status = PaymentTransactionStatus.FAILED;
-        this.errorMessage = errorMessage;
-    }
-
-    /**
-     * Marks transaction as refunded.
-     */
-    public void markAsRefunded() {
-        this.status = PaymentTransactionStatus.REFUNDED;
-    }
 }

@@ -10,6 +10,9 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+/**
+ * Request DTO for payment method selection.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,9 +26,6 @@ public class PaymentMethodRequest {
 
     @Schema(description = "Payment amount (pays remaining if not specified)", example = "1500.00")
     private BigDecimal amount;
-
-    @Schema(description = "Save payment method for future", example = "false")
-    private Boolean savePaymentMethod;
 
     @JsonIgnore
     public boolean hasAmount() {

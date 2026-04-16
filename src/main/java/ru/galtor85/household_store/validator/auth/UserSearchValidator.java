@@ -46,16 +46,14 @@ public class UserSearchValidator {
      * Validates security user exists for the given user ID.
      *
      * @param userId user ID
-     * @return true if security user exists
      * @throws UserNotFoundException if security user not found
      */
-    public boolean validateSecurityUserExists(Long userId) {
+    public void validateSecurityUserExists(Long userId) {
         if (!securityUserRepository.existsByUserId(userId)) {
             log.error(logMsg.get("user-search-service.log.security.user.not.found", userId));
             throw new UserNotFoundException(
                     messageService.get("user-search-service.error.security.user.missing", userId)
             );
         }
-        return true;
     }
 }

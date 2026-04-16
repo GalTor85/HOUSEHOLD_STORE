@@ -3,26 +3,31 @@ package ru.galtor85.household_store.repository.rollback;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.galtor85.household_store.entity.rollback.ApprovalStatus;
 import ru.galtor85.household_store.entity.rollback.RollbackApproval;
 
-import java.util.List;
-import java.util.Optional;
-
+/**
+ * Repository for rollback approval operations.
+ */
 @Repository
 public interface RollbackApprovalRepository extends JpaRepository<RollbackApproval, Long> {
 
-    List<RollbackApproval> findByOrderId(Long orderId);
-
+    /**
+     * Finds rollback approvals by status with pagination.
+     *
+     * @param status approval status
+     * @param pageable pagination information
+     * @return page of rollback approvals
+     */
     Page<RollbackApproval> findByApprovalStatus(ApprovalStatus status, Pageable pageable);
 
-    Optional<RollbackApproval> findByOrderIdAndApprovalStatus(Long orderId, ApprovalStatus status);
-
-    @Query("SELECT ra FROM RollbackApproval ra WHERE ra.requestedById = :managerId ORDER BY ra.requestedAt DESC")
-    List<RollbackApproval> findByRequestedById(@Param("managerId") Long managerId);
-
+    /**
+     * Checks if a pending rollback exists for an order.
+     *
+     * @param orderId order ID
+     * @param status approval status
+     * @return true if exists
+     */
     boolean existsByOrderIdAndApprovalStatus(Long orderId, ApprovalStatus status);
 }

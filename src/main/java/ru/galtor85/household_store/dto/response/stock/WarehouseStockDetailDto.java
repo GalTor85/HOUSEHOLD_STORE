@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
  * DTO for warehouse stock details for manager view.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder
@@ -41,6 +41,6 @@ public class WarehouseStockDetailDto {
     @Schema(description = "Available quantity", example = "45")
     private Integer availableQuantity = 0;
 
-    @Schema(description = "Localized status", example = "В наличии")
+    @Schema(description = "Localized status", example = "In stock")
     private String localizedStatus;
 }

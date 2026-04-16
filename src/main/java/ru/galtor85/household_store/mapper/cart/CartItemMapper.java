@@ -6,22 +6,28 @@ import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.dto.response.cart.CartItemDto;
 import ru.galtor85.household_store.entity.cart.CartItem;
 
+import java.math.BigDecimal;
 import java.util.List;
-import java.util.stream.Collectors;
 
+/**
+ * Mapper for cart item entities to DTOs.
+ */
+@SuppressWarnings("unused")
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class CartItemMapper {
 
     /**
-     * Преобразование сущности в DTO
+     * Converts cart item entity to DTO.
+     *
+     * @param item cart item entity
+     * @return cart item DTO
      */
     public CartItemDto toDto(CartItem item) {
         if (item == null) {
             return null;
         }
-
         return CartItemDto.builder()
                 .id(item.getId())
                 .productId(item.getProductId())
@@ -29,19 +35,23 @@ public class CartItemMapper {
                 .sku(item.getSku())
                 .quantity(item.getQuantity())
                 .price(item.getPrice())
-                .totalPrice(item.getPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())))
+                .totalPrice(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .build();
     }
 
     /**
-     * Преобразование списка сущностей в список DTO
+     * Converts list of cart item entities to list of DTOs.
+     *
+     * @param items list of cart item entities
+     * @return list of cart item DTOs
      */
+    @SuppressWarnings("unused")
     public List<CartItemDto> toDtoList(List<CartItem> items) {
         if (items == null) {
             return null;
         }
         return items.stream()
                 .map(this::toDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 }

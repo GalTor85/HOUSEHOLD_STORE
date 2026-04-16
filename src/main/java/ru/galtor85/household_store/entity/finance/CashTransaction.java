@@ -6,10 +6,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_CURRENCY;
 
 @Data
 @Builder
@@ -40,7 +41,7 @@ public class CashTransaction {
 
     @Column(name = "currency", nullable = false)
     @Builder.Default
-    private String currency = "RUB";  // ← ДОБАВИТЬ ЭТО ПОЛЕ
+    private String currency = DEFAULT_CURRENCY;
 
     @Column(name = "payment_method")
     @Enumerated(EnumType.STRING)
@@ -67,60 +68,4 @@ public class CashTransaction {
 
     @Column(name = "balance_after", precision = 10, scale = 2)
     private BigDecimal balanceAfter;
-
-    // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-    // =========================================================================
-
-    /**
-     * Проверяет, является ли операция приходом
-     */
-    public boolean isIncome() {
-        return transactionType == TransactionType.INCOME;
-    }
-
-    /**
-     * Проверяет, является ли операция расходом
-     */
-    public boolean isExpense() {
-        return transactionType == TransactionType.EXPENSE;
-    }
-
-    /**
-     * Проверяет, является ли операция возвратом
-     */
-    public boolean isRefund() {
-        return transactionType == TransactionType.REFUND;
-    }
-
-    /**
-     * Проверяет, является ли операция наличной
-     */
-    public boolean isCash() {
-        return paymentMethod == PaymentMethod.CASH;
-    }
-
-    /**
-     * Получает сумму со знаком (+ для прихода, - для расхода)
-     */
-    public BigDecimal getSignedAmount() {
-        if (isExpense()) {
-            return amount.negate();
-        }
-        return amount;
-    }
-
-    /**
-     * Получает локализованное название типа операции
-     */
-    public String getLocalizedTransactionType(MessageService messageService) {
-        return transactionType.getLocalizedName(messageService);
-    }
-
-    /**
-     * Получает локализованное название способа оплаты
-     */
-    public String getLocalizedPaymentMethod(MessageService messageService) {
-        return paymentMethod != null ? paymentMethod.getLocalizedName(messageService) : null;
-    }
 }

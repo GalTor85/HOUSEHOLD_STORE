@@ -37,7 +37,7 @@ public class ProductMediaDto {
     @Schema(description = "Alt text", example = "iPhone 13 Pro Graphite")
     private String altText;
 
-    @Schema(description = "Caption", example = "iPhone 13 Pro в цвете Graphite")
+    @Schema(description = "Caption", example = "iPhone 13 Pro in Graphite color")
     private String caption;
 
     @Schema(description = "Sort salesOrder", example = "1")

@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.dto.request.product;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -46,62 +45,4 @@ public class AttributeUpdateRequest {
 
     @Schema(description = "Whether this attribute is used as a variant attribute for product variations", example = "false")
     private Boolean variant;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasName() {
-        return name != null && !name.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasValue() {
-        return value != null && !value.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasOrder() {
-        return order != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasRequired() {
-        return required != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasVariant() {
-        return variant != null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedName() {
-        return name != null ? name.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedValue() {
-        return value != null ? value.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isRequiredTrue() {
-        return Boolean.TRUE.equals(required);
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isVariantTrue() {
-        return Boolean.TRUE.equals(variant);
-    }
 }

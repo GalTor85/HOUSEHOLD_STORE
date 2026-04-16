@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.cart;
 
+import lombok.Getter;
+
+@Getter
 public class CartNotFoundException extends RuntimeException {
     private final Long userId;
 
@@ -8,7 +11,4 @@ public class CartNotFoundException extends RuntimeException {
         this.userId = userId;
     }
 
-    public Long getUserId() {
-        return userId;
-    }
 }

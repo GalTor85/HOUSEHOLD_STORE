@@ -32,7 +32,7 @@ import java.io.IOException;
  * the response is sent.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  * @see JwtTokenHolder
  * @see JwtAuthenticationFilter
  */

@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.stock;
 
+import lombok.Getter;
+
+@Getter
 public class InvalidStockMovementException extends RuntimeException {
     private final String reason;
     private final Long productId;
@@ -14,19 +17,4 @@ public class InvalidStockMovementException extends RuntimeException {
         this.toCellId = toCellId;
     }
 
-    public String getReason() {
-        return reason;
-    }
-
-    public Long getProductId() {
-        return productId;
-    }
-
-    public Long getFromCellId() {
-        return fromCellId;
-    }
-
-    public Long getToCellId() {
-        return toCellId;
-    }
 }

@@ -60,7 +60,7 @@ public class StockMovementDto {
     @Schema(description = "Movement type", example = "RECEIPT")
     private MovementType movementType;
 
-    @Schema(description = "Localized movement type", example = "Поступление")
+    @Schema(description = "Localized movement type", example = "Receipt")
     private String localizedMovementType;
 
     @Schema(description = "Reference type (ORDER, PURCHASE, etc.)", example = "PURCHASE")
@@ -89,39 +89,4 @@ public class StockMovementDto {
 
     @Schema(description = "Created at timestamp", example = "2024-03-17T10:30:00")
     private LocalDateTime createdAt;
-
-    // ========== Вспомогательные методы ==========
-
-    /**
-     * Получить направление движения (IN/OUT/INTERNAL)
-     */
-    public String getDirection() {
-        return switch (movementType) {
-            case RECEIPT -> "IN";
-            case SHIPMENT, WRITE_OFF -> "OUT";
-            case TRANSFER, INVENTORY -> "INTERNAL";
-            case RETURN -> "IN";
-        };
-    }
-
-    /**
-     * Проверка, является ли движение входящим
-     */
-    public boolean isIncoming() {
-        return movementType == MovementType.RECEIPT || movementType == MovementType.RETURN;
-    }
-
-    /**
-     * Проверка, является ли движение исходящим
-     */
-    public boolean isOutgoing() {
-        return movementType == MovementType.SHIPMENT || movementType == MovementType.WRITE_OFF;
-    }
-
-    /**
-     * Проверка, является ли движение внутренним перемещением
-     */
-    public boolean isInternal() {
-        return movementType == MovementType.TRANSFER;
-    }
 }

@@ -63,7 +63,7 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.*;
  * routes requests to specific handlers based on request fields.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Service
@@ -117,6 +117,15 @@ public class PaymentService {
         paymentRequestValidator.validateCommon(request);
         paymentRequestValidator.validateExactlyOnePaymentTarget(request);
         paymentRequestValidator.validateFieldCombination(request);
+
+        PaymentMethod paymentMethod = paymentMethodRepository.findById(request.getPaymentMethodId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        messageService.get("payment.method.not.found", request.getPaymentMethodId())));
+
+        if (paymentMethod.validate()) {
+            throw new IllegalArgumentException(
+                    messageService.get("payment.method.invalid", paymentMethod.getId()));
+        }
 
         if (request.isCustomerOrderPayment()) {
             return customerPayOrder(request, userId);

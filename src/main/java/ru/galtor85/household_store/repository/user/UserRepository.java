@@ -1,4 +1,3 @@
-
 package ru.galtor85.household_store.repository.user;
 
 import org.springframework.data.domain.Sort;
@@ -9,12 +8,46 @@ import ru.galtor85.household_store.entity.user.User;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Repository for user operations.
+ */
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
+
+    /**
+     * Finds user by email.
+     *
+     * @param email user email
+     * @return optional user
+     */
     Optional<User> findByEmail(String email);
-    Optional<User> findByMobileNumber(String mobileNumber);
-    Optional<User> findByEmailOrMobileNumber(String email, String mobileNumber);
+
+    /**
+     * Checks if user exists by email.
+     *
+     * @param email user email
+     * @return true if exists
+     */
     boolean existsByEmail(String email);
+
+    /**
+     * Checks if user exists by mobile number.
+     *
+     * @param mobileNumber user mobile number
+     * @return true if exists
+     */
     boolean existsByMobileNumber(String mobileNumber);
-    List<User> findByEmailContainingOrMobileNumberContainingOrFirstNameContainingOrLastNameContaining(String trimmedEmail, String trimmedMobile, String trimmedFirstName, String trimmedLastName, Sort by);
+
+    /**
+     * Searches users by multiple criteria with partial matching.
+     *
+     * @param email email filter
+     * @param mobile mobile number filter
+     * @param firstName first name filter
+     * @param lastName last name filter
+     * @param sort sort configuration
+     * @return list of matching users
+     */
+    List<User> findByEmailContainingOrMobileNumberContainingOrFirstNameContainingOrLastNameContaining(
+            String email, String mobile, String firstName, String lastName, Sort sort);
 }

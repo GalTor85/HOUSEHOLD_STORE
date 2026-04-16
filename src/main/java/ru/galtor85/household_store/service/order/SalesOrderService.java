@@ -60,7 +60,7 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.*;
  * </ul>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Service
@@ -450,11 +450,10 @@ public class SalesOrderService {
      * @param orderId   the order ID
      * @param reason    the reason for rollback
      * @param managerId ID of the manager performing the rollback
-     * @return the updated order as a DTO
      * @throws RollbackNotAllowedException if rollback is not allowed for the current status
      */
     @Transactional
-    public SalesOrderDto rollbackOrderStatus(Long orderId, String reason, Long managerId) {
+    public void rollbackOrderStatus(Long orderId, String reason, Long managerId) {
 
         log.info(logMsg.get("sales.order.rollback.start.log", orderId, managerId, reason));
 
@@ -477,7 +476,7 @@ public class SalesOrderService {
         log.info(logMsg.get("sales.order.rollback.success.log",
                 orderId, oldStatus, targetStatus, managerId, reason));
 
-        return salesOrderConverter.toDto(updatedOrder);
+        salesOrderConverter.toDto(updatedOrder);
     }
 
     // =========================================================================

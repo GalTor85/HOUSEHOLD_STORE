@@ -10,37 +10,9 @@ public enum InvoiceStatus {
     REFUNDED;
 
     /**
-     * Получает локализованное название статуса через MessageService
+     * Gets the localized name of the invoice status using the provided MessageService.
      */
     public String getLocalizedName(MessageService messageService) {
         return messageService.get("invoice.status." + this.name());
-    }
-
-    /**
-     * Получает локализованное название статуса с параметрами
-     */
-    public String getLocalizedName(MessageService messageService, Object... args) {
-        return messageService.get("invoice.status." + this.name(), args);
-    }
-
-    /**
-     * Проверяет, является ли статус финальным
-     */
-    public boolean isFinal() {
-        return this == PAID || this == CANCELLED || this == REFUNDED;
-    }
-
-    /**
-     * Проверяет, можно ли оплатить счет
-     */
-    public boolean isPayable() {
-        return this == PENDING || this == PARTIALLY_PAID;
-    }
-
-    /**
-     * Проверяет, можно ли отменить счет
-     */
-    public boolean isCancellable() {
-        return this == PENDING || this == PARTIALLY_PAID;
     }
 }

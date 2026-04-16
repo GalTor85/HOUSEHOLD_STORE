@@ -38,16 +38,4 @@ public class PaymentSummaryDto {
 
     @Schema(description = "Payment URL for the next invoice", example = "/app/users/invoices/INV-20240330-001/pay")
     private String paymentUrl;
-
-    @Schema(description = "Localized total paid amount", example = "Paid: 2,000.00 RUB")
-    private String localizedTotalPaid;
-
-    @Schema(description = "Localized remaining amount", example = "Remaining: 3,000.00 RUB")
-    private String localizedRemainingAmount;
-
-    @Schema(description = "Localized payment status", example = "Order fully paid")
-    private String localizedPaymentStatus;
-
-    @Schema(description = "Localized action button text", example = "Pay Now")
-    private String localizedActionText;
 }

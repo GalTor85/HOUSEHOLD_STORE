@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.supplier;
 
+import lombok.Getter;
+
+@Getter
 public class SupplierProductNotFoundException extends RuntimeException {
     private final Long supplierProductId;
 
@@ -8,7 +11,4 @@ public class SupplierProductNotFoundException extends RuntimeException {
         this.supplierProductId = supplierProductId;
     }
 
-    public Long getSupplierProductId() {
-        return supplierProductId;
-    }
 }

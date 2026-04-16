@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -69,8 +68,6 @@ public class BankAccount {
     /**
      * -- GETTER --
      *  Checks if the account is active
-     *
-     * @return true if active
      */
     @Column(name = "is_active")
     @Builder.Default
@@ -129,24 +126,5 @@ public class BankAccount {
             throw new IllegalArgumentException("Insufficient funds");
         }
         this.balance = this.balance.subtract(amount);
-    }
-
-    /**
-     * Gets display name for UI
-     *
-     * @return formatted display name
-     */
-    public String getDisplayName() {
-        return name + " (" + accountNumber + ")";
-    }
-
-    /**
-     * Gets localized account type
-     *
-     * @param messageService message service
-     * @return localized account type
-     */
-    public String getLocalizedAccountType(MessageService messageService) {
-        return accountType.getLocalizedName(messageService);
     }
 }

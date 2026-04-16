@@ -81,15 +81,6 @@ public class BankAccountDto {
     private String localizedBalance;
 
     /**
-     * Checks if account is active.
-     *
-     * @return true if active
-     */
-    public boolean isActive() {
-        return Boolean.TRUE.equals(active);
-    }
-
-    /**
      * Gets formatted balance with currency.
      *
      * @return formatted balance string

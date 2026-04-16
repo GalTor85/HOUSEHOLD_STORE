@@ -20,7 +20,7 @@ import java.util.List;
  * customer-visible stock (visible warehouses only), and warehouse-level stock details.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component

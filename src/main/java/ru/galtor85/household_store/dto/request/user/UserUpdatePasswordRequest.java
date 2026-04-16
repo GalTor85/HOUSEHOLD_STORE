@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.dto.request.user;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -20,62 +19,16 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.PASSWORD_
 public class UserUpdatePasswordRequest {
 
     @NotBlank(message = "{user-update-password-request.validation.password.current.required}")
-    @Schema(description = "Current password", example = "OldPassword123!", required = true)
+    @Schema(description = "Current password", example = "OldPassword123!", requiredMode = Schema.RequiredMode.REQUIRED)
     private String currentPassword;
 
     @NotBlank(message = "{user-update-password-request.validation.password.new.empty}")
     @Pattern(regexp = PASSWORD_PATTERN, message = "{user-update-password-request.validation.password.new.invalid}")
     @Schema(description = "New password (min 6 chars, at least one digit, one lowercase, one uppercase, one special character)",
-            example = "NewPassword123!", required = true)
+            example = "NewPassword123!", requiredMode = Schema.RequiredMode.REQUIRED)
     private String newPassword;
 
     @NotBlank(message = "{user-update-password-request.validation.password.confirm.empty}")
-    @Schema(description = "Confirm new password", example = "NewPassword123!", required = true)
+    @Schema(description = "Confirm new password", example = "NewPassword123!", requiredMode = Schema.RequiredMode.REQUIRED  )
     private String confirmPassword;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasCurrentPassword() {
-        return currentPassword != null && !currentPassword.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasNewPassword() {
-        return newPassword != null && !newPassword.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasConfirmPassword() {
-        return confirmPassword != null && !confirmPassword.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isPasswordsMatch() {
-        return newPassword != null && newPassword.equals(confirmPassword);
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedCurrentPassword() {
-        return currentPassword != null ? currentPassword.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedNewPassword() {
-        return newPassword != null ? newPassword.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedConfirmPassword() {
-        return confirmPassword != null ? confirmPassword.trim() : null;
-    }
 }

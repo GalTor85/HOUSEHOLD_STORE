@@ -23,7 +23,7 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.DATE_FORM
  * including basic order info, items, and extended details with customer information.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component

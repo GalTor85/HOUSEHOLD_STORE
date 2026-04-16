@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
  * Request DTO for transferring stock between warehouses or cells.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder
@@ -56,7 +56,4 @@ public class StockTransferRequest {
 
     @Schema(description = "Transfer reason", example = "Stock rebalancing")
     private String reason;
-
-    @Schema(description = "Notes")
-    private String notes;
 }

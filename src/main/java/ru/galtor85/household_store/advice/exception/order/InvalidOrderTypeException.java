@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.order;
 
+import lombok.Getter;
+
+@Getter
 public class InvalidOrderTypeException extends RuntimeException {
     private final Long orderId;
     private final String expectedType;
@@ -10,11 +13,4 @@ public class InvalidOrderTypeException extends RuntimeException {
         this.expectedType = expectedType;
     }
 
-    public Long getOrderId() {
-        return orderId;
-    }
-
-    public String getExpectedType() {
-        return expectedType;
-    }
 }

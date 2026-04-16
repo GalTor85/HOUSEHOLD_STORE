@@ -66,7 +66,7 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.*;
  * @see JwtTokenProvider
  * @see JwtTokenHolder
  * @see OncePerRequestFilter
- * @since 1.0
+ 
  */
 @Slf4j
 @Component
@@ -159,56 +159,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (StringUtils.hasText(jwt)) {
                 JwtTokenHolder.setToken(jwt);
 
-                try {
-                    if (blacklistedTokenRepository.existsByToken(jwt)) {
-                        log.warn("Token is blacklisted (logout)");
-                        sendApiErrorResponse(response, "auth.error.token.blacklisted", HttpStatus.UNAUTHORIZED);
-                        return;
-                    }
+                if (blacklistedTokenRepository.existsByToken(jwt)) {
+                    log.warn("Token is blacklisted (logout)");
+                    sendApiErrorResponse(response, "auth.error.token.blacklisted");
+                    return;
+                }
 
-                    if (jwtTokenProvider.validateToken(jwt)) {
-                        String email = jwtTokenProvider.getUsernameFromToken(jwt);
-                        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                if (jwtTokenProvider.validateToken(jwt)) {
+                    String email = jwtTokenProvider.getUsernameFromToken(jwt);
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                        UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(
-                                        userDetails,
-                                        null,
-                                        userDetails.getAuthorities()
-                                );
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
 
-                        authentication.setDetails(
-                                new WebAuthenticationDetailsSource().buildDetails(request)
-                        );
+                    authentication.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    );
 
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                        log.debug("Authentication set for user: {}", email);
-                    }
-                } finally {
-                    // Token cleanup is handled in outer finally block
+                    log.debug("Authentication set for user: {}", email);
                 }
             }
 
         } catch (TokenExpiredException e) {
             log.warn("Token expired");
-            sendApiErrorResponse(response, "auth.error.token.expired", HttpStatus.UNAUTHORIZED);
+            sendApiErrorResponse(response, "auth.error.token.expired");
             return;
         } catch (TokenMalformedException e) {
             log.warn("Token malformed");
-            sendApiErrorResponse(response, "auth.error.token.malformed", HttpStatus.UNAUTHORIZED);
+            sendApiErrorResponse(response, "auth.error.token.malformed");
             return;
         } catch (TokenUnsupportedException e) {
             log.warn("Token unsupported");
-            sendApiErrorResponse(response, "auth.error.token.unsupported", HttpStatus.UNAUTHORIZED);
+            sendApiErrorResponse(response, "auth.error.token.unsupported");
             return;
         } catch (TokenSecurityException e) {
             log.warn("Token security error");
-            sendApiErrorResponse(response, "auth.error.token.security", HttpStatus.UNAUTHORIZED);
+            sendApiErrorResponse(response, "auth.error.token.security");
             return;
         } catch (Exception ex) {
             log.error("JWT authentication error: {}", ex.getMessage(), ex);
-            sendApiErrorResponse(response, "auth.error.token.invalid", HttpStatus.UNAUTHORIZED);
+            sendApiErrorResponse(response, "auth.error.token.invalid");
             return;
         } finally {
             if (!isLogoutRequest(request)) {
@@ -260,11 +256,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      *
      * @param response   HTTP response
      * @param messageKey message key for localization
-     * @param status     HTTP status to return
      * @throws IOException if writing response fails
      */
-    private void sendApiErrorResponse(HttpServletResponse response, String messageKey, HttpStatus status) throws IOException {
-        response.setStatus(status.value());
+    private void sendApiErrorResponse(HttpServletResponse response, String messageKey) throws IOException {
+        response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(CONTENT_TYPE_JSON);
         response.setCharacterEncoding(UTF_8_ENCODING);
 

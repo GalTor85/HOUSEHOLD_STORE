@@ -1,7 +1,10 @@
 package ru.galtor85.household_store.advice.exception.product;
 
+import lombok.Getter;
+
 import java.util.List;
 
+@Getter
 public class ProductMediaUploadException extends RuntimeException {
 
     private final Long productId;
@@ -13,11 +16,4 @@ public class ProductMediaUploadException extends RuntimeException {
         this.failedFiles = failedFiles;
     }
 
-    public Long getProductId() {
-        return productId;
-    }
-
-    public List<String> getFailedFiles() {
-        return failedFiles;
-    }
 }

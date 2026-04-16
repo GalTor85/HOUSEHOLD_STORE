@@ -31,7 +31,7 @@ import ru.galtor85.household_store.validator.common.ValidationHelper;
  * </ul>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Component
@@ -83,66 +83,5 @@ public class SupplierProductProcessor {
         log.info(logMsg.get("manager.supplier.product.added.log", productId, supplierId, managerId));
 
         return supplierProductConverter.convertToDto(saved, productId, supplierId);
-    }
-
-    /**
-     * Updates an existing supplier-product relationship.
-     *
-     * <p>Updates the supplier-specific information for a product.
-     * If the main supplier flag is being set to true, resets the flag
-     * for all other suppliers of this product.</p>
-     *
-     * @param supplierProductId the ID of the supplier-product relationship to update
-     * @param request           the request containing updated supplier-specific product data
-     * @param managerId         the ID of the manager performing the operation
-     * @return DTO representing the updated supplier-product relationship
-     * @throws ru.galtor85.household_store.advice.exception.supplier.SupplierProductNotFoundException if relationship not found
-     */
-    @Transactional
-    public SupplierProductDto updateSupplierProduct(Long supplierProductId,
-                                                    SupplierProductRequest request,
-                                                    Long managerId) {
-        log.debug(logMsg.get("supplier.product.processor.update.start", supplierProductId, managerId));
-
-        SupplierProduct supplierProduct = entityFinder.findSupplierProductById(supplierProductId);
-        supplierProductBuilder.updateFromRequest(supplierProduct, request);
-
-        boolean isBecomingMainSupplier = Boolean.TRUE.equals(request.getMainSupplier())
-                && !Boolean.TRUE.equals(supplierProduct.getMainSupplier());
-
-        if (isBecomingMainSupplier) {
-            supplierProductBuilder.resetMainSupplierFlag(supplierProduct.getProductId());
-            supplierProduct.setMainSupplier(true);
-        }
-
-        SupplierProduct updated = supplierProductRepository.save(supplierProduct);
-
-        log.info(logMsg.get("manager.supplier.product.updated.log", supplierProductId, managerId));
-
-        return supplierProductConverter.convertToDto(updated,
-                updated.getProductId(), updated.getSupplierId());
-    }
-
-    /**
-     * Removes a product from a supplier's catalog.
-     *
-     * <p>Permanently deletes the relationship between the supplier and the product.
-     * This operation cannot be undone.</p>
-     *
-     * @param supplierProductId the ID of the supplier-product relationship to remove
-     * @param managerId         the ID of the manager performing the operation
-     * @throws ru.galtor85.household_store.advice.exception.supplier.SupplierProductNotFoundException if relationship not found
-     */
-    @Transactional
-    public void removeProductFromSupplier(Long supplierProductId, Long managerId) {
-        log.debug(logMsg.get("supplier.product.processor.remove.start", supplierProductId, managerId));
-
-        SupplierProduct supplierProduct = entityFinder.findSupplierProductById(supplierProductId);
-        Long productId = supplierProduct.getProductId();
-        Long supplierId = supplierProduct.getSupplierId();
-
-        supplierProductRepository.delete(supplierProduct);
-
-        log.info(logMsg.get("manager.supplier.product.removed.log", productId, supplierId, managerId));
     }
 }

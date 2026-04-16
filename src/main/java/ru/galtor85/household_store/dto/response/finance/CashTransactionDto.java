@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 public class CashTransactionDto {
 
     // =========================================================================
-    // ИДЕНТИФИКАТОРЫ
+    // IDENTIFIERS
     // =========================================================================
 
     @Schema(description = "Transaction ID", example = "1")
@@ -37,7 +37,7 @@ public class CashTransactionDto {
     private String cashRegisterNumber;
 
     // =========================================================================
-    // СВЯЗЬ С ИНВОЙСОМ
+    // INVOICE DETAILS
     // =========================================================================
 
     @Schema(description = "Invoice ID", example = "1")
@@ -47,7 +47,7 @@ public class CashTransactionDto {
     private String invoiceNumber;
 
     // =========================================================================
-    // ТИП И СУММА ОПЕРАЦИИ
+    // TRANSACTION DETAILS
     // =========================================================================
 
     @Schema(description = "Transaction type", example = "INCOME")
@@ -64,7 +64,7 @@ public class CashTransactionDto {
     private String currency = "RUB";
 
     // =========================================================================
-    // СПОСОБ ОПЛАТЫ
+    // PAYMENT METHOD DETAILS
     // =========================================================================
 
     @Schema(description = "Payment method", example = "CARD")
@@ -74,7 +74,7 @@ public class CashTransactionDto {
     private String localizedPaymentMethod;
 
     // =========================================================================
-    // КАССИР
+    // CASHIER DETAILS
     // =========================================================================
 
     @Schema(description = "Cashier ID", example = "1")
@@ -87,7 +87,7 @@ public class CashTransactionDto {
     private String cashierEmail;
 
     // =========================================================================
-    // ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ
+    // ADDITIONAL DETAILS
     // =========================================================================
 
     @Schema(description = "Transaction description", example = "Оплата счета INV-001")
@@ -97,14 +97,14 @@ public class CashTransactionDto {
     private String notes;
 
     // =========================================================================
-    // ДАТЫ
+    // DATE DETAILS
     // =========================================================================
 
     @Schema(description = "Transaction timestamp")
     private LocalDateTime createdAt;
 
     // =========================================================================
-    // UI ПОЛЯ (для отображения)
+    // UI DETAILS
     // =========================================================================
 
     @Schema(description = "Sign for amount display (+/-)", example = "+")
@@ -117,7 +117,7 @@ public class CashTransactionDto {
     private String icon;
 
     // =========================================================================
-    // БАЛАНСОВЫЕ ПОЛЯ
+    // BALANCE DETAILS
     // =========================================================================
 
     @Schema(description = "Cash register balance before transaction")
@@ -125,50 +125,4 @@ public class CashTransactionDto {
 
     @Schema(description = "Cash register balance after transaction")
     private BigDecimal balanceAfter;
-
-    // =========================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-    // =========================================================================
-
-    /**
-     * Проверяет, является ли операция приходом
-     */
-    public boolean isIncome() {
-        return transactionType == TransactionType.INCOME;
-    }
-
-    /**
-     * Проверяет, является ли операция расходом
-     */
-    public boolean isExpense() {
-        return transactionType == TransactionType.EXPENSE;
-    }
-
-    /**
-     * Проверяет, является ли операция возвратом
-     */
-    public boolean isRefund() {
-        return transactionType == TransactionType.REFUND;
-    }
-
-    /**
-     * Проверяет, является ли операция наличной
-     */
-    public boolean isCash() {
-        return paymentMethod == PaymentMethod.CASH;
-    }
-
-    /**
-     * Получает форматированную сумму со знаком
-     */
-    public String getFormattedAmount() {
-        return sign != null ? sign + amount.toString() : amount.toString();
-    }
-
-    /**
-     * Получает сумму в абсолютном значении
-     */
-    public BigDecimal getAbsoluteAmount() {
-        return amount.abs();
-    }
 }

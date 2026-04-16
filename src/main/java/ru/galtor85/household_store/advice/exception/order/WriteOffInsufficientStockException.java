@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.order;
 
+import lombok.Getter;
+
+@Getter
 public class WriteOffInsufficientStockException extends RuntimeException {
     private final Long productId;
     private final int availableStock;
@@ -12,15 +15,4 @@ public class WriteOffInsufficientStockException extends RuntimeException {
         this.requestedQuantity = requestedQuantity;
     }
 
-    public Long getProductId() {
-        return productId;
-    }
-
-    public int getAvailableStock() {
-        return availableStock;
-    }
-
-    public int getRequestedQuantity() {
-        return requestedQuantity;
-    }
 }

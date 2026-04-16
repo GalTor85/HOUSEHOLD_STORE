@@ -10,7 +10,8 @@ import org.springframework.stereotype.Component;
  * Configuration for warehouse settings.
  *
  * <p>This class holds all warehouse-related configuration including default
- * warehouse ID, code, capacity, barcode format, and barcode prefix.</p>
+ * warehouse ID, code, name, description, address, capacity, barcode format,
+ * and barcode prefix.</p>
  *
  * <p>All values are loaded from application.properties with prefix 'app.warehouse'.</p>
  *
@@ -18,13 +19,17 @@ import org.springframework.stereotype.Component;
  * <pre>
  * app.warehouse.default-id=1
  * app.warehouse.default-code=WH-DEFAULT
+ * app.warehouse.default-name=Main Warehouse
+ * app.warehouse.default-description=Default warehouse for the system
+ * app.warehouse.default-address=System Default Address
  * app.warehouse.default-capacity=1000
  * app.warehouse.default-barcode-format=CODE_128
  * app.warehouse.default-barcode-prefix=WH-DEFAULT-BARCODE-
+ * app.warehouse.default-visible-for-sale=true
  * </pre>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Slf4j
 @Getter
@@ -39,6 +44,15 @@ public class WarehouseConfig {
     /** Default warehouse code */
     private String defaultCode;
 
+    /** Default warehouse name */
+    private String defaultName;
+
+    /** Default warehouse description */
+    private String defaultDescription;
+
+    /** Default warehouse address */
+    private String defaultAddress;
+
     /** Default warehouse capacity (number of storage cells) */
     private Integer defaultCapacity;
 
@@ -48,13 +62,16 @@ public class WarehouseConfig {
     /** Default barcode prefix for warehouse barcode generation */
     private String defaultBarcodePrefix;
 
+    /** Default visibility for sale */
+    private Boolean defaultVisibleForSale;
+
     /**
      * Gets the default warehouse ID.
      *
      * @return default warehouse ID
      */
     public Long getDefaultWarehouseId() {
-        return defaultId;
+        return defaultId != null ? defaultId : 1L;
     }
 
     /**
@@ -63,7 +80,34 @@ public class WarehouseConfig {
      * @return default warehouse code
      */
     public String getDefaultWarehouseCode() {
-        return defaultCode;
+        return defaultCode != null ? defaultCode : "WH-DEFAULT";
+    }
+
+    /**
+     * Gets the default warehouse name.
+     *
+     * @return default warehouse name
+     */
+    public String getDefaultWarehouseName() {
+        return defaultName != null ? defaultName : "Main Warehouse";
+    }
+
+    /**
+     * Gets the default warehouse description.
+     *
+     * @return default warehouse description
+     */
+    public String getDefaultWarehouseDescription() {
+        return defaultDescription != null ? defaultDescription : "Default warehouse for the system";
+    }
+
+    /**
+     * Gets the default warehouse address.
+     *
+     * @return default warehouse address
+     */
+    public String getDefaultWarehouseAddress() {
+        return defaultAddress != null ? defaultAddress : "System Default Address";
     }
 
     /**
@@ -94,5 +138,15 @@ public class WarehouseConfig {
      */
     public String getDefaultWarehouseBarcodePrefix() {
         return defaultBarcodePrefix != null ? defaultBarcodePrefix : "WH-DEFAULT-BARCODE-";
+    }
+
+    /**
+     * Gets the default visibility for sale.
+     * Returns true as default value if not configured.
+     *
+     * @return default visibility for sale (default: true)
+     */
+    public boolean getDefaultWarehouseVisibleForSale() {
+        return defaultVisibleForSale != null ? defaultVisibleForSale : true;
     }
 }

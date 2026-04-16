@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.dto.request.order;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -40,44 +39,4 @@ public class ReverseReceiptRequest {
     @Size(max = MAX_COMMENTS_LENGTH, message = "{reverse.receipt.validation.comments.max}")
     @Schema(description = "Additional comments", example = "Return to supplier")
     private String comments;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasItems() {
-        return items != null && !items.isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasComments() {
-        return comments != null && !comments.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public int getTotalItems() {
-        return items != null ? items.size() : 0;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedReason() {
-        return reason != null ? reason.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedComments() {
-        return comments != null ? comments.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean isReverseAllItems() {
-        return items == null || items.isEmpty();
-    }
 }

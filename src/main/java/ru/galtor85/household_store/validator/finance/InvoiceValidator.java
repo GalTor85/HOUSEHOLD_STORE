@@ -144,7 +144,7 @@ public class InvoiceValidator {
         if (invoice.getStatus() == InvoiceStatus.REFUNDED) {
             throw new InvoiceAlreadyRefundedException(invoice.getId(), invoice.getInvoiceNumber());
         }
-        if (!invoice.isPayable()) {
+        if (invoice.isNotPayable()) {
             log.error(logMsg.get("invoice.not.payable", invoice.getId(), invoice.getStatus()));
             throw new IllegalStateException(
                     messageService.get("invoice.not.payable",

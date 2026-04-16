@@ -3,8 +3,10 @@ package ru.galtor85.household_store.entity.cart;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.FieldNameConstants;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -13,11 +15,16 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Data
+/**
+ * Shopping cart entity.
+ */
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@FieldNameConstants
 @Table(name = "carts", schema = "household_schema",
         indexes = {
                 @Index(name = "idx_carts_user_id", columnList = "user_id"),
@@ -30,7 +37,7 @@ public class Cart {
     private Long id;
 
     @Column(name = "user_id", nullable = false)
-    private Long userId; // ID пользователя (связь по ID, как и везде)
+    private Long userId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -48,31 +55,44 @@ public class Cart {
     private Integer itemsCount;
 
     @Column(name = "category")
-    private String category; // Категория корзины (для истории)
+    private String category;
 
-    @Column(name = "created_at")
     @CreationTimestamp
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @Column(name = "expires_at")
-    private LocalDateTime expiresAt; // Время истечения корзины
+    private LocalDateTime expiresAt;
 
+    /**
+     * Adds item to cart and recalculates total.
+     *
+     * @param item cart item to add
+     */
     public void addItem(CartItem item) {
         items.add(item);
         item.setCart(this);
         recalculateTotal();
     }
 
+    /**
+     * Removes item from cart and recalculates total.
+     *
+     * @param item cart item to remove
+     */
     public void removeItem(CartItem item) {
         items.remove(item);
         item.setCart(null);
         recalculateTotal();
     }
 
+    /**
+     * Recalculates total amount and items count.
+     */
     public void recalculateTotal() {
         this.totalAmount = items.stream()
                 .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
@@ -80,6 +100,9 @@ public class Cart {
         this.itemsCount = items.stream().mapToInt(CartItem::getQuantity).sum();
     }
 
+    /**
+     * Clears all items from cart.
+     */
     public void clear() {
         items.clear();
         this.totalAmount = BigDecimal.ZERO;

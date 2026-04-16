@@ -1,7 +1,10 @@
 package ru.galtor85.household_store.advice.exception.stock;
 
+import lombok.Getter;
+
 import java.util.List;
 
+@Getter
 public class BulkOperationException extends RuntimeException {
     private final List<Long> productIds;
     private final int successfulCount;
@@ -12,11 +15,4 @@ public class BulkOperationException extends RuntimeException {
         this.successfulCount = successfulCount;
     }
 
-    public List<Long> getProductIds() {
-        return productIds;
-    }
-
-    public int getSuccessfulCount() {
-        return successfulCount;
-    }
 }

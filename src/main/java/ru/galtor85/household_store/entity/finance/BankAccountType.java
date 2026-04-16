@@ -5,21 +5,20 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 /**
  * Bank account type enumeration
  */
+@SuppressWarnings("unused")
 public enum BankAccountType {
 
     /** Current/checking account */
     CHECKING,
 
-    /** Savings account */
+    /** Savings account - for future use */
     SAVINGS,
 
-    /** Foreign currency account */
+    /** Foreign currency account - for future use */
     CURRENCY,
-
-    /** Card account */
+    /** Card account - for future use */
     CARD,
-
-    /** Deposit account */
+    /** Deposit account - for future use */
     DEPOSIT;
 
     /**
@@ -28,6 +27,7 @@ public enum BankAccountType {
      * @param messageService message service
      * @return localized name
      */
+    @SuppressWarnings("unused")
     public String getLocalizedName(MessageService messageService) {
         return messageService.get("bank.account.type." + this.name());
     }

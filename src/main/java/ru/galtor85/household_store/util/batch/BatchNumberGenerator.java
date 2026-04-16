@@ -37,16 +37,4 @@ public class BatchNumberGenerator {
         String randomPart = UUID.randomUUID().toString().substring(0, UUID_LENGTH).toUpperCase();
         return prefix + SEPARATOR + datePart + SEPARATOR + randomPart;
     }
-
-    /**
-     * Generates batch number based on specific date.
-     *
-     * @param date delivery date
-     * @return generated batch number
-     */
-    public String generateBatchNumber(LocalDateTime date) {
-        String datePart = date.format(DATE_FORMAT);
-        String randomPart = UUID.randomUUID().toString().substring(0, UUID_LENGTH).toUpperCase();
-        return BATCH_PREFIX + datePart + SEPARATOR + randomPart;
-    }
 }

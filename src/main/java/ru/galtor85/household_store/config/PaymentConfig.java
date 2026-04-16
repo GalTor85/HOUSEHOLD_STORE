@@ -28,7 +28,7 @@ import java.math.RoundingMode;
  * </pre>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Component

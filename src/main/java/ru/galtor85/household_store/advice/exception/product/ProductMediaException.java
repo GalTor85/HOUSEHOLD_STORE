@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.product;
 
+import lombok.Getter;
+
+@Getter
 public class ProductMediaException extends RuntimeException {
 
   private final Long productId;
@@ -17,11 +20,4 @@ public class ProductMediaException extends RuntimeException {
     this.fileName = fileName;
   }
 
-  public Long getProductId() {
-    return productId;
-  }
-
-  public String getFileName() {
-    return fileName;
-  }
 }

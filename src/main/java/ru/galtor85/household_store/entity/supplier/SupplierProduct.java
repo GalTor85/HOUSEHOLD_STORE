@@ -33,19 +33,19 @@ public class SupplierProduct {
     private Long productId;
 
     @Column(name = "supplier_price", precision = 10, scale = 2)
-    private BigDecimal supplierPrice; // Закупочная цена
+    private BigDecimal supplierPrice;
 
     @Column(name = "supplier_sku")
-    private String supplierSku; // Артикул поставщика
+    private String supplierSku;
 
     @Column(name = "is_main_supplier")
-    private Boolean mainSupplier; // Основной поставщик
+    private Boolean mainSupplier;
 
     @Column(name = "delivery_time")
-    private Integer deliveryTime; // Срок поставки от этого поставщика
+    private Integer deliveryTime;
 
     @Column(name = "min_order_quantity")
-    private Integer minOrderQuantity; // Минимальное количество для заказа
+    private Integer minOrderQuantity;
 
     @Column(name = "created_at")
     @CreationTimestamp

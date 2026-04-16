@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.file;
 
+import lombok.Getter;
+
+@Getter
 public class FileSizeExceededException extends FileStorageException {
 
     private final long maxSize;
@@ -12,11 +15,4 @@ public class FileSizeExceededException extends FileStorageException {
         this.actualSize = actualSize;
     }
 
-    public long getMaxSize() {
-        return maxSize;
-    }
-
-    public long getActualSize() {
-        return actualSize;
-    }
 }

@@ -80,7 +80,7 @@ public class RoleValidator {
      * @throws UserAccessException if insufficient rights
      */
     public void validateAdminCanAssignRole(SecurityUser adminSecurity, Role newRole) {
-        if (!adminSecurity.getRole().canManage(newRole)) {
+        if (adminSecurity.getRole().cannotManage(newRole)) {
             log.warn(logMsg.get(
                     "user-role-service.log.role.insufficient.rights.assign",
                     adminSecurity.getUsername(),
@@ -100,7 +100,7 @@ public class RoleValidator {
      * @throws UserAccessException if insufficient rights
      */
     public void validateAdminCanManageCurrentRole(SecurityUser adminSecurity, SecurityUser targetSecurity) {
-        if (!adminSecurity.getRole().canManage(targetSecurity.getRole())) {
+        if (adminSecurity.getRole().cannotManage(targetSecurity.getRole())) {
             log.warn(logMsg.get(
                     "user-role-service.log.role.insufficient.rights.manage",
                     adminSecurity.getUsername(),

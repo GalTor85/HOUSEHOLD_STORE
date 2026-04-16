@@ -1,5 +1,8 @@
 package ru.galtor85.household_store.advice.exception.order;
 
+import lombok.Getter;
+
+@Getter
 public class OrderCreationException extends RuntimeException {
     private final String orderNumber;
 
@@ -8,7 +11,4 @@ public class OrderCreationException extends RuntimeException {
         this.orderNumber = orderNumber;
     }
 
-    public String getOrderNumber() {
-        return orderNumber;
-    }
 }

@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.dto.request.user;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
@@ -48,86 +47,4 @@ public class UserEditRequest {
     @Size(max = MAX_ADDRESS_LENGTH, message = "{user-edit-request.validation.address.max}")
     @Schema(description = "User address", example = "123 Main St, Moscow")
     private String address;
-
-    // =========================================================================
-    // HELPER METHODS - hidden from Swagger
-    // =========================================================================
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasEmail() {
-        return email != null && !email.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasMobileNumber() {
-        return mobileNumber != null && !mobileNumber.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasBirthDate() {
-        return birthDate != null && !birthDate.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasFirstName() {
-        return firstName != null && !firstName.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasLastName() {
-        return lastName != null && !lastName.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasSurname() {
-        return surname != null && !surname.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public boolean hasAddress() {
-        return address != null && !address.trim().isEmpty();
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedEmail() {
-        return email != null ? email.trim().toLowerCase() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedMobileNumber() {
-        return mobileNumber != null ? mobileNumber.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedFirstName() {
-        return firstName != null ? firstName.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedLastName() {
-        return lastName != null ? lastName.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedSurname() {
-        return surname != null ? surname.trim() : null;
-    }
-
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedAddress() {
-        return address != null ? address.trim() : null;
-    }
 }

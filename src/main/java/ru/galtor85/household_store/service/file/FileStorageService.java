@@ -46,10 +46,8 @@ public class FileStorageService {
      * @param productId product ID
      * @param uploadedBy user ID who uploaded
      * @return ProductMedia entity
-     * @throws IOException if file storage fails
      */
-    public ProductMedia storeFile(MultipartFile file, Long productId, Long uploadedBy)
-            throws IOException {
+    public ProductMedia storeFile(MultipartFile file, Long productId, Long uploadedBy) {
         String originalFileName = file.getOriginalFilename() != null
                 ? file.getOriginalFilename()
                 : UNKNOWN_FILE_NAME;
@@ -93,9 +91,8 @@ public class FileStorageService {
      *
      * @param filePath path to file
      * @param productId product ID
-     * @throws IOException if deletion fails
      */
-    public void deleteFile(String filePath, Long productId) throws IOException {
+    public void deleteFile(String filePath, Long productId) {
         fileOperationProcessor.deleteFileAndCleanup(filePath, productId);
     }
 
@@ -106,10 +103,8 @@ public class FileStorageService {
      * @param productId product ID
      * @param uploadedBy user ID who uploaded
      * @return SavedFileInfo DTO
-     * @throws IOException if file storage fails
      */
-    public SavedFileInfo storeFileAndGetInfo(MultipartFile file, Long productId, Long uploadedBy)
-            throws IOException {
+    public SavedFileInfo storeFileAndGetInfo(MultipartFile file, Long productId, Long uploadedBy) {
         ProductMedia productMedia = storeFile(file, productId, uploadedBy);
         String originalFileName = file.getOriginalFilename();
         return mediaFactory.createSavedFileInfo(productMedia, originalFileName);

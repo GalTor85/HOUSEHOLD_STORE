@@ -8,10 +8,12 @@ import ru.galtor85.household_store.config.FinancialConfig;
 import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.finance.PaymentMethod;
+import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -70,8 +72,7 @@ public class SalesOrderInvoiceCreator implements InvoiceCreator<SalesOrder> {
      * @param order the sales order
      * @return PaymentMethod (BANK_TRANSFER for wholesale, CARD for retail)
      */
-    @Override
-    public PaymentMethod determinePaymentMethod(SalesOrder order) {
+    private PaymentMethod determinePaymentMethod(SalesOrder order) {
         if (order.isWholesale()) {
             return PaymentMethod.BANK_TRANSFER;
         }
@@ -84,8 +85,7 @@ public class SalesOrderInvoiceCreator implements InvoiceCreator<SalesOrder> {
      * @param order the sales order
      * @return due date (30 days for wholesale, 7 days for retail)
      */
-    @Override
-    public LocalDateTime calculateDueDate(SalesOrder order) {
+    private LocalDateTime calculateDueDate(SalesOrder order) {
         if (order.isWholesale()) {
             return LocalDateTime.now().plusDays(wholesaleDueDays);
         }
@@ -98,8 +98,7 @@ public class SalesOrderInvoiceCreator implements InvoiceCreator<SalesOrder> {
      * @param order the sales order
      * @return localized description
      */
-    @Override
-    public String getDescription(SalesOrder order) {
+    private String getDescription(SalesOrder order) {
         return messageService.get("invoice.description.sales", order.getOrderNumber());
     }
 
@@ -109,8 +108,7 @@ public class SalesOrderInvoiceCreator implements InvoiceCreator<SalesOrder> {
      * @param order the sales order
      * @return localized notes with dates
      */
-    @Override
-    public String getNotes(SalesOrder order) {
+    private String getNotes(SalesOrder order) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DATE_FORMAT_PATTERN);
         String orderType = order.getOrderType().getKey();
         return messageService.get("invoice.notes.sales." + orderType,
@@ -127,6 +125,8 @@ public class SalesOrderInvoiceCreator implements InvoiceCreator<SalesOrder> {
      */
     @Override
     public boolean shouldCreateInvoice(SalesOrder order) {
-        return true;
+        return order.getStatus() != OrderStatus.CANCELLED
+                && order.getTotalAmount() != null
+                && order.getTotalAmount().compareTo(BigDecimal.ZERO) > 0;
     }
 }

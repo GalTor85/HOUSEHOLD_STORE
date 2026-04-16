@@ -5,8 +5,15 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
 
+/**
+ * Exception thrown when cash register has insufficient funds.
+ */
 @Getter
 public class InsufficientCashException extends RuntimeException {
+
+    private static final String MESSAGE_WITH_NAME = "Insufficient cash in register '%s'. Available: %s, requested: %s";
+    private static final String MESSAGE_WITH_ID = "Insufficient cash in register %d. Available: %s, requested: %s";
+    private static final String MESSAGE_DEFAULT = "Insufficient cash. Available: %s, requested: %s";
 
     private final BigDecimal currentBalance;
     private final BigDecimal requestedAmount;
@@ -14,7 +21,10 @@ public class InsufficientCashException extends RuntimeException {
     private final String cashRegisterName;
 
     /**
-     * Конструктор
+     * Constructor with balance and requested amount.
+     *
+     * @param currentBalance current balance
+     * @param requestedAmount requested amount
      */
     public InsufficientCashException(BigDecimal currentBalance, BigDecimal requestedAmount) {
         super();
@@ -25,7 +35,11 @@ public class InsufficientCashException extends RuntimeException {
     }
 
     /**
-     * Конструктор с ID кассы
+     * Constructor with cash register ID.
+     *
+     * @param cashRegisterId cash register ID
+     * @param currentBalance current balance
+     * @param requestedAmount requested amount
      */
     public InsufficientCashException(Long cashRegisterId, BigDecimal currentBalance, BigDecimal requestedAmount) {
         super();
@@ -36,7 +50,12 @@ public class InsufficientCashException extends RuntimeException {
     }
 
     /**
-     * Конструктор с именем кассы
+     * Constructor with cash register name.
+     *
+     * @param cashRegisterId cash register ID
+     * @param cashRegisterName cash register name
+     * @param currentBalance current balance
+     * @param requestedAmount requested amount
      */
     public InsufficientCashException(Long cashRegisterId, String cashRegisterName,
                                      BigDecimal currentBalance, BigDecimal requestedAmount) {
@@ -48,7 +67,11 @@ public class InsufficientCashException extends RuntimeException {
     }
 
     /**
-     * Конструктор с кастомным сообщением
+     * Constructor with custom message.
+     *
+     * @param message custom message
+     * @param currentBalance current balance
+     * @param requestedAmount requested amount
      */
     public InsufficientCashException(String message, BigDecimal currentBalance, BigDecimal requestedAmount) {
         super(message);
@@ -59,7 +82,10 @@ public class InsufficientCashException extends RuntimeException {
     }
 
     /**
-     * Получает локализованное сообщение
+     * Returns localized message using MessageService.
+     *
+     * @param messageService message service for localization
+     * @return localized error message
      */
     public String getLocalizedMessage(MessageService messageService) {
         if (cashRegisterName != null) {
@@ -70,33 +96,17 @@ public class InsufficientCashException extends RuntimeException {
             return messageService.get("cash.register.insufficient.balance.with.id",
                     cashRegisterId, currentBalance, requestedAmount);
         }
-        return messageService.get("cash.register.insufficient.balance",
-                currentBalance, requestedAmount);
-    }
-
-    /**
-     * Получает локализованное сообщение с параметрами
-     */
-    public String getLocalizedMessage(MessageService messageService, Object... args) {
-        if (cashRegisterName != null) {
-            return messageService.get("cash.register.insufficient.balance.with.name", args);
-        }
-        if (cashRegisterId != null) {
-            return messageService.get("cash.register.insufficient.balance.with.id", args);
-        }
-        return messageService.get("cash.register.insufficient.balance", args);
+        return messageService.get("cash.register.insufficient.balance", currentBalance, requestedAmount);
     }
 
     @Override
     public String getMessage() {
         if (cashRegisterName != null) {
-            return "Insufficient cash in register '" + cashRegisterName +
-                    "'. Available: " + currentBalance + ", requested: " + requestedAmount;
+            return String.format(MESSAGE_WITH_NAME, cashRegisterName, currentBalance, requestedAmount);
         }
         if (cashRegisterId != null) {
-            return "Insufficient cash in register " + cashRegisterId +
-                    ". Available: " + currentBalance + ", requested: " + requestedAmount;
+            return String.format(MESSAGE_WITH_ID, cashRegisterId, currentBalance, requestedAmount);
         }
-        return "Insufficient cash. Available: " + currentBalance + ", requested: " + requestedAmount;
+        return String.format(MESSAGE_DEFAULT, currentBalance, requestedAmount);
     }
 }

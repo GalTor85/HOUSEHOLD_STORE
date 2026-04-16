@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  * storage cell mapping and capacity calculations.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Component
 @RequiredArgsConstructor

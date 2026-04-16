@@ -31,24 +31,6 @@ public class HardDeleteProcessor {
     private final CartRepository cartRepository;
 
     /**
-     * Deletes a user. Attempts hard delete first, falls back to soft delete if user has dependencies.
-     *
-     * @param user   the user to delete
-     * @param userId the user ID
-     */
-    @Transactional
-    public void deleteUser(User user, Long userId) {
-        log.info(logMsg.get("user-deleted-service.log.user.deleting",
-                user.getId(), user.getEmail()));
-
-        if (isUserDeletable(userId)) {
-            hardDelete(user, userId);
-        } else {
-            softDelete(user, userId);
-        }
-    }
-
-    /**
      * Deletes a user by admin. Always performs hard delete.
      *
      * @param userToDelete the user to delete
@@ -57,6 +39,13 @@ public class HardDeleteProcessor {
      */
     @Transactional
     public void deleteUserByAdmin(User userToDelete, User adminUser, Long userId) {
+
+        if (isUserDeletable(userId)) {
+            hardDelete(userToDelete, userId);
+        } else {
+            softDelete(userToDelete, userId);
+        }
+
         log.info(logMsg.get(
                 "user-deleted-service.log.user.deleting.by.admin",
                 adminUser.getEmail(),

@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 /**
  * Processor for applying price rules to orders.
  */
+@SuppressWarnings("ALL")
 @Slf4j
 @Component
 @RequiredArgsConstructor

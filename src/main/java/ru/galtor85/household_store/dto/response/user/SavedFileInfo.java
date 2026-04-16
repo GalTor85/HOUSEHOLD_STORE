@@ -14,12 +14,16 @@ import lombok.NoArgsConstructor;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "File storage information", title = "Saved File Info")
 public class SavedFileInfo {
+
     @Schema(description = "Stored file name", example = "image_123.jpg")
     private String storedFileName;
+
     @Schema(description = "Original file name", example = "image.jpg")
     private String originalFileName;
+
     @Schema(description = "File path", example = "/uploads/image_123.jpg")
     private String filePath;
+
     @Schema(description = "File size in bytes", example = "123456")
     private Long fileSize;
 }

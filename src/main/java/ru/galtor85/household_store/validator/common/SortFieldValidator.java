@@ -14,7 +14,7 @@ import java.util.Set;
  * to prevent SQL injection and invalid sort operations.</p>
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Component
 public class SortFieldValidator {
@@ -46,15 +46,5 @@ public class SortFieldValidator {
 
         String trimmed = sort.trim();
         return ALLOWED_SORT_FIELDS.contains(trimmed) ? trimmed : PaginationConstants.DEFAULT_SORT_FIELD;
-    }
-
-    /**
-     * Checks if the sort field is valid.
-     *
-     * @param sort the sort field to check
-     * @return true if sort field is valid
-     */
-    public boolean isValidSortField(String sort) {
-        return sort != null && ALLOWED_SORT_FIELDS.contains(sort.trim());
     }
 }

@@ -7,6 +7,9 @@ import ru.galtor85.household_store.entity.product.MediaType;
 import ru.galtor85.household_store.entity.product.ProductMedia;
 import ru.galtor85.household_store.mapper.product.ProductMediaMapper;
 
+/**
+ * Factory for creating product media entities and DTOs.
+ */
 @Component
 @RequiredArgsConstructor
 public class ProductMediaFactory {
@@ -14,7 +17,18 @@ public class ProductMediaFactory {
     private final ProductMediaMapper mediaMapper;
 
     /**
-     * Создание ProductMedia из параметров
+     * Creates ProductMedia entity from parameters.
+     *
+     * @param productId product ID
+     * @param uploadedBy user ID who uploaded
+     * @param mediaType media type
+     * @param storedFileName stored file name
+     * @param filePath file path
+     * @param fileSize file size in bytes
+     * @param mimeType MIME type
+     * @param sortOrder sort order
+     * @param isMain is main image flag
+     * @return ProductMedia entity
      */
     public ProductMedia createProductMedia(Long productId, Long uploadedBy,
                                            MediaType mediaType, String storedFileName,
@@ -28,7 +42,11 @@ public class ProductMediaFactory {
     }
 
     /**
-     * Создание SavedFileInfo из ProductMedia
+     * Creates SavedFileInfo from ProductMedia.
+     *
+     * @param media product media entity
+     * @param originalFileName original file name
+     * @return SavedFileInfo DTO
      */
     public SavedFileInfo createSavedFileInfo(ProductMedia media, String originalFileName) {
         return SavedFileInfo.builder()

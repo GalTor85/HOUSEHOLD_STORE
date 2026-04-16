@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.product.ProductAlreadyExistsException;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
-import ru.galtor85.household_store.advice.exception.stock.BulkOperationException;
 import ru.galtor85.household_store.advice.exception.stock.InsufficientStockException;
 import ru.galtor85.household_store.advice.exception.stock.InvalidStockOperationException;
 import ru.galtor85.household_store.advice.exception.validation.InvalidPriceException;
@@ -14,7 +13,6 @@ import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 /**
  * Validator for product operations.
@@ -117,20 +115,6 @@ public class ProductValidator {
         if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
             log.warn(logMsg.get("manager.price.log.invalid", price));
             throw new InvalidPriceException(price);
-        }
-    }
-
-    /**
-     * Validates bulk operation has at least one product.
-     *
-     * @param products list of found products
-     * @param requestedIds list of requested product IDs
-     * @throws BulkOperationException if no products found
-     */
-    public void validateBulkProducts(List<Product> products, List<Long> requestedIds) {
-        if (products.isEmpty()) {
-            log.warn(logMsg.get("manager.bulk.log.no.products", requestedIds));
-            throw new BulkOperationException(requestedIds, 0);
         }
     }
 

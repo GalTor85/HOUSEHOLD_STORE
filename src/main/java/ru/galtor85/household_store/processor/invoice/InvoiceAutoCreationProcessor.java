@@ -13,9 +13,6 @@ import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.util.generator.NumberGenerator;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -97,42 +94,6 @@ public class InvoiceAutoCreationProcessor {
                 saved.getInvoiceNumber(), order.getClass().getSimpleName()));
 
         return saved;
-    }
-
-    /**
-     * Updates the amount of an existing invoice.
-     *
-     * @param invoice    the invoice to update
-     * @param newAmount  the new amount
-     * @param reason     the reason for update
-     * @param updatedBy  ID of the user performing the update
-     * @return updated Invoice entity
-     */
-    @Transactional
-    public Invoice updateInvoiceAmount(Invoice invoice, BigDecimal newAmount, String reason, Long updatedBy) {
-        log.info(logMsg.get("invoice.creator.update.start",
-                invoice.getInvoiceNumber(), invoice.getAmount(), newAmount));
-
-        BigDecimal oldAmount = invoice.getAmount();
-        invoice.setAmount(newAmount);
-        invoice.setUpdatedAt(LocalDateTime.now());
-
-        String updateNote = messageService.get("invoice.creator.update.note",
-                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                oldAmount, newAmount, reason, updatedBy);
-
-        if (invoice.getNotes() == null) {
-            invoice.setNotes(updateNote);
-        } else {
-            invoice.setNotes(invoice.getNotes() + "\n" + updateNote);
-        }
-
-        Invoice updated = invoiceRepository.save(invoice);
-
-        log.info(logMsg.get("invoice.creator.updated",
-                updated.getInvoiceNumber(), oldAmount, newAmount));
-
-        return updated;
     }
 
     // =========================================================================

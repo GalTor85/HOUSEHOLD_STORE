@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * Entity linking payment methods to user types.
  *
  * @author G@LTor85
- * @since 1.0
+ 
  */
 @Data
 @Builder

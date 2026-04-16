@@ -1,7 +1,9 @@
 package ru.galtor85.household_store.advice.exception.order;
 
+import lombok.Getter;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 
+@Getter
 public class InvalidStatusTransitionException extends RuntimeException {
     private final OrderStatus currentStatus;
     private final OrderStatus newStatus;
@@ -12,11 +14,4 @@ public class InvalidStatusTransitionException extends RuntimeException {
         this.newStatus = newStatus;
     }
 
-    public OrderStatus getCurrentStatus() {
-        return currentStatus;
-    }
-
-    public OrderStatus getNewStatus() {
-        return newStatus;
-    }
 }

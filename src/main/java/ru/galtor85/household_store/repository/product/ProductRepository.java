@@ -10,28 +10,15 @@ import ru.galtor85.household_store.entity.product.Product;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
-
-    Optional<Product> findBySku(String sku);
-
-    Optional<Product> findByBarcode(String barcode);
 
     Boolean existsBySku(String sku);
 
     Boolean  existsByBarcode(String barcode);
 
-    List<Product> findByActiveTrue();
-
-    Page<Product> findByActive(boolean active, Pageable pageable);
-
     Page<Product> findByActiveTrue(Pageable pageable);
-
-    List<Product> findByCategoryAndActiveTrue(String category);
-
-    List<Product> findByBrandAndActiveTrue(String brand);
 
     List<Product> findByQuantityInStockLessThan(int threshold);
 
@@ -61,12 +48,4 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT DISTINCT p.category FROM Product p WHERE p.category IS NOT NULL AND p.active = true")
     List<String> findAllCategories();
 
-    @Query("SELECT DISTINCT p.brand FROM Product p WHERE p.brand IS NOT NULL AND p.active = true")
-    List<String> findAllBrands();
-
-    @Query("SELECT p.id FROM Product p WHERE p.category = :category")
-    List<Long> findIdsByCategory(@Param("category") String category);
-
-    @Query("SELECT p.category FROM Product p WHERE p.id = :productId")
-    Optional<String> findCategoryByProductId(@Param("productId") Long productId);
 }

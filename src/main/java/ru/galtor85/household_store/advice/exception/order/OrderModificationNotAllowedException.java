@@ -1,7 +1,9 @@
 package ru.galtor85.household_store.advice.exception.order;
 
+import lombok.Getter;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 
+@Getter
 public class OrderModificationNotAllowedException extends RuntimeException {
   private final OrderStatus currentStatus;
 
@@ -10,7 +12,4 @@ public class OrderModificationNotAllowedException extends RuntimeException {
     this.currentStatus = currentStatus;
   }
 
-  public OrderStatus getCurrentStatus() {
-    return currentStatus;
-  }
 }

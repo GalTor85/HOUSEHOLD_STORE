@@ -22,7 +22,7 @@ public class SupplierDto {
     @Schema(description = "Supplier ID", example = "1")
     private Long id;
 
-    @Schema(description = "Company name", example = "ООО 'ТехноПост'")
+    @Schema(description = "Company name", example = "OOO TechnoPost")
     private String name;
 
     @Schema(description = "Contact email", example = "info@technopost.ru")
@@ -34,7 +34,7 @@ public class SupplierDto {
     @Schema(description = "Website", example = "https://www.technopost.ru")
     private String website;
 
-    @Schema(description = "Contact person", example = "Иванов Иван Иванович")
+    @Schema(description = "Contact person", example = "Ivanov Ivan Ivanovich")
     private String contactPerson;
 
     @Schema(description = "INN", example = "7701234567")
@@ -46,13 +46,13 @@ public class SupplierDto {
     @Schema(description = "OGRN", example = "1027701234567")
     private String ogrn;
 
-    @Schema(description = "Legal address", example = "г. Москва, ул. Ленина, д. 1")
+    @Schema(description = "Legal address", example = "Moscow, Lenin St., 1")
     private String legalAddress;
 
-    @Schema(description = "Actual address", example = "г. Москва, ул. Ленина, д. 1")
+    @Schema(description = "Actual address", example = "Moscow, Lenin St., 1")
     private String actualAddress;
 
-    @Schema(description = "Bank name", example = "ПАО Сбербанк")
+    @Schema(description = "Bank name", example = "Sberbank")
     private String bankName;
 
     @Schema(description = "Bank BIC", example = "044525225")
@@ -67,7 +67,7 @@ public class SupplierDto {
     @Schema(description = "Supplier status", example = "ACTIVE")
     private SupplierStatus status;
 
-    @Schema(description = "Localized status", example = "Активен")
+    @Schema(description = "Localized status", example = "Active")
     private String localizedStatus;
 
     @Schema(description = "Average rating", example = "4.5")

@@ -9,6 +9,9 @@ import ru.galtor85.household_store.entity.supplier.SupplierProduct;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.supplier.SupplierRepository;
 
+/**
+ * Converter for supplier product entities to DTOs.
+ */
 @Component
 @RequiredArgsConstructor
 public class SupplierProductConverter {
@@ -16,23 +19,30 @@ public class SupplierProductConverter {
     private final ProductRepository productRepository;
     private final SupplierRepository supplierRepository;
 
-    public SupplierProductDto convertToDto(SupplierProduct sp, Long productId,
-                                           Long supplierId) {
+    /**
+     * Converts supplier product entity to DTO with enriched data.
+     *
+     * @param supplierProduct supplier product entity
+     * @param productId product ID
+     * @param supplierId supplier ID
+     * @return enriched supplier product DTO
+     */
+    public SupplierProductDto convertToDto(SupplierProduct supplierProduct, Long productId, Long supplierId) {
         Product product = productRepository.findById(productId).orElse(null);
         Supplier supplier = supplierRepository.findById(supplierId).orElse(null);
 
         return SupplierProductDto.builder()
-                .id(sp.getId())
-                .supplierId(sp.getSupplierId())
+                .id(supplierProduct.getId())
+                .supplierId(supplierProduct.getSupplierId())
                 .supplierName(supplier != null ? supplier.getName() : null)
-                .productId(sp.getProductId())
+                .productId(supplierProduct.getProductId())
                 .productName(product != null ? product.getName() : null)
                 .productSku(product != null ? product.getSku() : null)
-                .supplierPrice(sp.getSupplierPrice())
-                .supplierSku(sp.getSupplierSku())
-                .mainSupplier(Boolean.TRUE.equals(sp.getMainSupplier()))
-                .deliveryTime(sp.getDeliveryTime())
-                .minOrderQuantity(sp.getMinOrderQuantity())
+                .supplierPrice(supplierProduct.getSupplierPrice())
+                .supplierSku(supplierProduct.getSupplierSku())
+                .mainSupplier(Boolean.TRUE.equals(supplierProduct.getMainSupplier()))
+                .deliveryTime(supplierProduct.getDeliveryTime())
+                .minOrderQuantity(supplierProduct.getMinOrderQuantity())
                 .build();
     }
 }
