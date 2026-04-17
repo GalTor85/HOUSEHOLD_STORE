@@ -241,35 +241,39 @@ public class CashTransactionService {
     }
 
     private void updateInvoiceStatus(Invoice invoice) {
-        BigDecimal totalPaid = cashTransactionRepository.findByInvoiceId(invoice.getId()).stream()
-                .filter(t -> t.getTransactionType() == TransactionType.INCOME)
-                .map(CashTransaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalPaid = invoice.getTotalPaidAmount();
 
+        InvoiceStatus newStatus;
         if (totalPaid.compareTo(invoice.getAmount()) >= 0) {
-            invoice.setStatus(InvoiceStatus.PAID);
+            newStatus = InvoiceStatus.PAID;
             invoice.setPaidDate(LocalDateTime.now());
+        } else if (totalPaid.compareTo(BigDecimal.ZERO) > 0) {
+            newStatus = InvoiceStatus.PARTIALLY_PAID;
+            invoice.setPaidDate(null);
         } else {
-            invoice.setStatus(InvoiceStatus.PARTIALLY_PAID);
+            newStatus = InvoiceStatus.PENDING;
+            invoice.setPaidDate(null);
         }
+
+        InvoiceStatus oldStatus = invoice.getStatus();
+        invoice.setStatus(newStatus);
         invoiceRepository.save(invoice);
+
+        log.info(logMsg.get("invoice.status.updated",
+                invoice.getInvoiceNumber(),
+                oldStatus != null ? oldStatus.name() : "null",
+                newStatus.name(),
+                totalPaid,
+                invoice.getAmount()));
     }
 
     private void updateInvoiceStatusAfterRefund(Invoice invoice) {
-        BigDecimal totalPaid = cashTransactionRepository.findByInvoiceId(invoice.getId()).stream()
-                .filter(t -> t.getTransactionType() == TransactionType.INCOME)
-                .map(CashTransaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        updateInvoiceStatus(invoice);
 
-        if (totalPaid.compareTo(BigDecimal.ZERO) <= 0) {
-            invoice.setStatus(InvoiceStatus.PENDING);
-            invoice.setPaidDate(null);
-        } else if (totalPaid.compareTo(invoice.getAmount()) < 0) {
-            invoice.setStatus(InvoiceStatus.PARTIALLY_PAID);
-        } else {
-            invoice.setStatus(InvoiceStatus.PAID);
-        }
-        invoiceRepository.save(invoice);
+        log.info(logMsg.get("invoice.status.updated.after.refund",
+                invoice.getInvoiceNumber(),
+                invoice.getStatus().name(),
+                invoice.getTotalPaidAmount()));
     }
 
     private void enrichDtoWithDetails(CashTransactionDto dto, CashTransaction tx) {
