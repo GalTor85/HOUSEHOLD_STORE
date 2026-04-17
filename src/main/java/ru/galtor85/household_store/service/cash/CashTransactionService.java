@@ -2,10 +2,6 @@ package ru.galtor85.household_store.service.cash;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.cash.InvoiceNotFoundException;
@@ -28,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static ru.galtor85.household_store.constants.PaginationConstants.DESC_SORT_DIRECTION;
 
 /**
  * Service for managing cash transactions.
@@ -58,6 +53,7 @@ public class CashTransactionService {
      * @param cashierId cashier ID
      * @return created transaction DTO
      */
+    // CashTransactionService.java
     @Transactional
     public CashTransactionDto createTransaction(CashTransactionRequest request, Long cashierId) {
         log.info(logMsg.get("cash.transaction.service.create.start",
@@ -72,7 +68,12 @@ public class CashTransactionService {
         if (request.getInvoiceId() != null) {
             invoice = invoiceRepository.findById(request.getInvoiceId())
                     .orElseThrow(() -> new InvoiceNotFoundException(request.getInvoiceId()));
-            validator.validateInvoiceForPayment(invoice, request.getAmount());
+
+            if (request.getTransactionType() == TransactionType.REFUND) {
+                validator.validateInvoiceForRefund(invoice, request.getAmount());
+            } else {
+                validator.validateInvoiceForPayment(invoice, request.getAmount());
+            }
         }
 
         if (request.getTransactionType() == TransactionType.EXPENSE) {
@@ -82,58 +83,16 @@ public class CashTransactionService {
 
         CashTransaction transaction = processor.createTransaction(request, cashRegister, invoice, cashierId);
 
+        // ✅ Update invoice status for all transaction types
         if (invoice != null) {
-            updateInvoiceStatus(invoice);
+            if (request.getTransactionType() == TransactionType.REFUND) {
+                updateInvoiceStatusAfterRefund(invoice);
+            } else {
+                updateInvoiceStatus(invoice);
+            }
         }
 
-        CashTransactionDto result = converter.toDtoWithDetails(
-                transaction, cashRegister, invoice,
-                userSearchService.getUserById(cashierId),
-                cashRegisterService.getCurrentBalance(cashRegister.getId())
-        );
-
-        log.info(logMsg.get("cash.transaction.service.created",
-                result.getId(), result.getAmount(), result.getTransactionType()));
-
-        return result;
-    }
-
-    // =========================================================================
-    // GET TRANSACTIONS
-    // =========================================================================
-
-    /**
-     * Gets transaction by ID.
-     *
-     * @param transactionId transaction ID
-     * @return transaction DTO
-     */
-    @Transactional(readOnly = true)
-    public CashTransactionDto getTransactionById(Long transactionId) {
-        CashTransaction transaction = validator.validateTransactionExists(transactionId);
-        return enrichWithDetails(transaction);
-    }
-
-    /**
-     * Gets paginated transactions by cash register.
-     *
-     * @param cashRegisterId cash register ID
-     * @param page page number
-     * @param size page size
-     * @param sortBy sort field
-     * @param sortDir sort direction
-     * @return page of transaction DTOs
-     */
-    @Transactional(readOnly = true)
-    public Page<CashTransactionDto> getTransactionsByCashRegister(Long cashRegisterId,
-                                                                  int page, int size,
-                                                                  String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase(DESC_SORT_DIRECTION) ?
-                Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        return cashTransactionRepository.findByCashRegisterId(cashRegisterId, pageable)
-                .map(this::enrichWithDetails);
+        return converter.toDto(transaction);
     }
 
     /**
@@ -203,17 +162,18 @@ public class CashTransactionService {
 
         // Validate transaction exists and is refundable
         CashTransaction original = validator.validateRefundableTransactionExists(transactionId);
+
+        validator.validateTransactionCancellable(original);
+
         validator.validateTransactionRefundable(original, original.getAmount());
+
 
         // Add cash register validation
         CashRegister cashRegister = cashRegisterService.validateCashRegisterExists(
                 original.getCashRegister().getId());
         validator.validateCashRegisterActive(cashRegister);  // Already there, good!
 
-        // Optional: check cashier has permission
-        // validator.validateCashier(cashRegister, cashierId);
-
-        // Create refund transaction
+       // Create refund transaction
         CashTransaction refundTransaction = processor.createRefundTransaction(original, reason, cashierId);
 
         // Update invoice status if needed

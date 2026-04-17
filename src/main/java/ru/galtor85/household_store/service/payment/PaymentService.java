@@ -501,14 +501,18 @@ public class PaymentService {
 
         InvoiceDto invoice = invoiceService.getInvoiceById(originalTransaction.getInvoiceId());
 
+        // Use REFUND transaction type
         CashTransactionRequest refundRequest = CashTransactionRequest.builder()
                 .cashRegisterId(cashRegisterId)
-                .transactionType(TransactionType.EXPENSE)
+                .transactionType(TransactionType.REFUND)  // REFUND, not EXPENSE
                 .amount(amount)
                 .originalTransactionId(originalTransactionId)
                 .invoiceId(invoice.getId())
-                .description(messageService.get("payment.cash.refund.description", originalTransactionId, reason))
+                .description(messageService.get("payment.cash.refund.description",
+                        originalTransactionId, reason))
                 .build();
+
+        // This will now use validateInvoiceForRefund()
         cashTransactionService.createTransaction(refundRequest, managerId);
 
         PaymentTransaction refundTransaction = createRefundTransaction(originalTransaction, amount, reason, managerId);

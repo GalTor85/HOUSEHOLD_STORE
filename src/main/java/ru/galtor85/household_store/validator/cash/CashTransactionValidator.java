@@ -6,10 +6,7 @@ import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.cash.CashRegisterClosedException;
 import ru.galtor85.household_store.advice.exception.cash.InsufficientCashException;
 import ru.galtor85.household_store.dto.request.finance.CashTransactionRequest;
-import ru.galtor85.household_store.entity.finance.CashRegister;
-import ru.galtor85.household_store.entity.finance.CashTransaction;
-import ru.galtor85.household_store.entity.finance.Invoice;
-import ru.galtor85.household_store.entity.finance.TransactionType;
+import ru.galtor85.household_store.entity.finance.*;
 import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
@@ -243,5 +240,42 @@ public class CashTransactionValidator {
      */
     public boolean hasRefund(Long transactionId) {
         return cashTransactionRepository.existsByOriginalTransactionId(transactionId);
+    }
+
+    // CashTransactionValidator.java
+    /**
+     * Validates that invoice can be refunded.
+     *
+     * @param invoice the invoice entity
+     * @param refundAmount the amount to refund
+     * @throws IllegalArgumentException if invoice is not refundable
+     */
+    public void validateInvoiceForRefund(Invoice invoice, BigDecimal refundAmount) {
+        if (invoice == null) {
+            log.error(logMsg.get("cash.transaction.validation.invoice.not.found"));
+            throw new IllegalArgumentException(
+                    messageService.get("cash.transaction.validation.invoice.not.found")
+            );
+        }
+
+        // For refund: invoice must be PAID or PARTIALLY_PAID
+        if (invoice.getStatus() != InvoiceStatus.PAID &&
+                invoice.getStatus() != InvoiceStatus.PARTIALLY_PAID) {
+            log.error(logMsg.get("invoice.not.refundable", invoice.getId(), invoice.getStatus()));
+            throw new IllegalStateException(
+                    messageService.get("invoice.not.refundable", invoice.getId(), invoice.getStatus())
+            );
+        }
+
+        // Refund amount cannot exceed total paid amount
+        BigDecimal totalPaid = invoice.getTotalPaidAmount();
+        if (refundAmount != null && refundAmount.compareTo(totalPaid) > 0) {
+            log.error(logMsg.get("cash.transaction.validation.refund.amount.exceeds.paid",
+                    refundAmount, totalPaid));
+            throw new IllegalArgumentException(
+                    messageService.get("cash.transaction.validation.refund.amount.exceeds.paid",
+                            refundAmount, totalPaid)
+            );
+        }
     }
 }
