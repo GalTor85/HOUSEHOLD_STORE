@@ -1,5 +1,6 @@
 package ru.galtor85.household_store.entity.finance;
 
+import ru.galtor85.household_store.entity.order.OrderType;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 /**
@@ -51,10 +52,17 @@ public enum TransactionType {
     /**
      * Returns multiplier for balance calculation.
      */
-    public int getMultiplier() {
+    public int getMultiplier(OrderType orderType) {
         return switch (this) {
-            case INCOME, REFUND -> 1;
+            case INCOME -> 1;
             case EXPENSE -> -1;
+            case REFUND -> {
+                if (orderType == OrderType.SALES) {
+                    yield -1;
+                } else {
+                    yield 1;
+                }
+            }
         };
     }
 

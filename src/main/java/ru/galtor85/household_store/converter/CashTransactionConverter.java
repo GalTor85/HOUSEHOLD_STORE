@@ -9,6 +9,7 @@ import ru.galtor85.household_store.entity.finance.CashTransaction;
 import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.util.cash.CashBalanceCalculator;
 
 import java.math.BigDecimal;
 
@@ -23,6 +24,7 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_C
 public class CashTransactionConverter {
 
     private final MessageService messageService;
+    private final CashBalanceCalculator balanceCalculator;
 
     /**
      * Converts cash transaction entity to DTO.
@@ -107,17 +109,15 @@ public class CashTransactionConverter {
             dto.setBalanceBefore(balanceBefore);
 
             if (balanceBefore != null && transaction.getTransactionType() != null) {
-                BigDecimal balanceAfter = balanceBefore.add(
-                        transaction.getAmount().multiply(
-                                BigDecimal.valueOf(transaction.getTransactionType().getMultiplier())
-                        )
-                );
+                // Determine order type for correct multiplier calculation
+                BigDecimal balanceAfter = balanceCalculator.getBalanceAfter(transaction, invoice, balanceBefore);
                 dto.setBalanceAfter(balanceAfter);
             }
         }
 
         return dto;
     }
+
 
     private CashTransactionDto.CashTransactionDtoBuilder buildBasicDto(CashTransaction transaction) {
         var type = transaction.getTransactionType();

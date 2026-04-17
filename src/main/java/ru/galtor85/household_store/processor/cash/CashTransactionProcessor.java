@@ -11,6 +11,7 @@ import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
 import ru.galtor85.household_store.service.cash.CashRegisterService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.util.cash.CashBalanceCalculator;
 
 import java.math.BigDecimal;
 
@@ -26,6 +27,7 @@ public class CashTransactionProcessor {
     private final CashTransactionRepository cashTransactionRepository;
     private final CashRegisterService cashRegisterService;
     private final LogMessageService logMsg;
+    private final CashBalanceCalculator balanceCalculator;
 
     /**
      * Creates a new cash transaction.
@@ -48,6 +50,10 @@ public class CashTransactionProcessor {
         // Get current balance BEFORE transaction
         BigDecimal currentBalance = cashRegisterService.getCurrentBalance(cashRegister.getId());
 
+        // Calculate balance after
+        BigDecimal balanceAfter = balanceCalculator.getBalanceAfter(currentBalance, request.getTransactionType(),
+                request.getAmount(), invoice);
+
         CashTransaction transaction = CashTransaction.builder()
                 .cashRegister(cashRegister)
                 .invoice(invoice)
@@ -59,13 +65,8 @@ public class CashTransactionProcessor {
                 .description(request.getDescription())
                 .notes(request.getNotes())
                 .balanceBefore(currentBalance)
+                .balanceAfter(balanceAfter)
                 .build();
-
-        // Calculate balance after
-        BigDecimal balanceAfter = currentBalance.add(
-                request.getAmount().multiply(BigDecimal.valueOf(request.getTransactionType().getMultiplier()))
-        );
-        transaction.setBalanceAfter(balanceAfter);
 
         CashTransaction saved = cashTransactionRepository.save(transaction);
 
