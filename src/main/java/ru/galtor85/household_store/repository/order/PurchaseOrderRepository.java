@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -44,5 +45,18 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
                                @Param("endDate") LocalDateTime endDate,
                                Pageable pageable);
 
+    /**
+     * Sums total amount of all purchase orders by supplier.
+     *
+     * @param supplierId supplier ID
+     * @return total amount
+     */
+    @Query("SELECT COALESCE(SUM(po.totalAmount), 0) FROM PurchaseOrder po WHERE po.supplierId = :supplierId")
+    BigDecimal sumTotalAmountBySupplierId(@Param("supplierId") Long supplierId);
 
+    /**
+     * Finds maximum created date of purchase orders by supplier.
+     */
+    @Query("SELECT MAX(po.createdAt) FROM PurchaseOrder po WHERE po.supplierId = :supplierId")
+    LocalDateTime findMaxCreatedAtBySupplierId(@Param("supplierId") Long supplierId);
 }

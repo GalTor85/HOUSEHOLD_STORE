@@ -14,6 +14,9 @@ import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.util.entity.EntityFinder;
 import ru.galtor85.household_store.validator.common.ValidationHelper;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Processor for managing supplier-product relationships.
  *
@@ -83,5 +86,26 @@ public class SupplierProductProcessor {
         log.info(logMsg.get("manager.supplier.product.added.log", productId, supplierId, managerId));
 
         return supplierProductConverter.convertToDto(saved, productId, supplierId);
+    }
+
+    /**
+     * Gets all products for a supplier.
+     *
+     * @param supplierId supplier ID
+     * @return list of supplier product DTOs
+     */
+    @Transactional(readOnly = true)
+    public List<SupplierProductDto> getSupplierProducts(Long supplierId) {
+        log.debug(logMsg.get("supplier.product.processor.get.products.start", supplierId));
+
+        List<SupplierProduct> supplierProducts = supplierProductRepository.findBySupplierId(supplierId);
+
+        List<SupplierProductDto> result = supplierProducts.stream()
+                .map(sp -> supplierProductConverter.convertToDto(sp, sp.getProductId(), supplierId))
+                .collect(Collectors.toList());
+
+        log.debug(logMsg.get("supplier.product.processor.get.products.complete", supplierId, result.size()));
+
+        return result;
     }
 }

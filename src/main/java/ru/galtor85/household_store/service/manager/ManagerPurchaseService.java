@@ -20,6 +20,7 @@ import ru.galtor85.household_store.dto.request.supplier.SupplierUpdateRequest;
 import ru.galtor85.household_store.dto.response.order.PurchaseOrderDto;
 import ru.galtor85.household_store.dto.response.supplier.SupplierDto;
 import ru.galtor85.household_store.dto.response.supplier.SupplierProductDto;
+import ru.galtor85.household_store.dto.response.supplier.SupplierStatisticsDto;
 import ru.galtor85.household_store.entity.finance.CashTransaction;
 import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
@@ -37,6 +38,7 @@ import ru.galtor85.household_store.processor.stock.StockWriteOffProcessor;
 import ru.galtor85.household_store.processor.supplier.SupplierProductProcessor;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
+import ru.galtor85.household_store.repository.supplier.SupplierProductRepository;
 import ru.galtor85.household_store.repository.supplier.SupplierRepository;
 import ru.galtor85.household_store.service.cash.CashTransactionService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
@@ -84,6 +86,7 @@ public class ManagerPurchaseService {
     private final LogMessageService logMsg;
     private final CashTransactionService cashTransactionService;
     private final InvoiceRepository invoiceRepository;
+    private final SupplierProductRepository supplierProductRepository;
 
     private static final String NOTES_SEPARATOR = " | ";
     private static final String NOTES_HEADER = "-- ";
@@ -631,6 +634,66 @@ public class ManagerPurchaseService {
 
         return supplierMapper.toDto(updatedSupplier);
     }
+
+    /**
+     * Retrieves all products linked to a supplier
+     *
+     * @param supplierId supplier identifier
+     * @return list of supplier product DTOs
+     */
+    @Transactional(readOnly = true)
+    public List<SupplierProductDto> getSupplierProducts(Long supplierId) {
+        return supplierProductProcessor.getSupplierProducts(supplierId);
+    }
+
+    @Transactional
+    public void deleteSupplier(Long supplierId) {
+        log.info(logMsg.get("manager.supplier.delete.start", supplierId));
+
+        Supplier supplier = supplierValidator.validateExists(supplierId);
+
+        // Check if supplier has any purchase orders
+        boolean hasOrders = supplierProductRepository.existsBySupplierId(supplierId);
+        if (hasOrders) {
+            throw new IllegalStateException(
+                    messageService.get("supplier.delete.has.orders", supplierId)
+            );
+        }
+
+        // Check if supplier has any products
+        boolean hasProducts = supplierProductRepository.existsBySupplierId(supplierId);
+        if (hasProducts) {
+            throw new IllegalStateException(
+                    messageService.get("supplier.delete.has.products", supplierId)
+            );
+        }
+
+        supplierRepository.delete(supplier);
+
+        log.info(logMsg.get("manager.supplier.delete.complete", supplierId));
+    }
+
+    @Transactional(readOnly = true)
+    public SupplierStatisticsDto getSupplierStats(Long supplierId) {
+        log.info(logMsg.get("manager.supplier.stats.start", supplierId));
+
+        Supplier supplier = supplierValidator.validateExists(supplierId);
+
+        // Get statistics
+        long orderCount = supplierProductRepository.countBySupplierId(supplierId);
+        long productCount = supplierProductRepository.countBySupplierId(supplierId);
+        BigDecimal totalPurchased = purchaseOrderRepository.sumTotalAmountBySupplierId(supplierId);
+
+        return SupplierStatisticsDto.builder()
+                .supplierId(supplierId)
+                .supplierName(supplier.getName())
+                .orderCount(orderCount)
+                .productCount(productCount)
+                .totalPurchased(totalPurchased != null ? totalPurchased : BigDecimal.ZERO)
+                .lastOrderDate(purchaseOrderRepository.findMaxCreatedAtBySupplierId(supplierId))
+                .build();
+    }
+
 
     /**
      * Retrieves a paginated list of suppliers

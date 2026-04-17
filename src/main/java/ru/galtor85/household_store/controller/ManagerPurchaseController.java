@@ -22,12 +22,15 @@ import ru.galtor85.household_store.dto.request.supplier.SupplierUpdateRequest;
 import ru.galtor85.household_store.dto.response.order.PurchaseOrderDto;
 import ru.galtor85.household_store.dto.response.supplier.SupplierDto;
 import ru.galtor85.household_store.dto.response.supplier.SupplierProductDto;
+import ru.galtor85.household_store.dto.response.supplier.SupplierStatisticsDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.entity.user.User;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.manager.ManagerPurchaseService;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_MANAGER_PURCHASES;
@@ -57,6 +60,7 @@ public class ManagerPurchaseController extends BaseController {
 
     private final ManagerPurchaseService managerPurchaseService;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     // =========================================================================
     // PURCHASE ORDER MANAGEMENT
@@ -303,6 +307,54 @@ public class ManagerPurchaseController extends BaseController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.supplier.updated"),
                 supplier));
+    }
+
+    @DeleteMapping("/suppliers/{supplierId}")
+    @Operation(summary = "Delete supplier",
+            description = "Deletes a supplier (must have no linked products or orders)")
+    public ResponseEntity<ApiResponse<Void>> deleteSupplier(
+            @Parameter(description = "Supplier ID", example = "1", required = true)
+            @PathVariable Long supplierId) {
+
+        log.info(logMsg.get("manager.supplier.delete.start", supplierId));
+
+        managerPurchaseService.deleteSupplier(supplierId);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.supplier.deleted"),
+                null));
+    }
+
+    @GetMapping("/suppliers/{supplierId}/products")
+    @Operation(summary = "Get supplier products",
+            description = "Retrieves all products linked to a supplier")
+    public ResponseEntity<ApiResponse<List<SupplierProductDto>>> getSupplierProducts(
+            @Parameter(description = "Supplier ID", example = "1", required = true)
+            @PathVariable Long supplierId) {
+
+        log.info(logMsg.get("manager.supplier.products.start", supplierId));
+
+        List<SupplierProductDto> products = managerPurchaseService.getSupplierProducts(supplierId);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.supplier.products.fetched"),
+                products));
+    }
+
+    @GetMapping("/suppliers/{supplierId}/stats")
+    @Operation(summary = "Get supplier statistics",
+            description = "Retrieves statistics for a supplier")
+    public ResponseEntity<ApiResponse<SupplierStatisticsDto>> getSupplierStats(
+            @Parameter(description = "Supplier ID", example = "1", required = true)
+            @PathVariable Long supplierId) {
+
+        log.info(logMsg.get("manager.supplier.stats.start", supplierId));
+
+        SupplierStatisticsDto stats = managerPurchaseService.getSupplierStats(supplierId);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.supplier.stats.fetched"),
+                stats));
     }
 
     /**

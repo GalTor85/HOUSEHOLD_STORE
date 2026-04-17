@@ -29,4 +29,31 @@ public interface SupplierProductRepository extends JpaRepository<SupplierProduct
      * @return optional supplier product
      */
     Optional<SupplierProduct> findBySupplierIdAndProductId(Long supplierId, Long productId);
+
+    /**
+     * Finds all supplier products for a given supplier.
+     *
+     * @param supplierId supplier ID
+     * @return list of supplier products
+     */
+    List<SupplierProduct> findBySupplierId(Long supplierId);
+
+    // SupplierProductRepository.java
+
+    /**
+     * Checks if supplier has any products.
+     *
+     * @param supplierId supplier ID
+     * @return true if exists
+     */
+    boolean existsBySupplierId(Long supplierId);
+
+    /**
+     * Counts products by supplier.
+     *
+     * @param supplierId supplier ID
+     * @return count of products
+     */
+    long countBySupplierId(Long supplierId);
+
 }
