@@ -59,4 +59,9 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
      */
     @Query("SELECT MAX(po.createdAt) FROM PurchaseOrder po WHERE po.supplierId = :supplierId")
     LocalDateTime findMaxCreatedAtBySupplierId(@Param("supplierId") Long supplierId);
+
+    @Query("SELECT COUNT(po) > 0 FROM PurchaseOrder po " +
+            "WHERE po.supplierId = :supplierId " +
+            "AND po.status NOT IN ('CANCELLED', 'COMPLETED')")
+    boolean existsActiveBySupplierId(@Param("supplierId") Long supplierId);
 }

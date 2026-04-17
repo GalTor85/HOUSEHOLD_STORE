@@ -109,4 +109,17 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
      */
     @Query("SELECT i FROM Invoice i LEFT JOIN FETCH i.cashTransactions WHERE i.id = :id")
     Optional<Invoice> findByIdWithTransactions(@Param("id") Long id);
+
+    @Query("SELECT COUNT(i) > 0 FROM Invoice i " +
+            "WHERE i.purchaseOrder.supplierId = :supplierId " +
+            "AND i.status IN ('PAID', 'PARTIALLY_PAID')")
+    boolean existsPaidBySupplierId(@Param("supplierId") Long supplierId);
+
+    @Query("SELECT COALESCE(SUM(i.amount - COALESCE(" +
+            "(SELECT SUM(ct.amount) FROM CashTransaction ct " +
+            "WHERE ct.invoice.id = i.id AND ct.transactionType = 'EXPENSE'), 0)), 0) " +
+            "FROM Invoice i " +
+            "WHERE i.purchaseOrder.supplierId = :supplierId " +
+            "AND i.status IN ('PENDING', 'PARTIALLY_PAID')")
+    BigDecimal getUnpaidAmountBySupplierId(@Param("supplierId") Long supplierId);
 }

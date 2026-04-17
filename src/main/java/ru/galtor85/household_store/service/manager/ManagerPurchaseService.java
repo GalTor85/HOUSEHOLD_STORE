@@ -646,23 +646,44 @@ public class ManagerPurchaseService {
         return supplierProductProcessor.getSupplierProducts(supplierId);
     }
 
+    // ManagerPurchaseService.java
     @Transactional
     public void deleteSupplier(Long supplierId) {
         log.info(logMsg.get("manager.supplier.delete.start", supplierId));
 
         Supplier supplier = supplierValidator.validateExists(supplierId);
 
-        // Check if supplier has any purchase orders
-        boolean hasOrders = supplierProductRepository.existsBySupplierId(supplierId);
-        if (hasOrders) {
+        // 1. Check if supplier has any purchase orders (not cancelled/completed)
+        boolean hasActiveOrders = purchaseOrderRepository.existsActiveBySupplierId(supplierId);
+        if (hasActiveOrders) {
+            log.warn(logMsg.get("supplier.delete.has.active.orders", supplierId));
             throw new IllegalStateException(
-                    messageService.get("supplier.delete.has.orders", supplierId)
+                    messageService.get("supplier.delete.has.active.orders", supplierId)
             );
         }
 
-        // Check if supplier has any products
+        // 2. Check if supplier has any paid invoices
+        boolean hasPaidInvoices = invoiceRepository.existsPaidBySupplierId(supplierId);
+        if (hasPaidInvoices) {
+            log.warn(logMsg.get("supplier.delete.has.paid.invoices", supplierId));
+            throw new IllegalStateException(
+                    messageService.get("supplier.delete.has.paid.invoices", supplierId)
+            );
+        }
+
+        // 3. Check if supplier has any unpaid amount
+        BigDecimal unpaidAmount = invoiceRepository.getUnpaidAmountBySupplierId(supplierId);
+        if (unpaidAmount != null && unpaidAmount.compareTo(BigDecimal.ZERO) > 0) {
+            log.warn(logMsg.get("supplier.delete.has.unpaid.amount", supplierId, unpaidAmount));
+            throw new IllegalStateException(
+                    messageService.get("supplier.delete.has.unpaid.amount", supplierId, unpaidAmount)
+            );
+        }
+
+        // 4. Check if supplier has any products
         boolean hasProducts = supplierProductRepository.existsBySupplierId(supplierId);
         if (hasProducts) {
+            log.warn(logMsg.get("supplier.delete.has.products", supplierId));
             throw new IllegalStateException(
                     messageService.get("supplier.delete.has.products", supplierId)
             );
