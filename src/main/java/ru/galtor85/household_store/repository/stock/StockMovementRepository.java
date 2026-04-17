@@ -6,8 +6,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import ru.galtor85.household_store.entity.stock.MovementType;
 import ru.galtor85.household_store.entity.stock.StockMovement;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -111,7 +113,37 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
             "ORDER BY sm.createdAt DESC")
     List<StockMovement> findReceiptTransactionsByOrderId(@Param("orderId") Long orderId);
 
+    /**
+     * Checks if there are any stock movements for a given cell
+     *
+     * @param cellId cell identifier
+     * @return true if there are movements, false otherwise
+     */
     @Query("SELECT COUNT(sm) > 0 FROM StockMovement sm " +
             "WHERE sm.fromCellId = :cellId OR sm.toCellId = :cellId")
     boolean existsByFromCellIdOrToCellId(@Param("cellId") Long cellId);
+
+    /**
+     * Filters stock movements by multiple criteria.
+     */
+    @Query("SELECT sm FROM StockMovement sm WHERE " +
+            "(:productId IS NULL OR sm.productId = :productId) AND " +
+            "(:warehouseId IS NULL OR sm.warehouseId = :warehouseId) AND " +
+            "(:cellId IS NULL OR sm.fromCellId = :cellId OR sm.toCellId = :cellId) AND " +
+            "(:movementType IS NULL OR sm.movementType = :movementType) AND " +
+            "(:referenceType IS NULL OR sm.referenceType = :referenceType) AND " +
+            "(:referenceId IS NULL OR sm.referenceId = :referenceId) AND " +
+            "(:batchNumber IS NULL OR sm.batchNumber = :batchNumber) AND " +
+            "(:startDate IS NULL OR sm.createdAt >= :startDate) AND " +
+            "(:endDate IS NULL OR sm.createdAt <= :endDate)")
+    Page<StockMovement> filter(@Param("productId") Long productId,
+                               @Param("warehouseId") Long warehouseId,
+                               @Param("cellId") Long cellId,
+                               @Param("movementType") MovementType movementType,
+                               @Param("referenceType") String referenceType,
+                               @Param("referenceId") Long referenceId,
+                               @Param("batchNumber") String batchNumber,
+                               @Param("startDate") LocalDateTime startDate,
+                               @Param("endDate") LocalDateTime endDate,
+                               Pageable pageable);
 }

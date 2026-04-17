@@ -3,6 +3,9 @@ package ru.galtor85.household_store.service.stock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
@@ -10,6 +13,7 @@ import ru.galtor85.household_store.advice.exception.stock.InsufficientStockExcep
 import ru.galtor85.household_store.advice.exception.stock.ProductStockNotFoundException;
 import ru.galtor85.household_store.advice.exception.warehouse.WarehouseNotFoundException;
 import ru.galtor85.household_store.config.BusinessConfig;
+import ru.galtor85.household_store.dto.request.stock.StockMovementFilterRequest;
 import ru.galtor85.household_store.dto.request.stock.StockTransferRequest;
 import ru.galtor85.household_store.dto.response.product.ProductStockDistributionDto;
 import ru.galtor85.household_store.dto.response.product.ProductStockDto;
@@ -18,6 +22,7 @@ import ru.galtor85.household_store.dto.response.stock.StockTransferResponseDto;
 import ru.galtor85.household_store.dto.response.warehouse.WarehouseStockSummaryDto;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.product.ProductStock;
+import ru.galtor85.household_store.entity.stock.StockMovement;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.processor.product.ProductStockProcessor;
 import ru.galtor85.household_store.processor.stock.StockMovementProcessor;
@@ -26,9 +31,11 @@ import ru.galtor85.household_store.processor.warehouse.WarehouseStockProcessor;
 import ru.galtor85.household_store.processor.warehouse.WarehouseSummaryProcessor;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
+import ru.galtor85.household_store.repository.stock.StockMovementRepository;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.util.stock.StockDtoEnricher;
+import ru.galtor85.household_store.util.stock.StockMovementEnricher;
 import ru.galtor85.household_store.validator.stock.StockTransferValidator;
 import ru.galtor85.household_store.validator.stock.StockValidator;
 
@@ -61,6 +68,8 @@ public class StockService {
     private final StockTransferProcessor stockTransferProcessor;
     private final StockTransferValidator stockTransferValidator;
     private final LogMessageService logMsg;
+    private final StockMovementRepository stockMovementRepository;
+    private final StockMovementEnricher movementEnricher;
 
 
     // =========================================================================
@@ -320,6 +329,44 @@ public class StockService {
         stockTransferValidator.validateTransferRequest(request);
 
         return stockTransferProcessor.transferStock(request, performedBy);
+    }
+
+    /**
+     * Filters stock movements by multiple criteria.
+     *
+     * @param filter filter request
+     * @return page of stock movement DTOs
+     */
+    @Transactional(readOnly = true)
+    public Page<StockMovementDto> filterMovements(StockMovementFilterRequest filter) {
+        log.info(logMsg.get("stock.service.filter.movements.start", filter));
+
+        int page = filter.getPage() != null ? filter.getPage() : 0;
+        int size = filter.getSize() != null ? filter.getSize() : 20;
+        String sortBy = filter.getSortBy() != null ? filter.getSortBy() : "createdAt";
+        String sortDir = filter.getSortDir() != null ? filter.getSortDir() : "desc";
+
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<StockMovement> movements = stockMovementRepository.filter(
+                filter.getProductId(),
+                filter.getWarehouseId(),
+                filter.getCellId(),
+                filter.getMovementType(),
+                filter.getReferenceType(),
+                filter.getReferenceId(),
+                filter.getBatchNumber(),
+                filter.getStartDate(),
+                filter.getEndDate(),
+                pageable
+        );
+
+        log.debug(logMsg.get("stock.service.filter.movements.complete", movements.getTotalElements()));
+
+        return movements.map(movementEnricher::enrichMovementDto);
     }
 
     // =========================================================================

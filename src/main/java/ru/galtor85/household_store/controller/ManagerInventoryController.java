@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ru.galtor85.household_store.dto.request.product.ProductCreateRequest;
 import ru.galtor85.household_store.dto.request.product.ProductUpdateRequest;
+import ru.galtor85.household_store.dto.request.stock.StockMovementFilterRequest;
 import ru.galtor85.household_store.dto.request.stock.StockTransferRequest;
 import ru.galtor85.household_store.dto.request.stock.StockWriteOffRequest;
 import ru.galtor85.household_store.dto.request.warehouse.StorageCellCreateRequest;
@@ -881,6 +882,29 @@ public class ManagerInventoryController extends BaseController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.stock.transfer.success"),
                 response));
+    }
+
+    // ManagerInventoryController.java
+
+    /**
+     * Filters stock movements by multiple criteria.
+     *
+     * @param filter filter request
+     * @return page of stock movement DTOs
+     */
+    @PostMapping("/stock/movements/filter")
+    @Operation(summary = "Filter stock movements",
+            description = "Filters stock movements by product, warehouse, cell, movement type, date range, etc.")
+    public ResponseEntity<ApiResponse<Page<StockMovementDto>>> filterMovements(
+            @Valid @RequestBody StockMovementFilterRequest filter) {
+
+        log.info(logMsg.get("manager.stock.movements.filter.start", filter));
+
+        Page<StockMovementDto> movements = stockService.filterMovements(filter);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.stock.movements.filtered"),
+                movements));
     }
 
     // =========================================================================
