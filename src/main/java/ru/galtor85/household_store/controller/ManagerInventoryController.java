@@ -20,6 +20,7 @@ import ru.galtor85.household_store.dto.request.stock.StockTransferRequest;
 import ru.galtor85.household_store.dto.request.stock.StockWriteOffRequest;
 import ru.galtor85.household_store.dto.request.warehouse.StorageCellCreateRequest;
 import ru.galtor85.household_store.dto.request.warehouse.WarehouseCreateRequest;
+import ru.galtor85.household_store.dto.request.warehouse.WarehouseUpdateRequest;
 import ru.galtor85.household_store.dto.response.product.*;
 import ru.galtor85.household_store.dto.response.stock.ProductAvailabilityWithWarehousesDto;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
@@ -591,6 +592,55 @@ public class ManagerInventoryController extends BaseController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.stock.warehouse.visibility.updated"),
                 warehouse));
+    }
+
+
+    /**
+     * Updates an existing warehouse.
+     *
+     * @param warehouseId warehouse ID
+     * @param request update request
+     * @return updated warehouse DTO
+     */
+    @PutMapping("/warehouses/{warehouseId}")
+    @Operation(summary = "Update warehouse",
+            description = "Updates an existing warehouse details")
+    public ResponseEntity<ApiResponse<WarehouseDto>> updateWarehouse(
+            @Parameter(description = "Warehouse ID", example = "1", required = true)
+            @PathVariable Long warehouseId,
+            @Valid @RequestBody WarehouseUpdateRequest request) {
+
+        log.info(logMsg.get("manager.warehouse.update.start", warehouseId));
+
+        WarehouseDto warehouse = warehouseService.updateWarehouse(warehouseId, request);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.warehouse.updated"),
+                warehouse));
+    }
+
+    /**
+     * Deletes a warehouse by ID.
+     *
+     * @param warehouseId warehouse ID
+     * @return success response
+     */
+    @DeleteMapping("/warehouses/{warehouseId}")
+    @Operation(summary = "Delete warehouse",
+            description = "Deletes a warehouse if it has no stock and no cells")
+    public ResponseEntity<ApiResponse<Void>> deleteWarehouse(
+            @Parameter(description = "Warehouse ID", example = "1", required = true)
+            @PathVariable Long warehouseId) {
+
+        log.info(logMsg.get("manager.warehouse.delete.start", warehouseId));
+
+        warehouseService.deleteWarehouse(warehouseId);
+
+        log.info(logMsg.get("manager.warehouse.delete.complete", warehouseId));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.warehouse.deleted"),
+                null));
     }
 
     // =========================================================================

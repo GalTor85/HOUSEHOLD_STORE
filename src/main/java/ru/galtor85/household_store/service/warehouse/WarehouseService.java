@@ -13,6 +13,7 @@ import ru.galtor85.household_store.config.BusinessConfig;
 import ru.galtor85.household_store.constants.TechnicalConstants;
 import ru.galtor85.household_store.dto.request.warehouse.StorageCellCreateRequest;
 import ru.galtor85.household_store.dto.request.warehouse.WarehouseCreateRequest;
+import ru.galtor85.household_store.dto.request.warehouse.WarehouseUpdateRequest;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
 import ru.galtor85.household_store.dto.response.warehouse.StorageCellDto;
 import ru.galtor85.household_store.dto.response.warehouse.WarehouseDto;
@@ -26,9 +27,11 @@ import ru.galtor85.household_store.processor.cell.CellAssignmentProcessor;
 import ru.galtor85.household_store.processor.cell.CellManagementProcessor;
 import ru.galtor85.household_store.processor.stock.StockMovementProcessor;
 import ru.galtor85.household_store.processor.warehouse.WarehouseManagementProcessor;
+import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.warehouse.StorageCellRepository;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
+import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.cell.CellValidationHelper;
 import ru.galtor85.household_store.validator.product.ProductValidator;
 import ru.galtor85.household_store.validator.stock.StockAvailabilityValidator;
@@ -76,6 +79,8 @@ public class WarehouseService {
     private final CellAssignmentProcessor assignmentProcessor;
     private final StockMovementProcessor movementProcessor;
     private final StockAvailabilityValidator availabilityValidator;
+    private final ProductStockRepository productStockRepository;
+    private final MessageService messageService;
 
     // =========================================================================
     // WAREHOUSE MANAGEMENT
@@ -154,6 +159,102 @@ public class WarehouseService {
 
         log.debug(logMsg.get("warehouse.log.fetched", warehouses.getTotalElements()));
         return warehouses.map(warehouseMapper::toDto);
+    }
+
+    /**
+     * Updates an existing warehouse.
+     *
+     * @param warehouseId warehouse ID
+     * @param request update request
+     * @return updated warehouse DTO
+     */
+    @Transactional
+    public WarehouseDto updateWarehouse(Long warehouseId, WarehouseUpdateRequest request) {
+        log.info(logMsg.get("warehouse.service.update.start", warehouseId));
+
+        Warehouse warehouse = warehouseValidator.validateWarehouseExists(warehouseId);
+
+        if (request.getCode() != null) {
+            if (!request.getCode().equals(warehouse.getCode())) {
+                warehouseValidator.validateWarehouseCodeUnique(request.getCode());
+                warehouse.setCode(request.getCode());
+            }
+        }
+
+        if (request.getName() != null) {
+            warehouse.setName(request.getName());
+        }
+
+        if (request.getDescription() != null) {
+            warehouse.setDescription(request.getDescription());
+        }
+
+        if (request.getAddress() != null) {
+            warehouse.setAddress(request.getAddress());
+        }
+
+        if (request.getContactPerson() != null) {
+            warehouse.setContactPerson(request.getContactPerson());
+        }
+
+        if (request.getContactPhone() != null) {
+            warehouse.setContactPhone(request.getContactPhone());
+        }
+
+        if (request.getContactEmail() != null) {
+            warehouse.setContactEmail(request.getContactEmail());
+        }
+
+        if (request.getIsActive() != null) {
+            warehouse.setIsActive(request.getIsActive());
+        }
+
+        if (request.getIsVisibleForSale() != null) {
+            warehouse.setIsVisibleForSale(request.getIsVisibleForSale());
+        }
+
+        if (request.getTotalCapacity() != null && request.getTotalCapacity() > 0) {
+            warehouse.setTotalCapacity(request.getTotalCapacity());
+        }
+
+        Warehouse updated = warehouseRepository.save(warehouse);
+
+        log.info(logMsg.get("warehouse.service.update.complete", warehouseId));
+
+        return warehouseMapper.toDto(updated);
+    }
+
+    /**
+     * Deletes a warehouse by ID.
+     *
+     * @param warehouseId warehouse ID
+     */
+    // WarehouseService.java
+    @Transactional
+    public void deleteWarehouse(Long warehouseId) {
+        log.info(logMsg.get("warehouse.service.delete.start", warehouseId));
+
+        Warehouse warehouse = warehouseValidator.validateWarehouseExists(warehouseId);
+
+        boolean hasStock = productStockRepository.hasStockByWarehouseId(warehouseId);
+        if (hasStock) {
+            log.warn(logMsg.get("warehouse.delete.has.stock", warehouseId));
+            throw new IllegalStateException(
+                    messageService.get("warehouse.delete.has.stock", warehouseId)
+            );
+        }
+
+        boolean hasCells = storageCellRepository.hasCellsByWarehouseId(warehouseId);
+        if (hasCells) {
+            log.warn(logMsg.get("warehouse.delete.has.cells", warehouseId));
+            throw new IllegalStateException(
+                    messageService.get("warehouse.delete.has.cells", warehouseId)
+            );
+        }
+
+        warehouseRepository.delete(warehouse);
+
+        log.info(logMsg.get("warehouse.service.delete.complete", warehouseId));
     }
 
     // =========================================================================

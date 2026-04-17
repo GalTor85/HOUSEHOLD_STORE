@@ -56,4 +56,7 @@ public interface StorageCellRepository extends JpaRepository<StorageCell, Long> 
             "sc.isActive = true")
     List<StorageCell> findAvailableCellsByType(@Param("warehouseId") Long warehouseId,
                                                @Param("cellType") CellType cellType);
+
+    @Query("SELECT COUNT(sc) > 0 FROM StorageCell sc WHERE sc.warehouse.id = :warehouseId")
+    boolean hasCellsByWarehouseId(@Param("warehouseId") Long warehouseId);
 }

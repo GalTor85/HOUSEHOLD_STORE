@@ -176,4 +176,7 @@ public interface ProductStockRepository extends JpaRepository<ProductStock, Long
     void increaseStock(@Param("productId") Long productId,
                       @Param("warehouseId") Long warehouseId,
                       @Param("quantity") int quantity);
+
+    @Query("SELECT COUNT(ps) > 0 FROM ProductStock ps WHERE ps.warehouseId = :warehouseId")
+    boolean hasStockByWarehouseId(@Param("warehouseId") Long warehouseId);
 }
