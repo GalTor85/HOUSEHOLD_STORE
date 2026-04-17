@@ -14,6 +14,7 @@ import ru.galtor85.household_store.processor.cash.CashRegisterProcessor;
 import ru.galtor85.household_store.repository.cash.CashRegisterRepository;
 import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
+import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.cash.CashRegisterValidator;
 
 import java.math.BigDecimal;
@@ -40,6 +41,8 @@ public class CashRegisterService {
     private final CashRegisterProcessor processor;
     private final CashRegisterConverter converter;
     private final LogMessageService logMsg;
+    private final MessageService messageService;
+
 
     // =========================================================================
     // PUBLIC METHODS FOR OTHER SERVICES
@@ -63,7 +66,7 @@ public class CashRegisterService {
      */
     public BigDecimal getCurrentBalance(Long cashRegisterId) {
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
-        return getCurrentBalance(cashRegister);
+        return cashRegister.getCurrentBalance();
     }
 
     // =========================================================================
@@ -109,11 +112,45 @@ public class CashRegisterService {
 
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
         CashRegister updated = processor.updateCashRegister(cashRegister, request);
-        CashRegisterDto result = converter.toDto(updated, getCalculatedBalance(cashRegister));
+
+        CashRegisterDto result = converter.toDto(updated, updated.getCurrentBalance());
 
         log.info(logMsg.get("cash.register.service.updated", result.getRegisterNumber()));
 
         return result;
+    }
+
+    /**
+     * Deletes a cash register.
+     *
+     * @param cashRegisterId cash register ID
+     */
+    @Transactional
+    public void deleteCashRegister(Long cashRegisterId) {
+        log.info(logMsg.get("cash.register.service.delete.start", cashRegisterId));
+
+        CashRegister cashRegister = validator.validateExists(cashRegisterId);
+
+        // Check if cash register is active (opened)
+        if (cashRegister.getIsActive()) {
+            log.warn(logMsg.get("cash.register.delete.active", cashRegisterId));
+            throw new IllegalStateException(
+                    messageService.get("cash.register.delete.active", cashRegisterId)
+            );
+        }
+
+        // Check if cash register has any transactions
+        boolean hasTransactions = cashTransactionRepository.existsByCashRegisterId(cashRegisterId);
+        if (hasTransactions) {
+            log.warn(logMsg.get("cash.register.delete.has.transactions", cashRegisterId));
+            throw new IllegalStateException(
+                    messageService.get("cash.register.delete.has.transactions", cashRegisterId)
+            );
+        }
+
+        cashRegisterRepository.delete(cashRegister);
+
+        log.info(logMsg.get("cash.register.service.delete.complete", cashRegisterId));
     }
 
     // =========================================================================
@@ -128,7 +165,7 @@ public class CashRegisterService {
     @Transactional(readOnly = true)
     public List<CashRegisterDto> getAllCashRegisters() {
         return cashRegisterRepository.findAll().stream()
-                .map(cr -> converter.toDto(cr, getCalculatedBalance(cr)))
+                .map(cr -> converter.toDto(cr, cr.getCurrentBalance()))
                 .collect(Collectors.toList());
     }
 
@@ -140,7 +177,7 @@ public class CashRegisterService {
     @Transactional(readOnly = true)
     public List<CashRegisterDto> getActiveCashRegisters() {
         return cashRegisterRepository.findByIsActiveTrue().stream()
-                .map(cr -> converter.toDto(cr, getCalculatedBalance(cr)))
+                .map(cr -> converter.toDto(cr, cr.getCurrentBalance()))
                 .collect(Collectors.toList());
     }
 
@@ -153,7 +190,7 @@ public class CashRegisterService {
     @Transactional(readOnly = true)
     public CashRegisterDto getCashRegisterById(Long cashRegisterId) {
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
-        return converter.toDto(cashRegister, getCalculatedBalance(cashRegister));
+        return converter.toDto(cashRegister, cashRegister.getCurrentBalance());
     }
 
     // =========================================================================
@@ -177,7 +214,7 @@ public class CashRegisterService {
         validator.validateOpeningBalance(openingBalance);
 
         CashRegister opened = processor.openCashRegister(cashRegister, openingBalance, cashierId);
-        CashRegisterDto result = converter.toDto(opened, getCalculatedBalance(cashRegister));
+        CashRegisterDto result = converter.toDto(opened, opened.getCurrentBalance());
 
         log.info(logMsg.get("cash.register.service.opened", result.getRegisterNumber()));
 
@@ -203,7 +240,7 @@ public class CashRegisterService {
         validator.validateCashier(cashRegister, cashierId);
         validator.validateClosingBalance(closingBalance);
 
-        BigDecimal calculatedBalance = getCalculatedBalance(cashRegister);
+        BigDecimal calculatedBalance = cashRegister.getCurrentBalance();
         validator.validateDiscrepancyReason(closingBalance, calculatedBalance, discrepancyReason);
 
         BigDecimal discrepancy = closingBalance.subtract(calculatedBalance);
@@ -279,29 +316,6 @@ public class CashRegisterService {
     // =========================================================================
     // HELPER METHODS
     // =========================================================================
-
-    private BigDecimal getCurrentBalance(CashRegister cashRegister) {
-        return getCalculatedBalance(cashRegister);
-    }
-
-    private BigDecimal getCalculatedBalance(CashRegister cashRegister) {
-        LocalDateTime startDate = cashRegister.getOpenedAt();
-        if (startDate == null) {
-            return cashRegister.getOpeningBalance();
-        }
-
-        BigDecimal totalIncome = nullToZero(cashTransactionRepository
-                .getTotalIncomeByCashRegisterAndDateRange(cashRegister.getId(), startDate, LocalDateTime.now()));
-        BigDecimal totalRefund = nullToZero(cashTransactionRepository
-                .getTotalRefundByCashRegisterAndDateRange(cashRegister.getId(), startDate, LocalDateTime.now()));
-        BigDecimal totalExpense = nullToZero(cashTransactionRepository
-                .getTotalExpenseByCashRegisterAndDateRange(cashRegister.getId(), startDate, LocalDateTime.now()));
-
-        return cashRegister.getOpeningBalance()
-                .add(totalIncome)
-                .add(totalRefund)
-                .subtract(totalExpense);
-    }
 
     private void saveDiscrepancy(Long cashRegisterId, BigDecimal discrepancy,
                                  String discrepancyReason, Long cashierId) {

@@ -130,4 +130,6 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
      */
     @Query("SELECT COUNT(ct) > 0 FROM CashTransaction ct WHERE ct.originalTransactionId = :transactionId")
     boolean existsByOriginalTransactionId(@Param("transactionId") Long transactionId);
+
+    boolean existsByCashRegisterId(Long cashRegisterId);
 }

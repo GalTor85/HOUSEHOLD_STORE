@@ -30,6 +30,7 @@ import ru.galtor85.household_store.processor.cell.CellManagementProcessor;
 import ru.galtor85.household_store.processor.stock.StockMovementProcessor;
 import ru.galtor85.household_store.processor.warehouse.WarehouseManagementProcessor;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
+import ru.galtor85.household_store.repository.stock.StockMovementRepository;
 import ru.galtor85.household_store.repository.warehouse.StorageCellRepository;
 import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
@@ -83,6 +84,7 @@ public class WarehouseService {
     private final StockAvailabilityValidator availabilityValidator;
     private final ProductStockRepository productStockRepository;
     private final MessageService messageService;
+    private final StockMovementRepository stockMovementRepository;
 
     // =========================================================================
     // WAREHOUSE MANAGEMENT
@@ -452,11 +454,18 @@ public class WarehouseService {
 
         StorageCell cell = cellProcessor.findCellById(cellId);
 
-        // Check if cell is occupied
         if (cell.getIsOccupied()) {
             log.warn(logMsg.get("warehouse.delete.cell.occupied", cellId));
             throw new IllegalStateException(
                     messageService.get("warehouse.delete.cell.occupied", cellId)
+            );
+        }
+
+        boolean hasMovements = stockMovementRepository.existsByFromCellIdOrToCellId(cellId);
+        if (hasMovements) {
+            log.warn(logMsg.get("warehouse.delete.cell.has.movements", cellId));
+            throw new IllegalStateException(
+                    messageService.get("warehouse.delete.cell.has.movements", cellId)
             );
         }
 

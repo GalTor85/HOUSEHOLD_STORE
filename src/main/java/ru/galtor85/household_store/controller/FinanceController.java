@@ -28,6 +28,7 @@ import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.service.cash.CashRegisterService;
 import ru.galtor85.household_store.service.cash.CashTransactionService;
 import ru.galtor85.household_store.service.finance.InvoiceService;
+import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.user.UserSearchService;
 
@@ -64,6 +65,7 @@ public class FinanceController {
     private final CashTransactionService cashTransactionService;
     private final UserSearchService userSearchService;
     private final MessageService messageService;
+    private final LogMessageService logMsg;
 
     // =========================================================================
     // HELPER METHODS
@@ -433,7 +435,7 @@ public class FinanceController {
     }
 
     /**
-     * Updates a cash register's details.
+     * Updates a cash register.
      *
      * @param cashRegisterId cash register ID
      * @param request update request
@@ -447,11 +449,39 @@ public class FinanceController {
             @PathVariable Long cashRegisterId,
             @Valid @RequestBody CashRegisterUpdateRequest request) {
 
+        log.info(logMsg.get("finance.controller.update.cash.register.start", cashRegisterId));
+
         CashRegisterDto cashRegister = cashRegisterService.updateCashRegister(cashRegisterId, request);
+
+        log.info(logMsg.get("finance.controller.update.cash.register.success", cashRegisterId));
 
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("cash.register.updated"),
                 cashRegister));
+    }
+
+    /**
+     * Deletes a cash register.
+     *
+     * @param cashRegisterId cash register ID
+     * @return success response
+     */
+    @DeleteMapping("/cash-registers/{cashRegisterId}")
+    @Operation(summary = "Delete cash register",
+            description = "Deletes a cash register (must be closed and have no transactions)")
+    public ResponseEntity<ApiResponse<Void>> deleteCashRegister(
+            @Parameter(description = "Cash register ID", example = "1", required = true)
+            @PathVariable Long cashRegisterId) {
+
+        log.info(logMsg.get("finance.controller.delete.cash.register.start", cashRegisterId));
+
+        cashRegisterService.deleteCashRegister(cashRegisterId);
+
+        log.info(logMsg.get("finance.controller.delete.cash.register.success", cashRegisterId));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("cash.register.deleted"),
+                null));
     }
 
     // =========================================================================

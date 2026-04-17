@@ -110,4 +110,8 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
             "AND sm.movementType = 'RECEIPT' " +
             "ORDER BY sm.createdAt DESC")
     List<StockMovement> findReceiptTransactionsByOrderId(@Param("orderId") Long orderId);
+
+    @Query("SELECT COUNT(sm) > 0 FROM StockMovement sm " +
+            "WHERE sm.fromCellId = :cellId OR sm.toCellId = :cellId")
+    boolean existsByFromCellIdOrToCellId(@Param("cellId") Long cellId);
 }

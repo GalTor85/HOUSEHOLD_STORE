@@ -79,8 +79,23 @@ public class CashRegister {
         if (transactions == null || transactions.isEmpty()) {
             return openingBalance;
         }
+
         return transactions.stream()
-                .map(t -> t.getTransactionType() == TransactionType.INCOME ? t.getAmount() : t.getAmount().negate())
+                .map(t -> {
+                    TransactionType type = t.getTransactionType();
+                    if (type == TransactionType.INCOME) {
+                        return t.getAmount();                        // +
+                    } else if (type == TransactionType.EXPENSE) {
+                        return t.getAmount().negate();               // -
+                    } else if (type == TransactionType.REFUND) {
+                        if (t.getInvoice() != null && t.getInvoice().getSalesOrderId() != null) {
+                            return t.getAmount().negate();
+                        } else {
+                            return t.getAmount();
+                        }
+                    }
+                    return BigDecimal.ZERO;
+                })
                 .reduce(openingBalance, BigDecimal::add);
     }
 }
