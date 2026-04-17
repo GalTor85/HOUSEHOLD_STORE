@@ -146,4 +146,26 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
                                @Param("startDate") LocalDateTime startDate,
                                @Param("endDate") LocalDateTime endDate,
                                Pageable pageable);
+
+    /**
+     * Gets summary of stock movements for a period.
+     */
+    @Query("SELECT COUNT(sm), " +
+            "SUM(CASE WHEN sm.movementType = 'RECEIPT' THEN 1 ELSE 0 END), " +
+            "SUM(CASE WHEN sm.movementType = 'SHIPMENT' THEN 1 ELSE 0 END), " +
+            "SUM(CASE WHEN sm.movementType = 'TRANSFER' THEN 1 ELSE 0 END), " +
+            "SUM(CASE WHEN sm.movementType = 'WRITE_OFF' THEN 1 ELSE 0 END), " +
+            "SUM(CASE WHEN sm.movementType = 'RETURN' THEN 1 ELSE 0 END), " +
+            "SUM(CASE WHEN sm.movementType = 'RECEIPT' THEN sm.quantity ELSE 0 END), " +
+            "SUM(CASE WHEN sm.movementType = 'SHIPMENT' THEN sm.quantity ELSE 0 END), " +
+            "SUM(CASE WHEN sm.movementType = 'TRANSFER' THEN sm.quantity ELSE 0 END), " +
+            "SUM(CASE WHEN sm.movementType = 'WRITE_OFF' THEN sm.quantity ELSE 0 END) " +
+            "FROM StockMovement sm " +
+            "WHERE (:warehouseId IS NULL OR sm.warehouseId = :warehouseId) " +
+            "AND (:productId IS NULL OR sm.productId = :productId) " +
+            "AND sm.createdAt BETWEEN :startDate AND :endDate")
+    Object[] getSummary(@Param("warehouseId") Long warehouseId,
+                        @Param("productId") Long productId,
+                        @Param("startDate") LocalDateTime startDate,
+                        @Param("endDate") LocalDateTime endDate);
 }

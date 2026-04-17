@@ -26,6 +26,7 @@ import ru.galtor85.household_store.dto.request.warehouse.WarehouseUpdateRequest;
 import ru.galtor85.household_store.dto.response.product.*;
 import ru.galtor85.household_store.dto.response.stock.ProductAvailabilityWithWarehousesDto;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
+import ru.galtor85.household_store.dto.response.stock.StockMovementSummaryDto;
 import ru.galtor85.household_store.dto.response.stock.StockTransferResponseDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.dto.response.warehouse.StorageCellDto;
@@ -44,6 +45,7 @@ import ru.galtor85.household_store.service.stock.StockService;
 import ru.galtor85.household_store.service.warehouse.WarehouseService;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -884,8 +886,6 @@ public class ManagerInventoryController extends BaseController {
                 response));
     }
 
-    // ManagerInventoryController.java
-
     /**
      * Filters stock movements by multiple criteria.
      *
@@ -905,6 +905,37 @@ public class ManagerInventoryController extends BaseController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.stock.movements.filtered"),
                 movements));
+    }
+
+    /**
+     * Gets summary of stock movements for a period.
+     *
+     * @param warehouseId warehouse ID (optional)
+     * @param productId product ID (optional)
+     * @param startDate period start
+     * @param endDate period end
+     * @return summary DTO
+     */
+    @GetMapping("/stock/movements/summary")
+    @Operation(summary = "Get stock movements summary",
+            description = "Retrieves summary statistics of stock movements for a period")
+    public ResponseEntity<ApiResponse<StockMovementSummaryDto>> getMovementSummary(
+            @Parameter(description = "Warehouse ID (optional)", example = "1")
+            @RequestParam(required = false) Long warehouseId,
+            @Parameter(description = "Product ID (optional)", example = "1")
+            @RequestParam(required = false) Long productId,
+            @Parameter(description = "Start date", example = "2026-01-01T00:00:00", required = true)
+            @RequestParam LocalDateTime startDate,
+            @Parameter(description = "End date", example = "2026-12-31T23:59:59", required = true)
+            @RequestParam LocalDateTime endDate) {
+
+        log.info(logMsg.get("manager.stock.movements.summary.start", warehouseId, productId, startDate, endDate));
+
+        StockMovementSummaryDto summary = stockService.getMovementSummary(warehouseId, productId, startDate, endDate);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.stock.movements.summary.fetched"),
+                summary));
     }
 
     // =========================================================================

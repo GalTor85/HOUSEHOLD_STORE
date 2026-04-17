@@ -18,6 +18,7 @@ import ru.galtor85.household_store.dto.request.stock.StockTransferRequest;
 import ru.galtor85.household_store.dto.response.product.ProductStockDistributionDto;
 import ru.galtor85.household_store.dto.response.product.ProductStockDto;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
+import ru.galtor85.household_store.dto.response.stock.StockMovementSummaryDto;
 import ru.galtor85.household_store.dto.response.stock.StockTransferResponseDto;
 import ru.galtor85.household_store.dto.response.warehouse.WarehouseStockSummaryDto;
 import ru.galtor85.household_store.entity.product.Product;
@@ -420,5 +421,37 @@ public class StockService {
         stock.setUpdatedAt(LocalDateTime.now());
         stockRepository.save(stock);
         return newQuantity;
+    }
+
+    /**
+     * Gets summary of stock movements for a period.
+     *
+     * @param warehouseId warehouse ID (optional)
+     * @param productId product ID (optional)
+     * @param startDate period start
+     * @param endDate period end
+     * @return summary DTO
+     */
+    @Transactional(readOnly = true)
+    public StockMovementSummaryDto getMovementSummary(Long warehouseId, Long productId,
+                                                      LocalDateTime startDate, LocalDateTime endDate) {
+        log.info(logMsg.get("stock.service.movement.summary.start", warehouseId, productId, startDate, endDate));
+
+        Object[] result = stockMovementRepository.getSummary(warehouseId, productId, startDate, endDate);
+
+        return StockMovementSummaryDto.builder()
+                .startDate(startDate)
+                .endDate(endDate)
+                .totalMovements(((Number) result[0]).longValue())
+                .receiptsCount(((Number) result[1]).longValue())
+                .shipmentsCount(((Number) result[2]).longValue())
+                .transfersCount(((Number) result[3]).longValue())
+                .writeOffsCount(((Number) result[4]).longValue())
+                .returnsCount(((Number) result[5]).longValue())
+                .totalQuantityReceived((Integer) result[6])
+                .totalQuantityShipped((Integer) result[7])
+                .totalQuantityTransferred((Integer) result[8])
+                .totalQuantityWrittenOff((Integer) result[9])
+                .build();
     }
 }
