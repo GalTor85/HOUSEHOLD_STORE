@@ -20,10 +20,7 @@ import ru.galtor85.household_store.dto.request.stock.StockTransferRequest;
 import ru.galtor85.household_store.dto.request.stock.StockWriteOffRequest;
 import ru.galtor85.household_store.dto.request.warehouse.StorageCellCreateRequest;
 import ru.galtor85.household_store.dto.request.warehouse.WarehouseCreateRequest;
-import ru.galtor85.household_store.dto.response.product.ProductDto;
-import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
-import ru.galtor85.household_store.dto.response.product.ProductStockDistributionDto;
-import ru.galtor85.household_store.dto.response.product.ProductStockDto;
+import ru.galtor85.household_store.dto.response.product.*;
 import ru.galtor85.household_store.dto.response.stock.ProductAvailabilityWithWarehousesDto;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
 import ru.galtor85.household_store.dto.response.stock.StockTransferResponseDto;
@@ -274,6 +271,89 @@ public class ManagerInventoryController extends BaseController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get(messageKey),
                 product));
+    }
+
+    @GetMapping("/categories")
+    @Operation(summary = "Get all product categories",
+            description = "Retrieves a list of all unique product categories for managers")
+    public ResponseEntity<ApiResponse<List<String>>> getAllCategories() {
+        log.debug(logMsg.get("manager.categories.fetch.start"));
+
+        List<String> categories = managerProductService.getAllCategories();
+
+        log.debug(logMsg.get("manager.categories.fetch.complete", categories.size()));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.categories.fetched"),
+                categories));
+    }
+
+    /**
+     * Renames a category for all products.
+     *
+     * @param oldCategory current category name
+     * @param newCategory new category name
+     * @return number of updated products
+     */
+    @PatchMapping("/categories/rename")
+    @Operation(summary = "Rename a category for all products",
+            description = "Renames a category across all products that have it")
+    public ResponseEntity<ApiResponse<Integer>> renameCategory(
+            @Parameter(description = "Current category name", example = "OldName", required = true)
+            @RequestParam String oldCategory,
+            @Parameter(description = "New category name", example = "NewName", required = true)
+            @RequestParam String newCategory) {
+
+        log.info(logMsg.get("manager.categories.rename.start", oldCategory, newCategory));
+
+        int updated = managerProductService.renameCategory(oldCategory, newCategory);
+
+        log.info(logMsg.get("manager.categories.rename.complete", oldCategory, newCategory, updated));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.category.renamed", oldCategory, newCategory, updated),
+                updated));
+    }
+
+    /**
+     * Deletes a category (sets to null) from all products.
+     *
+     * @param categoryName category to delete
+     * @return number of updated products
+     */
+    @DeleteMapping("/categories")
+    @Operation(summary = "Delete a category from all products",
+            description = "Removes a category from all products that have it (sets to null)")
+    public ResponseEntity<ApiResponse<Integer>> deleteCategory(
+            @Parameter(description = "Category name to delete", example = "OldName", required = true)
+            @RequestParam String categoryName) {
+
+        log.info(logMsg.get("manager.categories.delete.start", categoryName));
+
+        int updated = managerProductService.deleteCategory(categoryName);
+
+        log.info(logMsg.get("manager.categories.delete.complete", categoryName, updated));
+
+        String message = updated > 0
+                ? messageService.get("manager.category.deleted.with.products", categoryName, updated)
+                : messageService.get("manager.category.not.found", categoryName);
+
+        return ResponseEntity.ok(ApiResponse.success(message, updated));
+    }
+
+    @GetMapping("/categories/stats")
+    @Operation(summary = "Get category statistics",
+            description = "Retrieves statistics for all categories (product count, min/max/avg price)")
+    public ResponseEntity<ApiResponse<List<CategoryStatsDto>>> getCategoryStats() {
+        log.debug(logMsg.get("manager.categories.stats.start"));
+
+        List<CategoryStatsDto> stats = managerProductService.getCategoryStats();
+
+        log.debug(logMsg.get("manager.categories.stats.complete", stats.size()));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.category.stats.fetched"),
+                stats));
     }
 
     /**

@@ -3,6 +3,7 @@ package ru.galtor85.household_store.repository.product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -53,4 +54,33 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT DISTINCT p.category FROM Product p WHERE p.category IS NOT NULL AND p.active = true")
     List<String> findAllCategories();
 
+    @Modifying
+    @Query("UPDATE Product p SET p.category = :newCategory WHERE p.category = :oldCategory")
+    int renameCategory(@Param("oldCategory") String oldCategory,
+                       @Param("newCategory") String newCategory);
+
+    /**
+     * Get statistics for all categories.
+     */
+    @Query("SELECT " +
+            "p.category, " +
+            "COUNT(p), " +
+            "MIN(p.price), " +
+            "MAX(p.price), " +
+            "AVG(p.price) " +
+            "FROM Product p " +
+            "WHERE p.category IS NOT NULL AND p.active = true " +
+            "GROUP BY p.category " +
+            "ORDER BY p.category")
+    List<Object[]> getCategoryStatsRaw();
+
+    /**
+     * Sets category to NULL for all products with the given category.
+     *
+     * @param category category name to remove
+     * @return number of updated products
+     */
+    @Modifying
+    @Query("UPDATE Product p SET p.category = NULL WHERE p.category = :category")
+    int setCategoryToNull(@Param("category") String category);
 }

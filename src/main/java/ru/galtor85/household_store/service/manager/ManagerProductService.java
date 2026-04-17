@@ -9,6 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 import ru.galtor85.household_store.config.BusinessConfig;
 import ru.galtor85.household_store.dto.request.product.ProductCreateRequest;
 import ru.galtor85.household_store.dto.request.product.ProductUpdateRequest;
+import ru.galtor85.household_store.dto.response.product.CategoryStatsDto;
 import ru.galtor85.household_store.dto.response.product.ProductDto;
 import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
 import ru.galtor85.household_store.entity.product.Product;
@@ -26,6 +27,7 @@ import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.supplier.SupplierProductRepository;
 import ru.galtor85.household_store.service.file.FileStorageService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
+import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.product.ProductMediaService;
 import ru.galtor85.household_store.validator.product.ProductValidator;
 
@@ -57,6 +59,7 @@ public class ManagerProductService {
     private final ProductMediaRepository mediaRepository;
     private final ProductStockRepository stockRepository;
     private final ProductAttributeRepository attributeRepository;
+    private final MessageService messageService;
 
 
 
@@ -230,6 +233,97 @@ public class ManagerProductService {
         log.debug(logMsg.get("manager.products.fetched.log", products.getTotalElements()));
 
         return products.map(productMapper::toDto);
+    }
+
+    /**
+     * Gets all unique product categories.
+     *
+     * @return list of all categories
+     */
+    @Transactional(readOnly = true)
+    public List<String> getAllCategories() {
+        log.debug(logMsg.get("manager.product.get.categories.start"));
+
+        List<String> categories = productRepository.findAllCategories();
+
+        log.debug(logMsg.get("manager.product.get.categories.complete", categories.size()));
+
+        return categories;
+    }
+
+    /**
+     * Renames a category for all products.
+     *
+     * @param oldCategory current category name
+     * @param newCategory new category name
+     * @return number of updated products
+     */
+    @Transactional
+    public int renameCategory(String oldCategory, String newCategory) {
+        log.info(logMsg.get("manager.product.rename.category.start", oldCategory, newCategory));
+
+        if (oldCategory == null || oldCategory.isBlank()) {
+            throw new IllegalArgumentException(messageService.get("manager.category.old.name.required"));
+        }
+
+        if (newCategory == null || newCategory.isBlank()) {
+            throw new IllegalArgumentException(messageService.get("manager.category.new.name.required"));
+        }
+
+        int updated = productRepository.renameCategory(oldCategory, newCategory);
+
+        log.info(logMsg.get("manager.product.rename.category.complete", oldCategory, newCategory, updated));
+
+        return updated;
+    }
+
+    /**
+     * Deletes a category (sets to null) from all products.
+     *
+     * @param categoryName category to delete
+     * @return number of updated products
+     */
+    @Transactional
+    public int deleteCategory(String categoryName) {
+        log.info(logMsg.get("manager.product.delete.category.start", categoryName));
+
+        if (categoryName == null || categoryName.isBlank()) {
+            throw new IllegalArgumentException(messageService.get("manager.category.name.required"));
+        }
+
+        // Check if category exists
+        List<String> existingCategories = productRepository.findAllCategories();
+        if (!existingCategories.contains(categoryName)) {
+            throw new IllegalArgumentException(
+                    messageService.get("manager.category.not.found", categoryName));
+        }
+
+        int updated = productRepository.setCategoryToNull(categoryName);
+
+        log.info(logMsg.get("manager.product.delete.category.complete", categoryName, updated));
+
+        return updated;
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryStatsDto> getCategoryStats() {
+        log.debug(logMsg.get("manager.product.get.category.stats.start"));
+
+        List<Object[]> results = productRepository.getCategoryStatsRaw();
+
+        List<CategoryStatsDto> stats = results.stream()
+                .map(row -> CategoryStatsDto.builder()
+                        .name((String) row[0])
+                        .productCount(((Number) row[1]).longValue())
+                        .minPrice((BigDecimal) row[2])
+                        .maxPrice((BigDecimal) row[3])
+                        .avgPrice(((Number) row[4]).doubleValue())
+                        .build())
+                .collect(Collectors.toList());
+
+        log.debug(logMsg.get("manager.product.get.category.stats.complete", stats.size()));
+
+        return stats;
     }
 
     // =========================================================================
