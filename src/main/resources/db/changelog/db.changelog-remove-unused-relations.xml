@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+        CHANGELOG: Remove Unused JPA Relations
+        Author: G@LTor85
+        Date: 2026-04-17
+        Description: Clean up unused JPA @OneToMany relations that were never working correctly.
+        The following relations are removed from entity classes:
+        - Product.stocks (ProductStock managed via ProductStockRepository)
+        - Product.media (ProductMedia managed via ProductMediaRepository)
+        - Supplier.products (SupplierProduct managed via SupplierProductRepository)
+
+        No database schema changes required - foreign keys and indexes remain intact.
+        This is a code-only change to remove misleading annotations.
+    -->
+
+    <!--
+        Note: This is a marker changeset only.
+        No actual DDL changes are performed because:
+        1. All foreign key constraints remain valid
+        2. Indexes on product_id, supplier_id are still needed for queries
+        3. Data integrity is maintained at database level
+    -->
+    <changeSet id="20260417-remove-unused-jpa-relations" author="G@LTor85">
+        <comment>
+            Marker changeset for code cleanup.
+            Removed @OneToMany annotations from:
+            - Product.stocks (mappedBy="productId" was invalid)
+            - Product.media (mappedBy="productId" was invalid)
+            - Supplier.products (mappedBy="supplierId" was invalid)
+
+            No DDL changes executed - schema remains unchanged.
+        </comment>
+        <sql>
+            SELECT 1;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

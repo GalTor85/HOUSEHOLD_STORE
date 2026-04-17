@@ -137,12 +137,4 @@ public class Product {
 
     @Column(name = "category_warehouse_id")
     private Long categoryWarehouseId;
-
-    @OneToMany(mappedBy = "productId", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<ProductStock> stocks = new ArrayList<>();
-
-    @OneToMany(mappedBy = "productId", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<ProductMedia> media = new ArrayList<>();
 }
