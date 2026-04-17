@@ -24,6 +24,7 @@ import ru.galtor85.household_store.entity.finance.CashTransaction;
 import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.finance.TransactionType;
+import ru.galtor85.household_store.entity.order.OrderPaymentStatus;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.entity.order.SalesOrderItem;
@@ -34,6 +35,7 @@ import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.service.cart.CartService;
+import ru.galtor85.household_store.service.cash.CashTransactionService;
 import ru.galtor85.household_store.service.finance.InvoiceService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
@@ -89,6 +91,7 @@ public class SalesOrderService {
     private final OrderSalesCancellationValidator orderCancellationValidator;
     private final StockService stockService;
     private final WarehouseConfig warehouseConfig;
+    private final CashTransactionService cashTransactionService;
 
     // =========================================================================
     // ORDER CREATION
@@ -362,10 +365,8 @@ public class SalesOrderService {
         SalesOrder order = salesOrderValidator.validateSalesOrderExists(orderId);
         OrderStatus oldStatus = order.getStatus();
 
-        // Checking the possibility of transition
         salesOrderValidator.validateStatusTransitionForSale(order.getStatus(), newStatus);
 
-        // Update the status
         order.setStatus(newStatus);
 
         if (trackingNumber != null) {
@@ -379,6 +380,12 @@ public class SalesOrderService {
         if (newStatus == OrderStatus.CANCELLED) {
             order.setCancelledAt(LocalDateTime.now());
             order.setCancellationReason(reason);
+
+            // Create refund for paid orders using original cash register
+            if (isOrderPaid(order)) {
+                refundPaidInvoices(order, reason, managerId);
+            }
+
             restoreStockForCancelledOrder(order);
         }
 
@@ -388,6 +395,41 @@ public class SalesOrderService {
                 orderId, oldStatus, newStatus, managerId));
 
         return salesOrderConverter.toDto(updatedOrder);
+    }
+
+    /**
+     * Refunds all paid invoices for an order.
+     */
+    private void refundPaidInvoices(SalesOrder order, String reason, Long managerId) {
+        List<Invoice> invoices = invoiceRepository.findBySalesOrderId(order.getId());
+
+        for (Invoice invoice : invoices) {
+            if (invoice.getStatus() == InvoiceStatus.PAID ||
+                    invoice.getStatus() == InvoiceStatus.PARTIALLY_PAID) {
+
+                // Find all payment transactions for this invoice
+                List<CashTransaction> payments = invoice.getCashTransactions().stream()
+                        .filter(tx -> tx.getTransactionType() == TransactionType.INCOME)
+                        .toList();
+
+                for (CashTransaction payment : payments) {
+                    try {
+                        // Cancel original payment - creates REFUND on same cash register
+                        cashTransactionService.cancelTransaction(
+                                payment.getId(),
+                                "Order cancelled: " + reason,
+                                managerId
+                        );
+
+                        log.info("Refund created for payment transaction: {}", payment.getId());
+
+                    } catch (Exception e) {
+                        log.error("Failed to cancel payment transaction {}: {}",
+                                payment.getId(), e.getMessage());
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -662,4 +704,19 @@ public class SalesOrderService {
         return totalSpent;
     }
 
+    /**
+     * Checks if order has been paid.
+     */
+    private boolean isOrderPaid(SalesOrder order) {
+        // Check payment status first
+        if (order.getPaymentStatus() == OrderPaymentStatus.PAID) {
+            return true;
+        }
+
+        // Check invoices directly
+        List<Invoice> invoices = invoiceRepository.findBySalesOrderId(order.getId());
+        return invoices.stream()
+                .anyMatch(inv -> inv.getStatus() == InvoiceStatus.PAID ||
+                        inv.getStatus() == InvoiceStatus.PARTIALLY_PAID);
+    }
 }

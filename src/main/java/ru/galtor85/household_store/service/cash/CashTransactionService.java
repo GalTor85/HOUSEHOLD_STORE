@@ -83,7 +83,7 @@ public class CashTransactionService {
 
         CashTransaction transaction = processor.createTransaction(request, cashRegister, invoice, cashierId);
 
-        // ✅ Update invoice status for all transaction types
+        // Update invoice status for all transaction types
         if (invoice != null) {
             if (request.getTransactionType() == TransactionType.REFUND) {
                 updateInvoiceStatusAfterRefund(invoice);
