@@ -403,6 +403,11 @@ public class SalesOrderService {
     private void refundPaidInvoices(SalesOrder order, String reason, Long managerId) {
         List<Invoice> invoices = invoiceRepository.findBySalesOrderId(order.getId());
 
+        if (invoices.isEmpty()) {
+            log.debug(logMsg.get("sales.order.refund.no.invoices", order.getId()));
+            return;
+        }
+
         for (Invoice invoice : invoices) {
             if (invoice.getStatus() == InvoiceStatus.PAID ||
                     invoice.getStatus() == InvoiceStatus.PARTIALLY_PAID) {
@@ -412,20 +417,26 @@ public class SalesOrderService {
                         .filter(tx -> tx.getTransactionType() == TransactionType.INCOME)
                         .toList();
 
+                if (payments.isEmpty()) {
+                    log.debug(logMsg.get("sales.order.refund.no.payments", invoice.getId()));
+                    continue;
+                }
+
                 for (CashTransaction payment : payments) {
                     try {
                         // Cancel original payment - creates REFUND on same cash register
                         cashTransactionService.cancelTransaction(
                                 payment.getId(),
-                                "Order cancelled: " + reason,
+                                messageService.get("sales.order.refund.reason", order.getOrderNumber(), reason),
                                 managerId
                         );
 
-                        log.info("Refund created for payment transaction: {}", payment.getId());
+                        log.info(logMsg.get("sales.order.refund.created",
+                                payment.getId(), invoice.getInvoiceNumber()));
 
                     } catch (Exception e) {
-                        log.error("Failed to cancel payment transaction {}: {}",
-                                payment.getId(), e.getMessage());
+                        log.error(logMsg.get("sales.order.refund.failed",
+                                payment.getId(), e.getMessage()), e);
                     }
                 }
             }

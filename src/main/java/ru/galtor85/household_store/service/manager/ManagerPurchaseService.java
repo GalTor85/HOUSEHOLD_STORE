@@ -303,7 +303,7 @@ public class ManagerPurchaseService {
         // Validate order can be reversed (has received items)
         validateOrderCanBeReversed(order);
 
-        // ✅ Create financial refund for supplier before stock reversal
+        // Create financial refund for supplier before stock reversal
         createSupplierRefund(order, request, managerId);
 
         // Process stock reversal (return goods to warehouse)
@@ -345,19 +345,17 @@ public class ManagerPurchaseService {
      * Creates financial refund for supplier when returning goods.
      */
     private void createSupplierRefund(PurchaseOrder order, ReverseReceiptRequest request, Long managerId) {
-        // Find all invoices for this purchase order
         List<Invoice> invoices = invoiceRepository.findByPurchaseOrderId(order.getId());
 
         if (invoices.isEmpty()) {
-            log.warn("No invoices found for purchase order: {}", order.getId());
+            log.warn(logMsg.get("purchase.refund.no.invoices", order.getId()));
             return;
         }
 
-        // Use calculator to get total refund amount
         BigDecimal refundAmount = RefundCalculator.calculateTotalRefundAmount(order, request.getItems());
 
         if (refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            log.debug("No amount to refund for purchase order: {}", order.getId());
+            log.debug(logMsg.get("purchase.refund.no.amount", order.getId()));
             return;
         }
 
@@ -365,30 +363,23 @@ public class ManagerPurchaseService {
             if (invoice.getStatus() == InvoiceStatus.PAID ||
                     invoice.getStatus() == InvoiceStatus.PARTIALLY_PAID) {
 
-                // Find expense payments (payments TO supplier)
                 List<CashTransaction> payments = invoice.getCashTransactions().stream()
                         .filter(tx -> tx.getTransactionType() == TransactionType.EXPENSE)
                         .toList();
 
                 for (CashTransaction payment : payments) {
                     try {
-                        // Use calculator for proportional refund
-                        BigDecimal proportionalRefund = RefundCalculator.calculateProportionalRefund(
-                                payment.getAmount(), invoice.getAmount(), refundAmount);
+                        cashTransactionService.cancelTransaction(
+                                payment.getId(),
+                                messageService.get("purchase.refund.reason", order.getOrderNumber(), request.getReason()),
+                                managerId
+                        );
 
-                        if (proportionalRefund.compareTo(BigDecimal.ZERO) > 0) {
-                            cashTransactionService.cancelTransaction(
-                                    payment.getId(),
-                                    "Return to supplier: " + request.getReason(),
-                                    managerId
-                            );
-
-                            log.info(logMsg.get("purchase.reverse.refund.created",
-                                    payment.getId(), invoice.getInvoiceNumber(), proportionalRefund));
-                        }
+                        log.info(logMsg.get("purchase.refund.created",
+                                payment.getId(), invoice.getInvoiceNumber()));
 
                     } catch (Exception e) {
-                        log.error(logMsg.get("purchase.reverse.refund.failed",
+                        log.error(logMsg.get("purchase.refund.failed",
                                 payment.getId(), e.getMessage()), e);
                     }
                 }
