@@ -84,11 +84,6 @@ public final class TechnicalConstants {
     public static final String MAX_PRICE_STR = "999999.99";
 
     /**
-     * Maximum quantity value
-     */
-    public static final int MAX_QUANTITY = 999999;
-
-    /**
      * Minimum quantity (0 removes item)
      */
     public static final int MIN_QUANTITY = 0;
@@ -603,29 +598,6 @@ public final class TechnicalConstants {
      * Maximum supplier SKU length
      */
     public static final int MAX_SUPPLIER_SKU_LENGTH = 100;
-
-    // =========================================================================
-    // CATEGORY
-    // =========================================================================
-
-    /**
-     * Maximum category name length
-     */
-    public static final int MAX_CATEGORY_NAME_LENGTH = 100;
-
-    // =========================================================================
-    // CATEGORY WAREHOUSE
-    // =========================================================================
-
-    /**
-     * Default isDefault value
-     */
-    public static final boolean DEFAULT_IS_DEFAULT = false;
-
-    /**
-     * Default priority value
-     */
-    public static final int DEFAULT_PRIORITY = 0;
 
     // =========================================================================
     // PAYMENT & CURRENCY

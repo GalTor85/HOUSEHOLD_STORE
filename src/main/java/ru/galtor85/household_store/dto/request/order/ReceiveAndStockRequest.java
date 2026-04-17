@@ -3,7 +3,6 @@ package ru.galtor85.household_store.dto.request.order;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,8 +23,7 @@ public class ReceiveAndStockRequest {
     @Schema(description = "Payment status", example = "PAID")
     private String paymentStatus;
 
-    @NotNull(message = "{receive.validation.warehouse.id.empty}")
-    @Schema(description = "Warehouse ID for receiving", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Warehouse ID for receiving", example = "1")
     private Long warehouseId;
 
     @Schema(description = "Warehouse location", example = "Warehouse A, Section 3")

@@ -136,6 +136,33 @@ public class ManagerInventoryController extends BaseController {
     }
 
     /**
+     * Permanently deletes a product and all related data.
+     * Only allowed for products with no sales history.
+     *
+     * @param productId product ID
+     * @return success response
+     */
+    @DeleteMapping("/products/{productId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @Operation(summary = "Delete product permanently",
+            description = "Permanently deletes a product and all related data. Only allowed if product has no sales.")
+    public ResponseEntity<ApiResponse<Void>> deleteProduct(
+            @Parameter(description = "Product ID", example = "1", required = true)
+            @PathVariable Long productId) {
+
+        User manager = getCurrentUser();
+        log.info(logMsg.get("manager.product.delete.start", manager.getEmail(), productId));
+
+        managerProductService.deleteProduct(productId, manager.getId());
+
+        log.info(logMsg.get("manager.product.delete.success", productId));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.product.deleted"),
+                null));
+    }
+
+    /**
      * Retrieves a product by its ID.
      *
      * @param productId product ID
@@ -197,32 +224,6 @@ public class ManagerInventoryController extends BaseController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.products.fetched"),
                 products));
-    }
-
-    /**
-     * Adjusts product stock quantity.
-     *
-     * @param productId product ID
-     * @param quantity  amount to adjust (positive to increase, negative to decrease)
-     * @param reason    adjustment reason
-     * @return updated product DTO
-     */
-    @PatchMapping("/products/{productId}/stock")
-    @Operation(summary = "Adjust product stock",
-            description = "Increases or decreases product stock quantity")
-    public ResponseEntity<ApiResponse<ProductDto>> adjustStock(
-            @Parameter(description = "Product ID", example = "1", required = true)
-            @PathVariable Long productId,
-            @Parameter(description = "Quantity to adjust (positive to increase, negative to decrease)", example = "10", required = true)
-            @RequestParam int quantity,
-            @Parameter(description = "Adjustment reason", example = "Inventory count")
-            @RequestParam(required = false) String reason) {
-
-        ProductDto product = managerProductService.adjustStock(productId, quantity, reason);
-
-        return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("manager.stock.adjusted"),
-                product));
     }
 
     /**

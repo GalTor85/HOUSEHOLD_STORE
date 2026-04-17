@@ -59,11 +59,6 @@ public class ProductCreateRequest {
     @Schema(description = "Price", example = "999.99", requiredMode = Schema.RequiredMode.REQUIRED)
     private BigDecimal price;
 
-    @Min(value = MIN_QUANTITY, message = "{product.validation.quantity.min}")
-    @Max(value = MAX_QUANTITY, message = "{product.validation.quantity.max}")
-    @Schema(description = "Quantity in stock", example = "10", defaultValue = "0")
-    private Integer quantityInStock = DEFAULT_QUANTITY;
-
     // =========================================================================
     // CLASSIFICATION
     // =========================================================================

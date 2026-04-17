@@ -21,6 +21,7 @@ import ru.galtor85.household_store.repository.order.SalesOrderRepository;
 import ru.galtor85.household_store.repository.user.UserRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.stock.StockService;
 import ru.galtor85.household_store.validator.product.ProductValidator;
 
 import java.math.BigDecimal;
@@ -41,6 +42,7 @@ public class SalesOrderValidator {
     private final MessageService messageService;
     private final LogMessageService logMsg;
     private final ProductValidator productValidator;
+    private final StockService stockService;
 
     /**
      * Validates cart is not empty.
@@ -136,10 +138,13 @@ public class SalesOrderValidator {
      * @throws InsufficientStockException if insufficient stock
      */
     public void validateProductAvailability(Product product, int requestedQuantity) {
-        if (product.getQuantityInStock() < requestedQuantity) {
+        Integer totalStock = stockService.getTotalStockForProduct(product.getId());
+        int availableStock = totalStock != null ? totalStock : 0;
+
+        if (availableStock < requestedQuantity) {
             log.warn(logMsg.get("sales.validation.insufficient.stock",
-                    product.getName(), product.getQuantityInStock(), requestedQuantity));
-            throw new InsufficientStockException(product.getName(), product.getQuantityInStock());
+                    product.getName(), availableStock, requestedQuantity));
+            throw new InsufficientStockException(product.getName(), availableStock);
         }
     }
 

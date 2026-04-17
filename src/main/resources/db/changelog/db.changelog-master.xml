@@ -92,4 +92,6 @@
     <!-- NEW: Remove unused JPA relations (marker only, no DDL) -->
     <include file="db/changelog/db.changelog-remove-unused-relations.xml"/>
 
+    <include file="db/changelog/db.changelog-remove-quantity-in-stock.xml"/>
+
 </databaseChangeLog>

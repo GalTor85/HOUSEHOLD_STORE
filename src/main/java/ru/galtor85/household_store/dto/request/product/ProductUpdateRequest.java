@@ -56,11 +56,6 @@ public class ProductUpdateRequest {
     @Schema(description = "Price", example = "999.99")
     private BigDecimal price;
 
-    @Min(value = MIN_QUANTITY, message = "{product.validation.quantity.min}")
-    @Max(value = MAX_QUANTITY, message = "{product.validation.quantity.max}")
-    @Schema(description = "Quantity in stock", example = "10")
-    private Integer quantityInStock;
-
     // =========================================================================
     // CLASSIFICATION
     // =========================================================================

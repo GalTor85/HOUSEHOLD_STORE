@@ -6,14 +6,10 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
-import ru.galtor85.household_store.advice.exception.system.MessageNotFoundException;
 
 import java.util.Arrays;
 import java.util.Locale;
 
-/**
- * Service for retrieving localized messages for API responses and UI.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -25,25 +21,34 @@ public class MessageService {
      * Returns a localized message with smart fallback.
      */
     public String get(String code, Object... args) {
-        return getInternal(code, null, false, true, args);
+        return getInternal(code, args);
     }
 
     /**
      * Returns a localized message without arguments.
      */
     public String get(String code) {
-        return getInternal(code, null, false, true);
+        return getInternal(code);
     }
 
     /**
      * Returns a localized message with explicit default fallback.
      */
     public String getWithDefault(String code, String defaultMessage, Object... args) {
-        return getInternal(code, defaultMessage, false, false, args);
+        Locale locale = LocaleContextHolder.getLocale();
+
+        try {
+            return messageSource.getMessage(code, args, locale);
+        } catch (NoSuchMessageException e) {
+            log.warn("Message key '{}' not found for locale '{}'", code, locale);
+            return defaultMessage != null ? defaultMessage : code;
+        } catch (Exception e) {
+            log.error("Error resolving with default message key '{}': {}", code, e.getMessage());
+            return defaultMessage != null ? defaultMessage : code;
+        }
     }
 
-    private String getInternal(String code, String defaultMessage, boolean throwException,
-                               boolean useSmartFallback, Object... args) {
+    private String getInternal(String code, Object... args) {
         Locale locale = LocaleContextHolder.getLocale();
 
         try {
@@ -52,27 +57,12 @@ public class MessageService {
                 return message;
             }
         } catch (NoSuchMessageException e) {
-            // Key not found
+            log.debug("Message key '{}' not found for locale '{}'", code, locale);
         } catch (Exception e) {
             log.error("Error resolving message key '{}': {}", code, e.getMessage());
         }
 
-        log.warn("Message key '{}' not found for locale '{}'", code, locale);
-
-        // Исправлено: используем параметр throwException
-        if (throwException) {
-            throw new MessageNotFoundException(code, locale);
-        }
-
-        if (defaultMessage != null) {
-            return defaultMessage;
-        }
-
-        if (useSmartFallback) {
-            return buildReadableFallback(code, args);
-        }
-
-        return code;
+        return buildReadableFallback(code, args);
     }
 
     private String buildReadableFallback(String code, Object... args) {

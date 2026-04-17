@@ -22,4 +22,6 @@ public interface ProductMediaRepository extends JpaRepository<ProductMedia, Long
     @Query("UPDATE ProductMedia pm SET pm.isMain = false WHERE pm.productId = :productId")
     void resetMainImage(@Param("productId") Long productId);
 
+    List<ProductMedia> findByProductId(Long productId);
+
 }

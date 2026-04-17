@@ -11,11 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.cart.CartNotFoundException;
 import ru.galtor85.household_store.advice.exception.order.OrderNotFoundException;
 import ru.galtor85.household_store.advice.exception.rollback.RollbackNotAllowedException;
+import ru.galtor85.household_store.config.WarehouseConfig;
 import ru.galtor85.household_store.converter.SalesOrderConverter;
 import ru.galtor85.household_store.dto.request.order.SalesOrderCreateRequest;
 import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
 import ru.galtor85.household_store.dto.response.order.PaymentSummaryDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
+import ru.galtor85.household_store.dto.response.product.ProductStockDto;
 import ru.galtor85.household_store.entity.cart.Cart;
 import ru.galtor85.household_store.entity.cart.CartStatus;
 import ru.galtor85.household_store.entity.finance.CashTransaction;
@@ -35,6 +37,7 @@ import ru.galtor85.household_store.service.cart.CartService;
 import ru.galtor85.household_store.service.finance.InvoiceService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.stock.StockService;
 import ru.galtor85.household_store.util.date.DateParser;
 import ru.galtor85.household_store.validator.order.OrderSalesCancellationValidator;
 import ru.galtor85.household_store.validator.order.SalesOrderValidator;
@@ -60,7 +63,6 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.*;
  * </ul>
  *
  * @author G@LTor85
- 
  */
 @Slf4j
 @Service
@@ -85,6 +87,8 @@ public class SalesOrderService {
     private final InvoiceRepository invoiceRepository;
     private final CashTransactionRepository cashTransactionRepository;
     private final OrderSalesCancellationValidator orderCancellationValidator;
+    private final StockService stockService;
+    private final WarehouseConfig warehouseConfig;
 
     // =========================================================================
     // ORDER CREATION
@@ -532,14 +536,20 @@ public class SalesOrderService {
      * @param order the cancelled order
      */
     private void restoreStockForCancelledOrder(SalesOrder order) {
+        // Get default warehouse (temporary solution until reservation tracking is implemented)
+        Long defaultWarehouseId = warehouseConfig.getDefaultWarehouseId();
+
         for (SalesOrderItem item : order.getItems()) {
             productRepository.findById(item.getProductId()).ifPresent(product -> {
-                int newQuantity = product.getQuantityInStock() + item.getQuantity();
-                product.setQuantityInStock(newQuantity);
-                productRepository.save(product);
+                // Get current stock using existing method
+                ProductStockDto stockDto = stockService.getProductStockAtWarehouse(product.getId(), defaultWarehouseId);
+                int oldQuantity = stockDto.getQuantity();
+
+                // Update stock (increase)
+                int newQuantity = stockService.updateProductStock(product, item.getQuantity(), defaultWarehouseId, true);
 
                 log.debug(logMsg.get("sales.order.stock.restored",
-                        item.getProductId(), item.getQuantity()));
+                        product.getSku(), defaultWarehouseId, oldQuantity, newQuantity, item.getQuantity()));
             });
         }
     }
@@ -651,4 +661,5 @@ public class SalesOrderService {
         }
         return totalSpent;
     }
+
 }

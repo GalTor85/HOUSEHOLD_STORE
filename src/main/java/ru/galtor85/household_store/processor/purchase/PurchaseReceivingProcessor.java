@@ -11,6 +11,7 @@ import ru.galtor85.household_store.dto.common.ReceiveStockItem;
 import ru.galtor85.household_store.dto.request.order.ReceiveAndStockRequest;
 import ru.galtor85.household_store.dto.request.order.ReverseReceiptItem;
 import ru.galtor85.household_store.dto.request.order.ReverseReceiptRequest;
+import ru.galtor85.household_store.dto.response.product.ProductStockDto;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.order.PurchaseOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
@@ -21,6 +22,7 @@ import ru.galtor85.household_store.repository.stock.StockMovementRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.stock.StockService;
+import ru.galtor85.household_store.service.warehouse.WarehouseSelectionService;
 import ru.galtor85.household_store.service.warehouse.WarehouseService;
 import ru.galtor85.household_store.util.batch.BatchNumberGenerator;
 
@@ -51,6 +53,7 @@ public class PurchaseReceivingProcessor {
     private final StockService stockService;
     private final WarehouseService warehouseService;
     private final ReceivingQuantityCalculator quantityCalculator;
+    private final WarehouseSelectionService warehouseSelectionService;
 
     // =========================================================================
     // RECEIVE PURCHASE ORDER
@@ -77,7 +80,6 @@ public class PurchaseReceivingProcessor {
         List<Long> missingProducts = new ArrayList<>();
 
         for (ReceiveStockItem item : request.getItems()) {
-            // Find order item
             PurchaseOrderItem orderItem = order.getItems().stream()
                     .filter(oi -> oi.getProductId().equals(item.getProductId()))
                     .findFirst()
@@ -101,6 +103,12 @@ public class PurchaseReceivingProcessor {
             int alreadyReceived = result.alreadyReceived();
             int orderedQuantity = orderItem.getQuantity();
 
+            // Determine warehouse
+            Long warehouseId = request.getWarehouseId();
+            if (warehouseId == null) {
+                warehouseId = determineWarehouseId(request, order.getId());
+            }
+
             // Check for partial receipt
             boolean isPartial = (alreadyReceived + receivingQuantity) < orderedQuantity;
             if (isPartial) {
@@ -112,21 +120,17 @@ public class PurchaseReceivingProcessor {
             // Update order item received quantity
             orderItem.setReceivedQuantity(alreadyReceived + receivingQuantity);
 
-            // Update product stock
-            int oldQuantity = product.getQuantityInStock();
-            int newQuantity = oldQuantity + receivingQuantity;
-            product.setQuantityInStock(newQuantity);
-            productRepository.save(product);
+            // Get old stock and update
+            ProductStockDto stockDto = stockService.getProductStockAtWarehouse(product.getId(), warehouseId);
+            int oldQuantity = stockDto.getQuantity();
+            int newQuantity = stockService.updateProductStock(product, receivingQuantity, warehouseId, true);
 
             log.debug(logMsg.get("purchase.receiving.processor.stock.updated",
-                    product.getSku(), oldQuantity, newQuantity));
-
-            // Update product_stocks
-            stockService.updateProductStock(product, receivingQuantity, request.getWarehouseId(), true);
+                    product.getSku(), warehouseId, oldQuantity, newQuantity, receivingQuantity));
 
             // Create stock movement
             StockMovement movement = createStockMovement(
-                    product, order, request.getWarehouseId(), managerId,
+                    product, order, warehouseId, managerId,
                     item.getBatchNumber(), receivingQuantity
             );
             movements.add(stockMovementRepository.save(movement));
@@ -245,16 +249,17 @@ public class PurchaseReceivingProcessor {
         boolean reverseAll = (itemsToReverse == null || itemsToReverse.isEmpty());
 
         // Validate that all products in reversal request exist in the order
-        assert itemsToReverse != null;
-        for (ReverseReceiptItem reverseItem : itemsToReverse) {
-            boolean productExists = order.getItems().stream()
-                    .anyMatch(item -> item.getProductId().equals(reverseItem.getProductId()));
+        if (!reverseAll) {
+            for (ReverseReceiptItem reverseItem : itemsToReverse) {
+                boolean productExists = order.getItems().stream()
+                        .anyMatch(item -> item.getProductId().equals(reverseItem.getProductId()));
 
-            if (!productExists) {
-                throw new IllegalArgumentException(
-                        messageService.get("purchase.reverse.product.not.in.order",
-                                reverseItem.getProductId(), order.getOrderNumber())
-                );
+                if (!productExists) {
+                    throw new IllegalArgumentException(
+                            messageService.get("purchase.reverse.product.not.in.order",
+                                    reverseItem.getProductId(), order.getOrderNumber())
+                    );
+                }
             }
         }
 
@@ -325,8 +330,12 @@ public class PurchaseReceivingProcessor {
                     reversedMovements.add(stockMovementRepository.save(reverseMovement));
                     movements.add(reverseMovement);
 
-                    // Update product stock (decrease)
-                    stockService.updateProductStock(product, reverseFromThisReceipt, warehouseId, false);
+                    ProductStockDto stockDto = stockService.getProductStockAtWarehouse(product.getId(), warehouseId);
+                    int stockBefore = stockDto.getQuantity();
+                    int stockAfter = stockService.updateProductStock(product, reverseFromThisReceipt, warehouseId, false);
+
+                    log.debug(logMsg.get("purchase.receiving.reverse.stock.updated",
+                            product.getSku(), warehouseId, stockBefore, stockAfter, reverseFromThisReceipt));
 
                     // Clear cell if it becomes empty
                     if (cellId != null && reverseFromThisReceipt == receiptQuantity) {
@@ -335,12 +344,6 @@ public class PurchaseReceivingProcessor {
 
                     remainingToReverse -= reverseFromThisReceipt;
                 }
-
-                // Update product stock
-                int oldQuantity = product.getQuantityInStock();
-                int newQuantity = oldQuantity - quantityToReverse;
-                product.setQuantityInStock(newQuantity);
-                productRepository.save(product);
 
                 // Update order item received quantity
                 orderItem.setReceivedQuantity(receivedQuantity - quantityToReverse);
@@ -408,6 +411,24 @@ public class PurchaseReceivingProcessor {
                 .batchNumber(receipt.getBatchNumber())
                 .documentNumber(order.getOrderNumber() + "-RETURN")
                 .build();
+    }
+
+    private Long determineWarehouseId(ReceiveAndStockRequest request, Long orderId) {
+        if (request.getWarehouseId() != null) {
+            return request.getWarehouseId();
+        }
+
+        if (!request.getItems().isEmpty()) {
+            ReceiveStockItem firstItem = request.getItems().getFirst();
+            Long suggestedWarehouse = warehouseSelectionService.selectWarehouseForReceiving(
+                    firstItem.getProductId());
+
+            log.debug(logMsg.get("purchase.receive.warehouse.auto.selected",
+                    suggestedWarehouse, orderId));
+            return suggestedWarehouse;
+        }
+
+        throw new IllegalArgumentException("Cannot determine warehouse: no items in request");
     }
 
 

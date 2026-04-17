@@ -337,7 +337,7 @@ public class StockService {
      * @throws ProductStockNotFoundException if stock record not found and operation is decrease
      * @throws InsufficientStockException    if decrease would result in negative stock
      */
-    public void updateProductStock(Product product, int quantity, Long warehouseId, boolean increase) {
+    public int updateProductStock(Product product, int quantity, Long warehouseId, boolean increase) {
         ProductStock stock = stockRepository
                 .findByProductIdAndWarehouseId(product.getId(), warehouseId)
                 .orElse(null);
@@ -372,5 +372,6 @@ public class StockService {
                 (stock.getReservedQuantity() != null ? stock.getReservedQuantity() : 0));
         stock.setUpdatedAt(LocalDateTime.now());
         stockRepository.save(stock);
+        return newQuantity;
     }
 }

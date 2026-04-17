@@ -33,37 +33,6 @@ public class InventoryProcessor {
     private final LogMessageService logMsg;
 
     /**
-     * Adjusts the stock quantity of a product.
-     *
-     * @param product  the product to adjust
-     * @param quantity the amount to adjust (positive or negative)
-     * @param reason   the reason for adjustment
-     * @return updated ProductDto
-     */
-    @Transactional
-    public ProductDto adjustStock(Product product, int quantity, String reason) {
-        validator.validateStockOperation(product, quantity);
-
-        int newQuantity = product.getQuantityInStock() + quantity;
-        product.setQuantityInStock(newQuantity);
-
-        Product updatedProduct = productRepository.save(product);
-
-        String reasonText = reason != null ? reason :
-                messageService.get("manager.stock.reason.default");
-
-        log.info(logMsg.get(
-                "manager.stock.adjusted.log",
-                product.getId(),
-                quantity,
-                newQuantity,
-                reasonText
-        ));
-
-        return productMapper.toDto(updatedProduct);
-    }
-
-    /**
      * Updates the price of a product.
      *
      * @param product  the product to update
@@ -124,7 +93,7 @@ public class InventoryProcessor {
         int effectiveThreshold = threshold != null && threshold > 0 ? threshold :
                 businessConfig.getStock().getLowStockThreshold();
 
-        List<Product> lowStockProducts = productRepository.findByQuantityInStockLessThan(effectiveThreshold);
+        List<Product> lowStockProducts = productRepository.findLowStockProducts(effectiveThreshold);
 
         log.debug(logMsg.get(
                 "manager.low.stock.fetched.log",

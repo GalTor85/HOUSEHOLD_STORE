@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="20260417-remove-quantity-in-stock" author="G@LTor85">
+        <comment>
+            Remove quantity_in_stock column from products table.
+            Stock quantity should be calculated from product_stocks table.
+        </comment>
+        <dropColumn tableName="products" schemaName="household_schema" columnName="quantity_in_stock"/>
+    </changeSet>
+
+</databaseChangeLog>

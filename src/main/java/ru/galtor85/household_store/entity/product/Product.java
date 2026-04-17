@@ -50,9 +50,6 @@ public class Product {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    @Column(name = "quantity_in_stock")
-    private Integer quantityInStock;
-
     private String category;
 
     private String brand;

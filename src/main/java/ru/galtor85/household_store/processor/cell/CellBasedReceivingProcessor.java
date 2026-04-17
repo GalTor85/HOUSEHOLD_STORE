@@ -12,16 +12,14 @@ import ru.galtor85.household_store.dto.common.ReceiveStockItem;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.order.PurchaseOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
-import ru.galtor85.household_store.entity.product.ProductStock;
 import ru.galtor85.household_store.entity.stock.MovementType;
 import ru.galtor85.household_store.entity.stock.StockMovement;
 import ru.galtor85.household_store.entity.warehouse.StorageCell;
-import ru.galtor85.household_store.repository.product.ProductRepository;
-import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.stock.StockMovementRepository;
 import ru.galtor85.household_store.repository.warehouse.StorageCellRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.stock.StockService;
 import ru.galtor85.household_store.util.batch.BatchNumberGenerator;
 import ru.galtor85.household_store.validator.cell.CellValidationHelper;
 
@@ -37,8 +35,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CellBasedReceivingProcessor {
 
-    private final ProductRepository productRepository;
-    private final ProductStockRepository productStockRepository;
     private final StockMovementRepository stockMovementRepository;
     private final StorageCellRepository storageCellRepository;
     private final StockMovementBuilder movementBuilder;
@@ -48,6 +44,7 @@ public class CellBasedReceivingProcessor {
     private final MessageService messageService;
     private final LogMessageService logMsg;
     private final ReceivingQuantityCalculator quantityCalculator;
+    private final StockService stockService;
 
     // =========================================================================
     // MAIN RECEIVING METHOD WITH CELL PLACEMENT
@@ -78,7 +75,7 @@ public class CellBasedReceivingProcessor {
 
         for (ReceiveStockItem item : items) {
             try {
-                // 1. Find order item
+                // Find order item
                 PurchaseOrderItem orderItem = order.getItems().stream()
                         .filter(oi -> oi.getProductId().equals(item.getProductId()))
                         .findFirst()
@@ -93,7 +90,7 @@ public class CellBasedReceivingProcessor {
                     continue;
                 }
 
-                // 2. Calculate receiving quantity
+                // Calculate receiving quantity
                 ReceivingQuantityCalculator.ReceivingResult result = quantityCalculator.calculate(orderItem, item);
 
                 if (result.hasNoQuantity()) {
@@ -104,35 +101,31 @@ public class CellBasedReceivingProcessor {
                 int receivingQuantity = result.receivingQuantity();
                 int alreadyReceived = result.alreadyReceived();
 
-                // 3. Determine target cell
+                // Determine target cell
                 StorageCell cell = determineCell(item, product, warehouseId, receivingQuantity);
 
-                // 4. Assign product to cell
+                // Assign product to cell
                 StorageCell updatedCell = assignProductToCell(cell, product, receivingQuantity);
 
-                // 5. Update order item received quantity
+                // Update order item received quantity
                 orderItem.setReceivedQuantity(alreadyReceived + receivingQuantity);
 
-                // 6. Update product stock quantity
-                int oldQuantity = product.getQuantityInStock();
-                int newQuantity = oldQuantity + receivingQuantity;
-                product.setQuantityInStock(newQuantity);
-                productRepository.save(product);
+                // Update product stock quantity
+
+                int oldQuantity = stockService.getTotalStockForProduct(product.getId());
+                int newQuantity= stockService.updateProductStock(product, receivingQuantity, warehouseId, true);
 
                 log.debug(logMsg.get("cell.receiving.processor.stock.updated",
                         product.getSku(), oldQuantity, newQuantity));
 
-                // 7. Update product_stocks table
-                updateProductStock(product, receivingQuantity, warehouseId);
-
-                // 8. Create stock movement record
+                // Create stock movement record
                 StockMovement movement = createStockMovementWithCell(
                         product, order, updatedCell, warehouseId,
                         managerId, item.getBatchNumber(), receivingQuantity
                 );
                 movements.add(stockMovementRepository.save(movement));
 
-                // 9. Save placement info
+                // Save placement info
                 placements.add(new CellPlacementInfo(
                         product.getId(),
                         product.getSku(),
@@ -243,44 +236,6 @@ public class CellBasedReceivingProcessor {
                 cell.getCode(), currentQty, newQty, product.getId()));
 
         return storageCellRepository.save(cell);
-    }
-
-    /**
-     * Updates or creates a record in product_stocks.
-     *
-     * @param product     the product
-     * @param quantity    the quantity to add
-     * @param warehouseId the warehouse ID
-     */
-    private void updateProductStock(Product product, int quantity, Long warehouseId) {
-        ProductStock stock = productStockRepository
-                .findByProductIdAndWarehouseId(product.getId(), warehouseId)
-                .orElse(null);
-
-        if (stock == null) {
-            stock = ProductStock.builder()
-                    .productId(product.getId())
-                    .warehouseId(warehouseId)
-                    .quantity(quantity)
-                    .reservedQuantity(0)
-                    .availableQuantity(quantity)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            log.debug(logMsg.get("cell.receiving.processor.stock.created",
-                    product.getSku(), warehouseId, quantity));
-        } else {
-            int oldQuantity = stock.getQuantity();
-            stock.setQuantity(oldQuantity + quantity);
-            stock.setAvailableQuantity(stock.getQuantity() -
-                    (stock.getReservedQuantity() != null ? stock.getReservedQuantity() : 0));
-            stock.setUpdatedAt(LocalDateTime.now());
-
-            log.debug(logMsg.get("cell.receiving.processor.stock.updated.detail",
-                    product.getSku(), warehouseId, oldQuantity, stock.getQuantity()));
-        }
-
-        productStockRepository.save(stock);
     }
 
     /**

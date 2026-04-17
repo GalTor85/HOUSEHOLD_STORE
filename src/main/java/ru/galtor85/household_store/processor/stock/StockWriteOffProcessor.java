@@ -12,11 +12,11 @@ import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.product.ProductStock;
 import ru.galtor85.household_store.entity.stock.MovementType;
 import ru.galtor85.household_store.entity.stock.StockMovement;
-import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.stock.StockMovementRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.stock.StockService;
 import ru.galtor85.household_store.util.entity.EntityFinder;
 import ru.galtor85.household_store.util.generator.NumberGenerator;
 
@@ -36,13 +36,14 @@ import static ru.galtor85.household_store.constants.TechnicalConstants.WRITE_OFF
 public class StockWriteOffProcessor {
 
     private final EntityFinder entityFinder;
-    private final ProductRepository productRepository;
     private final ProductStockRepository productStockRepository;
     private final StockMovementRepository stockMovementRepository;
     private final StockMovementBuilder movementBuilder;
     private final NumberGenerator numberGenerator;
     private final MessageService messageService;
     private final LogMessageService logMsg;
+    private final StockService stockService;
+
 
     // =========================================================================
     // MAIN WRITE-OFF METHOD
@@ -71,10 +72,8 @@ public class StockWriteOffProcessor {
                 Product product = entityFinder.findProductById(item.getProductId());
                 validateStockAvailability(product, item.getQuantity());
 
-                int oldQuantity = product.getQuantityInStock();
-                int newQuantity = oldQuantity - item.getQuantity();
-                product.setQuantityInStock(newQuantity);
-                productRepository.save(product);
+                int oldQuantity = stockService.getTotalStockForProduct(product.getId());
+                int newQuantity = stockService.updateProductStock(product, item.getQuantity(), request.getWarehouseId(), false);
 
                 if (request.getWarehouseId() != null) {
                     updateProductStock(product, item.getQuantity(), request.getWarehouseId());
@@ -132,12 +131,13 @@ public class StockWriteOffProcessor {
      * @throws WriteOffInsufficientStockException if stock is insufficient
      */
     private void validateStockAvailability(Product product, int requestedQuantity) {
-        if (product.getQuantityInStock() < requestedQuantity) {
+        Integer totalStock = stockService.getTotalStockForProduct(product.getId());
+        if (totalStock == null || totalStock < requestedQuantity) {
             log.error(logMsg.get("writeoff.processor.insufficient.stock",
-                    product.getSku(), product.getQuantityInStock(), requestedQuantity));
+                    product.getSku(), totalStock != null ? totalStock : 0, requestedQuantity));
             throw new WriteOffInsufficientStockException(
                     product.getId(),
-                    product.getQuantityInStock(),
+                    totalStock != null ? totalStock : 0,
                     requestedQuantity
             );
         }

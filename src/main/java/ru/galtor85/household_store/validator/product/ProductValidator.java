@@ -6,11 +6,14 @@ import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.product.ProductAlreadyExistsException;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.advice.exception.stock.InsufficientStockException;
-import ru.galtor85.household_store.advice.exception.stock.InvalidStockOperationException;
 import ru.galtor85.household_store.advice.exception.validation.InvalidPriceException;
 import ru.galtor85.household_store.entity.product.Product;
+import ru.galtor85.household_store.repository.cart.CartItemRepository;
+import ru.galtor85.household_store.repository.order.SalesOrderItemRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
+import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.service.stock.StockService;
 
 import java.math.BigDecimal;
 
@@ -24,6 +27,10 @@ public class ProductValidator {
 
     private final ProductRepository productRepository;
     private final LogMessageService logMsg;
+    private final MessageService messageService;
+    private final CartItemRepository cartItemRepository;
+    private final SalesOrderItemRepository salesOrderItemRepository;
+    private final StockService stockService;
 
     /**
      * Validates product exists by ID.
@@ -91,21 +98,6 @@ public class ProductValidator {
     }
 
     /**
-     * Validates stock operation won't result in negative quantity.
-     *
-     * @param product product entity
-     * @param quantity adjustment amount
-     * @throws InvalidStockOperationException if would result in negative stock
-     */
-    public void validateStockOperation(Product product, int quantity) {
-        int newQuantity = product.getQuantityInStock() + quantity;
-        if (newQuantity < 0) {
-            log.warn(logMsg.get("manager.stock.log.invalid", product.getQuantityInStock(), quantity));
-            throw new InvalidStockOperationException(product.getQuantityInStock(), quantity);
-        }
-    }
-
-    /**
      * Validates price is not negative.
      *
      * @param price price to validate
@@ -133,6 +125,20 @@ public class ProductValidator {
         return product;
     }
 
+    public void validateProductDeletable(Product product) {
+        boolean hasSales = salesOrderItemRepository.existsByProductId(product.getId());
+        if (hasSales) {
+            throw new IllegalStateException(
+                    messageService.get("manager.product.error.has.sales", product.getId()));
+        }
+
+        boolean inCart = cartItemRepository.existsByProductId(product.getId());
+        if (inCart) {
+            throw new IllegalStateException(
+                    messageService.get("manager.product.error.in.cart", product.getId()));
+        }
+    }
+
     /**
      * Finds product by ID.
      *
@@ -156,10 +162,13 @@ public class ProductValidator {
      * @throws InsufficientStockException if insufficient stock
      */
     public void validateStockAvailability(Product product, int requestedQuantity) {
-        if (product.getQuantityInStock() < requestedQuantity) {
+        Integer totalStock = stockService.getTotalStockForProduct(product.getId());
+        int availableStock = totalStock != null ? totalStock : 0;
+
+        if (availableStock < requestedQuantity) {
             log.warn(logMsg.get("manager.order.log.insufficient.stock",
-                    product.getName(), product.getQuantityInStock(), requestedQuantity));
-            throw new InsufficientStockException(product.getName(), product.getQuantityInStock());
+                    product.getName(), availableStock, requestedQuantity));
+            throw new InsufficientStockException(product.getName(), availableStock);
         }
     }
 }

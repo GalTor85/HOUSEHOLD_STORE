@@ -12,6 +12,7 @@ import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.product.ProductAttribute;
 import ru.galtor85.household_store.entity.product.ProductMedia;
 import ru.galtor85.household_store.repository.product.ProductMediaRepository;
+import ru.galtor85.household_store.repository.product.ProductStockRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,6 +29,7 @@ public class ProductMapper {
 
     private final ProductMediaRepository mediaRepository;
     private final ProductMediaMapper mediaMapper;
+    private final ProductStockRepository stockRepository;
 
     /**
      * Converts ProductCreateRequest to Product entity.
@@ -48,7 +50,6 @@ public class ProductMapper {
                 .name(request.getName())
                 .description(request.getDescription())
                 .price(request.getPrice())
-                .quantityInStock(request.getQuantityInStock() != null ? request.getQuantityInStock() : 0)
                 .category(request.getCategory())
                 .brand(request.getBrand())
                 .imageUrl(request.getImageUrl())
@@ -83,7 +84,6 @@ public class ProductMapper {
         if (request.getName() != null) product.setName(request.getName());
         if (request.getDescription() != null) product.setDescription(request.getDescription());
         if (request.getPrice() != null) product.setPrice(request.getPrice());
-        if (request.getQuantityInStock() != null) product.setQuantityInStock(request.getQuantityInStock());
         if (request.getCategory() != null) product.setCategory(request.getCategory());
         if (request.getBrand() != null) product.setBrand(request.getBrand());
         if (request.getImageUrl() != null) product.setImageUrl(request.getImageUrl());
@@ -124,6 +124,10 @@ public class ProductMapper {
                 .map(this::toAttributeDto)
                 .collect(Collectors.toList());
 
+        // Calculate total stock from ProductStock table
+        Integer totalStock = stockRepository.getTotalStockForProduct(product.getId());
+        totalStock = totalStock != null ? totalStock : 0;
+
         return ProductDto.builder()
                 .id(product.getId())
                 .sku(product.getSku())
@@ -132,7 +136,7 @@ public class ProductMapper {
                 .name(product.getName())
                 .description(product.getDescription())
                 .price(product.getPrice())
-                .quantityInStock(product.getQuantityInStock())
+                .quantityInStock(totalStock)
                 .category(product.getCategory())
                 .brand(product.getBrand())
                 .imageUrl(product.getImageUrl())

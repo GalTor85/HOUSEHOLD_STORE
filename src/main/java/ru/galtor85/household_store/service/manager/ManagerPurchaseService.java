@@ -178,6 +178,8 @@ public class ManagerPurchaseService {
 
         log.info(logMsg.get("manager.purchase.receive.start", orderId, managerId));
 
+
+
         // Validate order
         PurchaseOrder order = purchaseOrderValidator.validatePurchaseOrderExists(orderId);
         purchaseOrderValidator.validateOrderForReceiving(order);

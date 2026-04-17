@@ -12,11 +12,19 @@ import ru.galtor85.household_store.dto.request.product.ProductUpdateRequest;
 import ru.galtor85.household_store.dto.response.product.ProductDto;
 import ru.galtor85.household_store.dto.response.product.ProductMediaDto;
 import ru.galtor85.household_store.entity.product.Product;
+import ru.galtor85.household_store.entity.product.ProductMedia;
+import ru.galtor85.household_store.entity.product.ProductStock;
+import ru.galtor85.household_store.entity.supplier.SupplierProduct;
 import ru.galtor85.household_store.mapper.product.ProductMapper;
 import ru.galtor85.household_store.processor.inventory.InventoryProcessor;
 import ru.galtor85.household_store.processor.product.ProductAttributeProcessor;
 import ru.galtor85.household_store.processor.product.ProductVariantProcessor;
+import ru.galtor85.household_store.repository.product.ProductAttributeRepository;
+import ru.galtor85.household_store.repository.product.ProductMediaRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
+import ru.galtor85.household_store.repository.product.ProductStockRepository;
+import ru.galtor85.household_store.repository.supplier.SupplierProductRepository;
+import ru.galtor85.household_store.service.file.FileStorageService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.product.ProductMediaService;
 import ru.galtor85.household_store.validator.product.ProductValidator;
@@ -44,6 +52,14 @@ public class ManagerProductService {
     private final ProductAttributeProcessor attributeProcessor;
     private final BusinessConfig businessConfig;
     private final LogMessageService logMsg;
+    private final SupplierProductRepository supplierProductRepository;
+    private final FileStorageService fileStorageService;
+    private final ProductMediaRepository mediaRepository;
+    private final ProductStockRepository stockRepository;
+    private final ProductAttributeRepository attributeRepository;
+
+
+
 
     // =========================================================================
     // CRUD OPERATIONS
@@ -110,6 +126,65 @@ public class ManagerProductService {
     public ProductDto getProductById(Long productId) {
         Product product = validator.validateProductExists(productId);
         return productMapper.toDto(product);
+    }
+
+    /**
+     * Permanently deletes a product and all related data.
+     *
+     * @param productId product ID
+     * @param deletedBy ID of user performing deletion
+     */
+    @Transactional
+    public void deleteProduct(Long productId, Long deletedBy) {
+        Product product = validator.validateProductExists(productId);
+
+        // Check if product can be deleted (no sales history)
+        validator.validateProductDeletable(product);
+
+        // Delete all related data
+        deleteProductRelations(product, deletedBy);
+
+        // Finally delete the product
+        productRepository.delete(product);
+
+        log.info(logMsg.get("manager.product.deleted.log",
+                product.getSku(), product.getId(), deletedBy));
+    }
+
+    private void deleteProductRelations(Product product, Long deletedBy) {
+        // 1. Delete media files from disk and database
+        List<ProductMedia> mediaList = mediaRepository.findByProductId(product.getId());
+        for (ProductMedia media : mediaList) {
+            fileStorageService.deleteFile(media.getFilePath(), product.getId());
+            log.debug(logMsg.get("manager.product.media.deleted",
+                    media.getId(), product.getId(), deletedBy));
+        }
+        mediaRepository.deleteAll(mediaList);
+
+        // 2. Delete product stock records
+        List<ProductStock> stocks = stockRepository.findByProductId(product.getId());
+        stockRepository.deleteAll(stocks);
+        log.debug(logMsg.get("manager.product.stocks.deleted",
+                stocks.size(), product.getId(), deletedBy));
+
+        // 3. Delete attributes
+        attributeRepository.deleteByProductId(product.getId());
+        log.debug(logMsg.get("manager.product.attributes.deleted",
+                product.getId(), deletedBy));
+
+        // 4. Delete supplier product links
+        List<SupplierProduct> supplierProducts = supplierProductRepository.findByProductId(product.getId());
+        supplierProductRepository.deleteAll(supplierProducts);
+        log.debug(logMsg.get("manager.product.supplier.links.deleted",
+                supplierProducts.size(), product.getId(), deletedBy));
+
+        // 5. Delete variants recursively
+        for (Product variant : product.getVariants()) {
+            deleteProductRelations(variant, deletedBy);
+            productRepository.delete(variant);
+            log.debug(logMsg.get("manager.product.variant.deleted",
+                    variant.getId(), product.getId(), deletedBy));
+        }
     }
 
     /**
@@ -198,20 +273,6 @@ public class ManagerProductService {
     // =========================================================================
     // INVENTORY MANAGEMENT
     // =========================================================================
-
-    /**
-     * Adjusts product stock quantity.
-     *
-     * @param productId product ID
-     * @param quantity  adjustment amount
-     * @param reason    reason for adjustment
-     * @return updated product DTO
-     */
-    @Transactional
-    public ProductDto adjustStock(Long productId, int quantity, String reason) {
-        Product product = validator.validateProductExists(productId);
-        return inventoryProcessor.adjustStock(product, quantity, reason);
-    }
 
     /**
      * Updates product price.

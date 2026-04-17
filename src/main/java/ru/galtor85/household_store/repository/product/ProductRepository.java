@@ -20,8 +20,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Page<Product> findByActiveTrue(Pageable pageable);
 
-    List<Product> findByQuantityInStockLessThan(int threshold);
-
     @Query("SELECT p FROM Product p WHERE " +
             "(:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
             "(:category IS NULL OR p.category = :category) AND " +
@@ -35,6 +33,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                  @Param("minPrice") BigDecimal minPrice,
                                  @Param("maxPrice") BigDecimal maxPrice,
                                  Pageable pageable);
+
+    /**
+     * Finds products with total stock below threshold across all warehouses.
+     */
+    @Query("SELECT p FROM Product p WHERE p.active = true AND " +
+            "(SELECT COALESCE(SUM(ps.quantity), 0) FROM ProductStock ps WHERE ps.productId = p.id) < :threshold")
+    List<Product> findLowStockProducts(@Param("threshold") int threshold);
 
     /**
      * Finds products by category with pagination.
