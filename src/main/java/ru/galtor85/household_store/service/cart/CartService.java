@@ -23,6 +23,7 @@ import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.cart.CartValidator;
+import ru.galtor85.household_store.validator.stock.StockAvailabilityValidator;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -48,6 +49,7 @@ public class CartService {
     private final MessageService messageService;
     private final BusinessConfig businessConfig;
     private final LogMessageService logMsg;
+    private final StockAvailabilityValidator availabilityValidator;
 
     // =========================================================================
     // CART RETRIEVAL
@@ -85,7 +87,7 @@ public class CartService {
                 .orElseThrow(() -> new ProductNotFoundException(request.getProductId()));
 
         cartValidator.validateProductActive(product);
-        cartValidator.validateStockAvailability(product, request.getQuantity());
+        availabilityValidator.validateStockAvailability(product, request.getQuantity());
 
         cartValidator.validateMaxQuantityPerItem(request.getQuantity());
 
@@ -137,7 +139,7 @@ public class CartService {
         } else {
             Product product = productRepository.findById(productId)
                     .orElseThrow(() -> new ProductNotFoundException(productId));
-            cartValidator.validateStockAvailability(product, request.getQuantity());
+            availabilityValidator.validateStockAvailability(product, request.getQuantity());
 
             item.setQuantity(request.getQuantity());
             cartItemRepository.save(item);

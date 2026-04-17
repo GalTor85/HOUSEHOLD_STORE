@@ -53,6 +53,27 @@ public class WarehouseValidator {
                 });
     }
 
+    /**
+     * Validates that warehouse is active.
+     *
+     * @param warehouse warehouse entity
+     * @throws IllegalStateException if warehouse is not active
+     */
+    public void validateWarehouseActive(Warehouse warehouse) {
+        if (warehouse == null) {
+            throw new IllegalArgumentException(
+                    messageService.get("warehouse.validation.null")
+            );
+        }
+
+        if (!Boolean.TRUE.equals(warehouse.getIsActive())) {
+            log.warn(logMsg.get("warehouse.validation.inactive", warehouse.getCode()));
+            throw new IllegalStateException(
+                    messageService.get("warehouse.validation.inactive", warehouse.getCode())
+            );
+        }
+    }
+
     // =========================================================================
     // UNIQUENESS VALIDATION
     // =========================================================================

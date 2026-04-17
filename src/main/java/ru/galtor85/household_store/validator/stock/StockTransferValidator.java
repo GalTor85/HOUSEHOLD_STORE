@@ -3,21 +3,17 @@ package ru.galtor85.household_store.validator.stock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
 import ru.galtor85.household_store.advice.exception.stock.InsufficientStockException;
 import ru.galtor85.household_store.advice.exception.stock.SameWarehouseTransferException;
-import ru.galtor85.household_store.advice.exception.warehouse.WarehouseNotFoundException;
 import ru.galtor85.household_store.dto.request.stock.StockTransferRequest;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.product.ProductStock;
 import ru.galtor85.household_store.entity.warehouse.StorageCell;
-import ru.galtor85.household_store.entity.warehouse.Warehouse;
-import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
 import ru.galtor85.household_store.repository.warehouse.StorageCellRepository;
-import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.validator.cell.CellValidationHelper;
 
 /**
  * Validator for stock transfer operations.
@@ -31,61 +27,11 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 @RequiredArgsConstructor
 public class StockTransferValidator {
 
-    private final ProductRepository productRepository;
-    private final WarehouseRepository warehouseRepository;
     private final StorageCellRepository storageCellRepository;
     private final ProductStockRepository productStockRepository;
     private final MessageService messageService;
     private final LogMessageService logMsg;
-
-    /**
-     * Validates that a product exists and returns it.
-     *
-     * @param productId product identifier
-     * @return product entity
-     * @throws ProductNotFoundException if product not found
-     */
-    public Product validateProductExists(Long productId) {
-        return productRepository.findById(productId)
-                .orElseThrow(() -> {
-                    log.error(logMsg.get("product.not.found", productId));
-                    return new ProductNotFoundException(productId);
-                });
-    }
-
-    /**
-     * Validates that a source warehouse exists.
-     * Returns null if warehouseId is null (source warehouse is optional).
-     *
-     * @param warehouseId source warehouse identifier
-     * @return warehouse entity or null
-     * @throws WarehouseNotFoundException if warehouseId is provided but not found
-     */
-    public Warehouse validateSourceWarehouseExists(Long warehouseId) {
-        if (warehouseId == null) {
-            return null;
-        }
-        return warehouseRepository.findById(warehouseId)
-                .orElseThrow(() -> {
-                    log.error(logMsg.get("warehouse.not.found", warehouseId));
-                    return new WarehouseNotFoundException(warehouseId);
-                });
-    }
-
-    /**
-     * Validates that a destination warehouse exists.
-     *
-     * @param warehouseId destination warehouse identifier
-     * @return warehouse entity
-     * @throws WarehouseNotFoundException if warehouse not found
-     */
-    public Warehouse validateDestinationWarehouseExists(Long warehouseId) {
-        return warehouseRepository.findById(warehouseId)
-                .orElseThrow(() -> {
-                    log.error(logMsg.get("warehouse.not.found", warehouseId));
-                    return new WarehouseNotFoundException(warehouseId);
-                });
-    }
+    private final CellValidationHelper cellValidationHelper;
 
     /**
      * Validates that a source storage cell exists if specified.
@@ -172,6 +118,68 @@ public class StockTransferValidator {
         if (request.getFromWarehouseId() != null &&
                 request.getFromWarehouseId().equals(request.getToWarehouseId())) {
             throw new SameWarehouseTransferException(request.getFromWarehouseId());
+        }
+    }
+
+    /**
+     * Validates that source cell contains the correct product.
+     */
+    public void validateSourceCellContainsProduct(StorageCell cell, Long productId, int quantity) {
+        if (cell == null) {
+            return;
+        }
+
+        if (!cell.getIsOccupied()) {
+            throw new IllegalArgumentException(
+                    messageService.get("stock.transfer.source.cell.empty", cell.getCode())
+            );
+        }
+
+        if (!cell.getCurrentProductId().equals(productId)) {
+            throw new IllegalArgumentException(
+                    messageService.get("stock.transfer.source.cell.wrong.product",
+                            cell.getCode(), productId)
+            );
+        }
+
+        int currentQuantity = cell.getCurrentQuantity() != null ? cell.getCurrentQuantity() : 0;
+        if (currentQuantity < quantity) {
+            throw new IllegalArgumentException(
+                    messageService.get("stock.transfer.source.cell.insufficient.quantity",
+                            cell.getCode(), currentQuantity, quantity)
+            );
+        }
+    }
+
+    public void validateDestinationCellCapacity(StorageCell cell, Product product, int quantity) {
+        if (cell == null) return;
+
+        cellValidationHelper.validateCellActive(cell);
+        cellValidationHelper.validateCellTypeCompatibility(cell, product);
+        cellValidationHelper.validateWeightLimit(cell, product, quantity);
+        cellValidationHelper.validateVolumeLimit(cell, product, quantity);
+
+        if (cell.getIsOccupied() && !cell.getCurrentProductId().equals(product.getId())) {
+            throw new IllegalArgumentException(
+                    messageService.get("stock.transfer.dest.cell.different.product",
+                            cell.getCode(), product.getSku())
+            );
+        }
+    }
+
+    /**
+     * Validates that cell belongs to warehouse.
+     */
+    public void validateCellBelongsToWarehouse(StorageCell cell, Long warehouseId, String cellType) {
+        if (cell == null) {
+            return;
+        }
+
+        if (!cell.getWarehouse().getId().equals(warehouseId)) {
+            throw new IllegalArgumentException(
+                    messageService.get("stock.transfer.cell.not.in.warehouse",
+                            cell.getCode(), cellType)
+            );
         }
     }
 }

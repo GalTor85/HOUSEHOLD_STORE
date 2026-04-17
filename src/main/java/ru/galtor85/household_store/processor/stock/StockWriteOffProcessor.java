@@ -19,6 +19,7 @@ import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.stock.StockService;
 import ru.galtor85.household_store.util.entity.EntityFinder;
 import ru.galtor85.household_store.util.generator.NumberGenerator;
+import ru.galtor85.household_store.validator.stock.StockAvailabilityValidator;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ public class StockWriteOffProcessor {
     private final MessageService messageService;
     private final LogMessageService logMsg;
     private final StockService stockService;
+    private final StockAvailabilityValidator availabilityValidator;
 
 
     // =========================================================================
@@ -70,7 +72,7 @@ public class StockWriteOffProcessor {
         for (StockWriteOffItem item : request.getItems()) {
             try {
                 Product product = entityFinder.findProductById(item.getProductId());
-                validateStockAvailability(product, item.getQuantity());
+                availabilityValidator.validateStockAvailability(product, item.getQuantity());
 
                 int oldQuantity = stockService.getTotalStockForProduct(product.getId());
                 int newQuantity = stockService.updateProductStock(product, item.getQuantity(), request.getWarehouseId(), false);
@@ -122,26 +124,6 @@ public class StockWriteOffProcessor {
     // =========================================================================
     // HELPER METHODS
     // =========================================================================
-
-    /**
-     * Validates sufficient stock availability.
-     *
-     * @param product           the product
-     * @param requestedQuantity the requested quantity
-     * @throws WriteOffInsufficientStockException if stock is insufficient
-     */
-    private void validateStockAvailability(Product product, int requestedQuantity) {
-        Integer totalStock = stockService.getTotalStockForProduct(product.getId());
-        if (totalStock == null || totalStock < requestedQuantity) {
-            log.error(logMsg.get("writeoff.processor.insufficient.stock",
-                    product.getSku(), totalStock != null ? totalStock : 0, requestedQuantity));
-            throw new WriteOffInsufficientStockException(
-                    product.getId(),
-                    totalStock != null ? totalStock : 0,
-                    requestedQuantity
-            );
-        }
-    }
 
     /**
      * Updates product stock record in product_stocks table.

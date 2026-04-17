@@ -233,17 +233,6 @@ public class CashTransactionValidator {
     }
 
     /**
-     * Checks if a refund already exists for a transaction.
-     *
-     * @param transactionId original transaction ID
-     * @return true if refund exists
-     */
-    public boolean hasRefund(Long transactionId) {
-        return cashTransactionRepository.existsByOriginalTransactionId(transactionId);
-    }
-
-    // CashTransactionValidator.java
-    /**
      * Validates that invoice can be refunded.
      *
      * @param invoice the invoice entity

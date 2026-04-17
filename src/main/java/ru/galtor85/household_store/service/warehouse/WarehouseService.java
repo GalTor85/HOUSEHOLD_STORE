@@ -31,6 +31,7 @@ import ru.galtor85.household_store.repository.warehouse.WarehouseRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.validator.cell.CellValidationHelper;
 import ru.galtor85.household_store.validator.product.ProductValidator;
+import ru.galtor85.household_store.validator.stock.StockAvailabilityValidator;
 import ru.galtor85.household_store.validator.warehouse.WarehouseValidator;
 
 import java.util.List;
@@ -74,6 +75,7 @@ public class WarehouseService {
     private final CellManagementProcessor cellProcessor;
     private final CellAssignmentProcessor assignmentProcessor;
     private final StockMovementProcessor movementProcessor;
+    private final StockAvailabilityValidator availabilityValidator;
 
     // =========================================================================
     // WAREHOUSE MANAGEMENT
@@ -192,8 +194,12 @@ public class WarehouseService {
         // Find cell
         StorageCell cell = cellProcessor.findCellById(cellId);
 
-        // Find and validate product
-        Product product = productValidator.findAndValidateProduct(productId, quantity);
+        // Validate product exists and is active
+        Product product = productValidator.validateProductExists(productId);
+        productValidator.validateProductActive(product);
+
+        // Validate sufficient stock availability
+        availabilityValidator.validateStockAvailability(product, quantity);
 
         // Check if product is already in another cell of the same warehouse
         List<StorageCell> cellsWithProduct = storageCellRepository

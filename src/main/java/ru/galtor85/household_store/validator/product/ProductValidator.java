@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.product.ProductAlreadyExistsException;
+import ru.galtor85.household_store.advice.exception.product.ProductInactiveException;
 import ru.galtor85.household_store.advice.exception.product.ProductNotFoundException;
-import ru.galtor85.household_store.advice.exception.stock.InsufficientStockException;
 import ru.galtor85.household_store.advice.exception.validation.InvalidPriceException;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.repository.cart.CartItemRepository;
@@ -13,7 +13,6 @@ import ru.galtor85.household_store.repository.order.SalesOrderItemRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
-import ru.galtor85.household_store.service.stock.StockService;
 
 import java.math.BigDecimal;
 
@@ -30,7 +29,7 @@ public class ProductValidator {
     private final MessageService messageService;
     private final CartItemRepository cartItemRepository;
     private final SalesOrderItemRepository salesOrderItemRepository;
-    private final StockService stockService;
+
 
     /**
      * Validates product exists by ID.
@@ -110,21 +109,6 @@ public class ProductValidator {
         }
     }
 
-    /**
-     * Finds product by ID and validates stock availability.
-     *
-     * @param productId product ID
-     * @param requestedQuantity requested quantity
-     * @return product entity
-     * @throws ProductNotFoundException if not found
-     * @throws InsufficientStockException if insufficient stock
-     */
-    public Product findAndValidateProduct(Long productId, int requestedQuantity) {
-        Product product = findProductById(productId);
-        validateStockAvailability(product, requestedQuantity);
-        return product;
-    }
-
     public void validateProductDeletable(Product product) {
         boolean hasSales = salesOrderItemRepository.existsByProductId(product.getId());
         if (hasSales) {
@@ -140,35 +124,21 @@ public class ProductValidator {
     }
 
     /**
-     * Finds product by ID.
-     *
-     * @param productId product ID
-     * @return product entity
-     * @throws ProductNotFoundException if not found
-     */
-    public Product findProductById(Long productId) {
-        return productRepository.findById(productId)
-                .orElseThrow(() -> {
-                    log.error(logMsg.get("manager.product.log.not.found", productId));
-                    return new ProductNotFoundException(productId);
-                });
-    }
-
-    /**
-     * Validates sufficient stock availability.
+     * Validates that product is active.
      *
      * @param product product entity
-     * @param requestedQuantity requested quantity
-     * @throws InsufficientStockException if insufficient stock
+     * @throws ProductInactiveException if product is not active
      */
-    public void validateStockAvailability(Product product, int requestedQuantity) {
-        Integer totalStock = stockService.getTotalStockForProduct(product.getId());
-        int availableStock = totalStock != null ? totalStock : 0;
+    public void validateProductActive(Product product) {
+        if (product == null) {
+            throw new IllegalArgumentException(
+                    messageService.get("product.validation.null")
+            );
+        }
 
-        if (availableStock < requestedQuantity) {
-            log.warn(logMsg.get("manager.order.log.insufficient.stock",
-                    product.getName(), availableStock, requestedQuantity));
-            throw new InsufficientStockException(product.getName(), availableStock);
+        if (!product.isActive()) {
+            log.warn(logMsg.get("product.validation.inactive", product.getId(), product.getSku()));
+            throw new ProductInactiveException(product.getId());
         }
     }
 }

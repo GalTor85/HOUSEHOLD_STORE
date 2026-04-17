@@ -5,13 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.advice.exception.cart.CartEmptyException;
 import ru.galtor85.household_store.advice.exception.product.ProductInactiveException;
-import ru.galtor85.household_store.advice.exception.stock.InsufficientStockException;
 import ru.galtor85.household_store.config.BusinessConfig;
 import ru.galtor85.household_store.entity.cart.Cart;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
-import ru.galtor85.household_store.service.stock.StockService;
 
 /**
  * Validator for shopping cart operations.
@@ -31,7 +29,6 @@ public class CartValidator {
     private final MessageService messageService;
     private final BusinessConfig businessConfig;
     private final LogMessageService logMsg;
-    private final StockService stockService;
 
     /**
      * Validates that a cart is not empty.
@@ -56,24 +53,6 @@ public class CartValidator {
         if (!product.isActive()) {
             log.warn(logMsg.get("cart.validation.product.inactive", product.getId()));
             throw new ProductInactiveException(product.getId());
-        }
-    }
-
-    /**
-     * Validates that sufficient stock is available for a product.
-     *
-     * @param product the product to validate
-     * @param requestedQuantity the quantity requested to add to cart
-     * @throws InsufficientStockException if requested quantity exceeds available stock
-     */
-    public void validateStockAvailability(Product product, int requestedQuantity) {
-        Integer totalStock = stockService.getTotalStockForProduct(product.getId());
-        int availableStock = totalStock != null ? totalStock : 0;
-
-        if (availableStock < requestedQuantity) {
-            log.warn(logMsg.get("cart.validation.insufficient.stock",
-                    product.getName(), availableStock, requestedQuantity));
-            throw new InsufficientStockException(product.getName(), availableStock);
         }
     }
 
