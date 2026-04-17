@@ -2,6 +2,10 @@ package ru.galtor85.household_store.service.cash;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.cash.InvoiceNotFoundException;
@@ -235,6 +239,58 @@ public class CashTransactionService {
                 invoice.getInvoiceNumber(),
                 invoice.getStatus().name(),
                 invoice.getTotalPaidAmount()));
+    }
+
+    /**
+     * Gets transaction by ID with full details.
+     *
+     * @param transactionId transaction ID
+     * @return transaction DTO with enriched details
+     * @throws IllegalArgumentException if transaction not found
+     */
+    @Transactional(readOnly = true)
+    public CashTransactionDto getTransactionById(Long transactionId) {
+        log.debug(logMsg.get("cash.transaction.service.get.by.id", transactionId));
+
+        CashTransaction transaction = validator.validateTransactionExists(transactionId);
+        CashTransactionDto dto = converter.toDto(transaction);
+
+        enrichDtoWithDetails(dto, transaction);
+
+        return dto;
+    }
+
+    /**
+     * Gets paginated transactions by cash register.
+     *
+     * @param cashRegisterId cash register ID
+     * @param page page number (0-indexed)
+     * @param size page size
+     * @param sortBy sort field
+     * @param sortDir sort direction (asc/desc)
+     * @return page of transaction DTOs
+     */
+    @Transactional(readOnly = true)
+    public Page<CashTransactionDto> getTransactionsByCashRegister(Long cashRegisterId,
+                                                                  int page,
+                                                                  int size,
+                                                                  String sortBy,
+                                                                  String sortDir) {
+        log.debug(logMsg.get("cash.transaction.service.get.by.register", cashRegisterId, page, size));
+
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<CashTransaction> transactions = cashTransactionRepository
+                .findByCashRegisterId(cashRegisterId, pageable);
+
+        return transactions.map(transaction -> {
+            CashTransactionDto dto = converter.toDto(transaction);
+            enrichDtoWithDetails(dto, transaction);
+            return dto;
+        });
     }
 
     private void enrichDtoWithDetails(CashTransactionDto dto, CashTransaction tx) {

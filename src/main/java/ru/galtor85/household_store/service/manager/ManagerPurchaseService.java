@@ -20,6 +20,10 @@ import ru.galtor85.household_store.dto.request.supplier.SupplierUpdateRequest;
 import ru.galtor85.household_store.dto.response.order.PurchaseOrderDto;
 import ru.galtor85.household_store.dto.response.supplier.SupplierDto;
 import ru.galtor85.household_store.dto.response.supplier.SupplierProductDto;
+import ru.galtor85.household_store.entity.finance.CashTransaction;
+import ru.galtor85.household_store.entity.finance.Invoice;
+import ru.galtor85.household_store.entity.finance.InvoiceStatus;
+import ru.galtor85.household_store.entity.finance.TransactionType;
 import ru.galtor85.household_store.entity.order.OrderPaymentStatus;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
@@ -31,19 +35,24 @@ import ru.galtor85.household_store.processor.purchase.PurchaseOrderQueryProcesso
 import ru.galtor85.household_store.processor.purchase.PurchaseReceivingProcessor;
 import ru.galtor85.household_store.processor.stock.StockWriteOffProcessor;
 import ru.galtor85.household_store.processor.supplier.SupplierProductProcessor;
+import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.supplier.SupplierRepository;
+import ru.galtor85.household_store.service.cash.CashTransactionService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
+import ru.galtor85.household_store.util.calculator.RefundCalculator;
 import ru.galtor85.household_store.util.date.DateParser;
 import ru.galtor85.household_store.validator.common.ValidationHelper;
 import ru.galtor85.household_store.validator.order.PurchaseOrderValidator;
 import ru.galtor85.household_store.validator.supplier.SupplierValidator;
 import ru.galtor85.household_store.validator.warehouse.WarehouseValidator;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
  * Service for managing purchase orders and suppliers
@@ -73,6 +82,8 @@ public class ManagerPurchaseService {
     private final MessageService messageService;
     private final DateParser dateParser;
     private final LogMessageService logMsg;
+    private final CashTransactionService cashTransactionService;
+    private final InvoiceRepository invoiceRepository;
 
     private static final String NOTES_SEPARATOR = " | ";
     private static final String NOTES_HEADER = "-- ";
@@ -177,7 +188,6 @@ public class ManagerPurchaseService {
                                                  Long managerId) {
 
         log.info(logMsg.get("manager.purchase.receive.start", orderId, managerId));
-
 
 
         // Validate order
@@ -290,10 +300,13 @@ public class ManagerPurchaseService {
         // Validate order exists
         PurchaseOrder order = purchaseOrderValidator.validatePurchaseOrderExists(request.getOrderId());
 
-        // Validate order can be reversed
+        // Validate order can be reversed (has received items)
         validateOrderCanBeReversed(order);
 
-        // Process reversal
+        // ✅ Create financial refund for supplier before stock reversal
+        createSupplierRefund(order, request, managerId);
+
+        // Process stock reversal (return goods to warehouse)
         PurchaseReceivingProcessor.ReverseReceiptResult result =
                 purchaseReceivingProcessor.reverseReceipt(order, request, managerId);
 
@@ -326,6 +339,61 @@ public class ManagerPurchaseService {
                 request.getOrderId(), result.getReversedItems().size(), managerId));
 
         return purchaseOrderConverter.toDto(savedOrder, supplierName);
+    }
+
+    /**
+     * Creates financial refund for supplier when returning goods.
+     */
+    private void createSupplierRefund(PurchaseOrder order, ReverseReceiptRequest request, Long managerId) {
+        // Find all invoices for this purchase order
+        List<Invoice> invoices = invoiceRepository.findByPurchaseOrderId(order.getId());
+
+        if (invoices.isEmpty()) {
+            log.warn("No invoices found for purchase order: {}", order.getId());
+            return;
+        }
+
+        // Use calculator to get total refund amount
+        BigDecimal refundAmount = RefundCalculator.calculateTotalRefundAmount(order, request.getItems());
+
+        if (refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            log.debug("No amount to refund for purchase order: {}", order.getId());
+            return;
+        }
+
+        for (Invoice invoice : invoices) {
+            if (invoice.getStatus() == InvoiceStatus.PAID ||
+                    invoice.getStatus() == InvoiceStatus.PARTIALLY_PAID) {
+
+                // Find expense payments (payments TO supplier)
+                List<CashTransaction> payments = invoice.getCashTransactions().stream()
+                        .filter(tx -> tx.getTransactionType() == TransactionType.EXPENSE)
+                        .toList();
+
+                for (CashTransaction payment : payments) {
+                    try {
+                        // Use calculator for proportional refund
+                        BigDecimal proportionalRefund = RefundCalculator.calculateProportionalRefund(
+                                payment.getAmount(), invoice.getAmount(), refundAmount);
+
+                        if (proportionalRefund.compareTo(BigDecimal.ZERO) > 0) {
+                            cashTransactionService.cancelTransaction(
+                                    payment.getId(),
+                                    "Return to supplier: " + request.getReason(),
+                                    managerId
+                            );
+
+                            log.info(logMsg.get("purchase.reverse.refund.created",
+                                    payment.getId(), invoice.getInvoiceNumber(), proportionalRefund));
+                        }
+
+                    } catch (Exception e) {
+                        log.error(logMsg.get("purchase.reverse.refund.failed",
+                                payment.getId(), e.getMessage()), e);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -380,7 +448,7 @@ public class ManagerPurchaseService {
         if (currentNotes == null || currentNotes.isEmpty()) {
             order.setNotes(note.toString());
         } else {
-            order.setNotes(currentNotes +NOTES_SEPARATOR + note);
+            order.setNotes(currentNotes + NOTES_SEPARATOR + note);
         }
     }
 
@@ -510,7 +578,7 @@ public class ManagerPurchaseService {
         if (currentNotes == null || currentNotes.isEmpty()) {
             order.setNotes(note.toString());
         } else {
-            order.setNotes(currentNotes +NOTES_SEPARATOR + note);
+            order.setNotes(currentNotes + NOTES_SEPARATOR + note);
         }
     }
 
