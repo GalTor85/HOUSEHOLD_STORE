@@ -646,7 +646,11 @@ public class ManagerPurchaseService {
         return supplierProductProcessor.getSupplierProducts(supplierId);
     }
 
-    // ManagerPurchaseService.java
+    /**
+     * Deletes a supplier
+     *
+     * @param supplierId supplier identifier
+     */
     @Transactional
     public void deleteSupplier(Long supplierId) {
         log.info(logMsg.get("manager.supplier.delete.start", supplierId));
@@ -694,6 +698,12 @@ public class ManagerPurchaseService {
         log.info(logMsg.get("manager.supplier.delete.complete", supplierId));
     }
 
+    /**
+     * Retrieves supplier statistics
+     *
+     * @param supplierId supplier identifier
+     * @return supplier statistics DTO
+     */
     @Transactional(readOnly = true)
     public SupplierStatisticsDto getSupplierStats(Long supplierId) {
         log.info(logMsg.get("manager.supplier.stats.start", supplierId));
