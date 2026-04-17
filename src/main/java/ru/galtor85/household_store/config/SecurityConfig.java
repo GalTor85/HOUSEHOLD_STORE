@@ -1,6 +1,5 @@
 package ru.galtor85.household_store.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +28,7 @@ import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static ru.galtor85.household_store.constants.EndpointConstants.*;
@@ -59,10 +59,13 @@ public class SecurityConfig {
     private final JwtTokenCleanupFilter jwtTokenCleanupFilter;
     private final MessageService messageService;
     private final LogMessageService logMsg;
-    private final ObjectMapper objectMapper;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
-    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:8080}")
-    private String[] allowedOrigins;
+    @Value("${app.cors.allowed-origins:}")
+    private String allowedOriginsConfig;
+
+    @Value("${app.cors.allowed-origin-patterns:}")
+    private String allowedOriginPatternsConfig;
 
     @Value("${app.cors.max-age:3600}")
     private long corsMaxAge;
@@ -126,7 +129,7 @@ public class SecurityConfig {
      * @return SecurityFilterChain instance
      */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -190,22 +193,59 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
+        List<String> allowedOrigins = parseConfigValue(allowedOriginsConfig);
+        if (!allowedOrigins.isEmpty()) {
+            configuration.setAllowedOrigins(allowedOrigins);
+        }
+
+        List<String> allowedOriginPatterns = parseConfigValue(allowedOriginPatternsConfig);
+        if (!allowedOriginPatterns.isEmpty()) {
+            configuration.setAllowedOriginPatterns(allowedOriginPatterns);
+        }
+
+        if (configuration.getAllowedOrigins() == null && configuration.getAllowedOriginPatterns() == null) {
+            applyDefaultCorsPolicy(configuration);
+        }
+
         configuration.setAllowedMethods(ALLOWED_METHODS);
         configuration.setAllowedHeaders(ALLOWED_HEADERS);
+        configuration.setExposedHeaders(EXPOSED_HEADERS);
         configuration.setAllowCredentials(CORS_ALLOW_CREDENTIALS);
         configuration.setMaxAge(corsMaxAge);
-        configuration.setExposedHeaders(EXPOSED_HEADERS);
-
-        log.debug(logMsg.get("security-config.log.cors.allowed.headers", configuration.getAllowedHeaders()));
-        log.debug(logMsg.get("security-config.log.cors.allowed.methods", configuration.getAllowedMethods()));
-        log.debug(logMsg.get("security-config.log.cors.allowed.origins", configuration.getAllowedOrigins()));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration(CORS_URL_PATTERN, configuration);
 
-        log.debug(logMsg.get("security-config.log.cors.configuration.source.configured"));
+        logCorsConfiguration(configuration);
 
         return source;
+    }
+
+    private void applyDefaultCorsPolicy(CorsConfiguration config) {
+        String activeProfile = System.getProperty("spring.profiles.active", "dev");
+
+        if (activeProfile.contains("dev") || activeProfile.contains("local")) {
+            config.setAllowedOriginPatterns(Collections.singletonList("https://localhost:*"));
+            log.debug(logMsg.get("security-config.log.cors.default.dev"));
+        } else {
+            log.warn(logMsg.get("security-config.log.cors.default.prod"));
+        }
+    }
+
+    private List<String> parseConfigValue(String configValue) {
+        if (configValue == null || configValue.isBlank()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(configValue.split("[,;\\s]+"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
+    private void logCorsConfiguration(CorsConfiguration config) {
+        log.debug(logMsg.get("security-config.log.cors.allowed.headers", config.getAllowedHeaders()));
+        log.debug(logMsg.get("security-config.log.cors.allowed.methods", config.getAllowedMethods()));
+        log.debug(logMsg.get("security-config.log.cors.allowed.origins", config.getAllowedOrigins()));
+        log.debug(logMsg.get("security-config.log.cors.configuration.source.configured"));
     }
 }
