@@ -8,10 +8,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.advice.exception.cell.CellAlreadyExistsException;
 import ru.galtor85.household_store.advice.exception.warehouse.WarehouseNotFoundException;
 import ru.galtor85.household_store.config.BusinessConfig;
 import ru.galtor85.household_store.constants.TechnicalConstants;
 import ru.galtor85.household_store.dto.request.warehouse.StorageCellCreateRequest;
+import ru.galtor85.household_store.dto.request.warehouse.StorageCellUpdateRequest;
 import ru.galtor85.household_store.dto.request.warehouse.WarehouseCreateRequest;
 import ru.galtor85.household_store.dto.request.warehouse.WarehouseUpdateRequest;
 import ru.galtor85.household_store.dto.response.stock.StockMovementDto;
@@ -395,6 +397,72 @@ public class WarehouseService {
         return cells.stream()
                 .map(cellMapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Updates an existing storage cell.
+     *
+     * @param cellId cell ID
+     * @param request update request
+     * @return updated cell DTO
+     */
+    @Transactional
+    public StorageCellDto updateCell(Long cellId, StorageCellUpdateRequest request) {
+        log.info(logMsg.get("warehouse.service.update.cell.start", cellId));
+
+        StorageCell cell = cellProcessor.findCellById(cellId);
+
+        if (request.getCode() != null) {
+            // Check code uniqueness within warehouse
+            if (!request.getCode().equals(cell.getCode())) {
+                boolean exists = storageCellRepository.existsByCodeAndWarehouseId(
+                        request.getCode(), cell.getWarehouse().getId());
+                if (exists) {
+                    throw new CellAlreadyExistsException(request.getCode(), cell.getWarehouse().getId());
+                }
+                cell.setCode(request.getCode());
+            }
+        }
+
+        if (request.getSection() != null) cell.setSection(request.getSection());
+        if (request.getRack() != null) cell.setRack(request.getRack());
+        if (request.getShelf() != null) cell.setShelf(request.getShelf());
+        if (request.getPosition() != null) cell.setPosition(request.getPosition());
+        if (request.getCellType() != null) cell.setCellType(request.getCellType());
+        if (request.getMaxWeightKg() != null) cell.setMaxWeightKg(request.getMaxWeightKg());
+        if (request.getMaxVolumeM3() != null) cell.setMaxVolumeM3(request.getMaxVolumeM3());
+        if (request.getIsActive() != null) cell.setIsActive(request.getIsActive());
+        if (request.getNotes() != null) cell.setNotes(request.getNotes());
+
+        StorageCell updated = storageCellRepository.save(cell);
+
+        log.info(logMsg.get("warehouse.service.update.cell.complete", cellId));
+
+        return cellMapper.toDto(updated);
+    }
+
+    /**
+     * Deletes a storage cell.
+     *
+     * @param cellId cell ID
+     */
+    @Transactional
+    public void deleteCell(Long cellId) {
+        log.info(logMsg.get("warehouse.service.delete.cell.start", cellId));
+
+        StorageCell cell = cellProcessor.findCellById(cellId);
+
+        // Check if cell is occupied
+        if (cell.getIsOccupied()) {
+            log.warn(logMsg.get("warehouse.delete.cell.occupied", cellId));
+            throw new IllegalStateException(
+                    messageService.get("warehouse.delete.cell.occupied", cellId)
+            );
+        }
+
+        storageCellRepository.delete(cell);
+
+        log.info(logMsg.get("warehouse.service.delete.cell.complete", cellId));
     }
 
     // =========================================================================

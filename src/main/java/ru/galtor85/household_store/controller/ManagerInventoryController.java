@@ -19,6 +19,7 @@ import ru.galtor85.household_store.dto.request.product.ProductUpdateRequest;
 import ru.galtor85.household_store.dto.request.stock.StockTransferRequest;
 import ru.galtor85.household_store.dto.request.stock.StockWriteOffRequest;
 import ru.galtor85.household_store.dto.request.warehouse.StorageCellCreateRequest;
+import ru.galtor85.household_store.dto.request.warehouse.StorageCellUpdateRequest;
 import ru.galtor85.household_store.dto.request.warehouse.WarehouseCreateRequest;
 import ru.galtor85.household_store.dto.request.warehouse.WarehouseUpdateRequest;
 import ru.galtor85.household_store.dto.response.product.*;
@@ -785,6 +786,54 @@ public class ManagerInventoryController extends BaseController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.cell.cleared"),
                 cell));
+    }
+
+    /**
+     * Updates a storage cell.
+     *
+     * @param cellId cell ID
+     * @param request update request
+     * @return updated cell DTO
+     */
+    @PutMapping("/cells/{cellId}")
+    @Operation(summary = "Update storage cell",
+            description = "Updates an existing storage cell details")
+    public ResponseEntity<ApiResponse<StorageCellDto>> updateCell(
+            @Parameter(description = "Cell ID", example = "1", required = true)
+            @PathVariable Long cellId,
+            @Valid @RequestBody StorageCellUpdateRequest request) {
+
+        log.info(logMsg.get("manager.cell.update.start", cellId));
+
+        StorageCellDto cell = warehouseService.updateCell(cellId, request);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.cell.updated"),
+                cell));
+    }
+
+    /**
+     * Deletes a storage cell.
+     *
+     * @param cellId cell ID
+     * @return success response
+     */
+    @DeleteMapping("/cells/{cellId}")
+    @Operation(summary = "Delete storage cell",
+            description = "Deletes a storage cell (must be empty)")
+    public ResponseEntity<ApiResponse<Void>> deleteCell(
+            @Parameter(description = "Cell ID", example = "1", required = true)
+            @PathVariable Long cellId) {
+
+        log.info(logMsg.get("manager.cell.delete.start", cellId));
+
+        warehouseService.deleteCell(cellId);
+
+        log.info(logMsg.get("manager.cell.delete.complete", cellId));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.cell.deleted"),
+                null));
     }
 
     // =========================================================================

@@ -59,4 +59,6 @@ public interface StorageCellRepository extends JpaRepository<StorageCell, Long> 
 
     @Query("SELECT COUNT(sc) > 0 FROM StorageCell sc WHERE sc.warehouse.id = :warehouseId")
     boolean hasCellsByWarehouseId(@Param("warehouseId") Long warehouseId);
+
+    boolean existsByCodeAndWarehouseId(String code, Long warehouseId);
 }
