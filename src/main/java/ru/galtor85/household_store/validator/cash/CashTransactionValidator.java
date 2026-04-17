@@ -15,6 +15,7 @@ import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * Validator for cash transaction operations.
@@ -27,6 +28,8 @@ public class CashTransactionValidator {
     private final CashTransactionRepository cashTransactionRepository;
     private final MessageService messageService;
     private final LogMessageService logMsg;
+
+    private static final int REFUND_DAYS_LIMIT = 30;
 
     /**
      * Validates transaction exists.
@@ -167,5 +170,78 @@ public class CashTransactionValidator {
                     messageService.get("cash.transaction.validation.amount.exceeds", amount, remaining)
             );
         }
+    }
+
+    /**
+     * Validates that a transaction can be refunded.
+     *
+     * @param transaction the transaction to refund
+     * @param refundAmount the amount to refund
+     * @throws IllegalStateException if refund is not allowed
+     */
+    public void validateTransactionRefundable(CashTransaction transaction, BigDecimal refundAmount) {
+        // 1. Cannot refund a REFUND transaction
+        if (transaction.getTransactionType() == TransactionType.REFUND) {
+            log.error(logMsg.get("cash.transaction.validation.cannot.refund.refund",
+                    transaction.getId()));
+            throw new IllegalStateException(
+                    messageService.get("cash.transaction.validation.cannot.refund.refund",
+                            transaction.getId())
+            );
+        }
+
+        // 2. Cannot refund already refunded transaction
+        boolean hasRefund = cashTransactionRepository.existsByOriginalTransactionId(transaction.getId());
+        if (hasRefund) {
+            log.error(logMsg.get("cash.transaction.validation.already.refunded",
+                    transaction.getId()));
+            throw new IllegalStateException(
+                    messageService.get("cash.transaction.validation.always.refunded",
+                            transaction.getId())
+            );
+        }
+
+        // 3. Check refund deadline (30 days)
+        LocalDateTime deadline = transaction.getCreatedAt().plusDays(REFUND_DAYS_LIMIT);
+        if (LocalDateTime.now().isAfter(deadline)) {
+            log.error(logMsg.get("cash.transaction.validation.refund.deadline.expired",
+                    transaction.getId(), REFUND_DAYS_LIMIT));
+            throw new IllegalStateException(
+                    messageService.get("cash.transaction.validation.refund.deadline.expired",
+                            transaction.getId(), REFUND_DAYS_LIMIT)
+            );
+        }
+
+        // 4. Refund amount cannot exceed transaction amount
+        if (refundAmount != null && refundAmount.compareTo(transaction.getAmount()) > 0) {
+            log.error(logMsg.get("cash.transaction.validation.refund.amount.exceeds",
+                    refundAmount, transaction.getAmount()));
+            throw new IllegalArgumentException(
+                    messageService.get("cash.transaction.validation.refund.amount.exceeds",
+                            refundAmount, transaction.getAmount())
+            );
+        }
+    }
+
+    /**
+     * Validates that a transaction exists and is not a refund.
+     *
+     * @param transactionId transaction ID
+     * @return CashTransaction entity
+     */
+    public CashTransaction validateRefundableTransactionExists(Long transactionId) {
+        CashTransaction transaction = validateTransactionExists(transactionId);
+        validateTransactionRefundable(transaction, null);
+        return transaction;
+    }
+
+    /**
+     * Checks if a refund already exists for a transaction.
+     *
+     * @param transactionId original transaction ID
+     * @return true if refund exists
+     */
+    public boolean hasRefund(Long transactionId) {
+        return cashTransactionRepository.existsByOriginalTransactionId(transactionId);
     }
 }

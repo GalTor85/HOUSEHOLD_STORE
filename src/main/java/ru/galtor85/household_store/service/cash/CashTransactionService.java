@@ -201,29 +201,30 @@ public class CashTransactionService {
     public CashTransactionDto cancelTransaction(Long transactionId, String reason, Long cashierId) {
         log.info(logMsg.get("cash.transaction.service.cancel.start", transactionId, reason));
 
-        CashTransaction original = validator.validateTransactionExists(transactionId);
-        validator.validateTransactionCancellable(original);
+        // Validate transaction exists and is refundable
+        CashTransaction original = validator.validateRefundableTransactionExists(transactionId);
+        validator.validateTransactionRefundable(original, original.getAmount());
 
+        // Add cash register validation
         CashRegister cashRegister = cashRegisterService.validateCashRegisterExists(
                 original.getCashRegister().getId());
-        validator.validateCashRegisterActive(cashRegister);
+        validator.validateCashRegisterActive(cashRegister);  // Already there, good!
 
-        BigDecimal balanceBeforeRefund = cashRegisterService.getCurrentBalance(cashRegister.getId());
+        // Optional: check cashier has permission
+        // validator.validateCashier(cashRegister, cashierId);
+
+        // Create refund transaction
         CashTransaction refundTransaction = processor.createRefundTransaction(original, reason, cashierId);
-        BigDecimal balanceAfterRefund = balanceBeforeRefund.add(refundTransaction.getAmount());
 
+        // Update invoice status if needed
         if (original.getInvoice() != null) {
             updateInvoiceStatusAfterRefund(original.getInvoice());
         }
 
-        CashTransactionDto result = converter.toDtoWithBalance(
-                refundTransaction, balanceBeforeRefund, balanceAfterRefund);
-        enrichDtoWithDetails(result, refundTransaction);
-
         log.info(logMsg.get("cash.transaction.service.cancelled",
                 transactionId, refundTransaction.getId()));
 
-        return result;
+        return converter.toDto(refundTransaction);
     }
 
     // =========================================================================
