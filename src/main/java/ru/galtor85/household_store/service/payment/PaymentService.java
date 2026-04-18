@@ -14,6 +14,7 @@ import ru.galtor85.household_store.dto.request.payment.ManagerCashPaymentRequest
 import ru.galtor85.household_store.dto.request.payment.PaymentProcessRequest;
 import ru.galtor85.household_store.dto.response.finance.BankAccountDto;
 import ru.galtor85.household_store.dto.response.finance.CashRegisterDto;
+import ru.galtor85.household_store.dto.response.finance.CashTransactionDto;
 import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
 import ru.galtor85.household_store.dto.response.payment.PaymentTransactionDto;
 import ru.galtor85.household_store.dto.response.user.UserTypeAssignmentDto;
@@ -473,18 +474,12 @@ public class PaymentService {
     @Transactional
     public PaymentTransactionDto managerProcessCashRefund(PaymentProcessRequest request, Long managerId) {
         Long originalTransactionId = request.getOriginalTransactionId();
-        Long cashRegisterId = request.getCashRegisterId();
         BigDecimal amount = request.getAmount();
         String reason = request.getRefundReason();
 
         log.info(logMsg.get("payment.manager.refund.cash.start", originalTransactionId, amount));
 
         validateManagerRole(managerId);
-
-        CashRegisterDto cashRegister = cashRegisterService.getCashRegisterById(cashRegisterId);
-        if (!cashRegister.getIsActive()) {
-            throw new IllegalStateException(messageService.get("cash.register.closed", cashRegisterId));
-        }
 
         PaymentTransaction originalTransaction = paymentTransactionRepository.findById(originalTransactionId)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -501,27 +496,34 @@ public class PaymentService {
 
         InvoiceDto invoice = invoiceService.getInvoiceById(originalTransaction.getInvoiceId());
 
-        // Use REFUND transaction type
-        CashTransactionRequest refundRequest = CashTransactionRequest.builder()
-                .cashRegisterId(cashRegisterId)
-                .transactionType(TransactionType.REFUND)  // REFUND, not EXPENSE
-                .amount(amount)
-                .originalTransactionId(originalTransactionId)
-                .invoiceId(invoice.getId())
-                .description(messageService.get("payment.cash.refund.description",
-                        originalTransactionId, reason))
-                .build();
+         // Calculate total amount to refund (full invoice remaining or specified amount)
+        BigDecimal refundAmount = amount != null ? amount : invoice.getRemainingAmount();
 
-        // This will now use validateInvoiceForRefund()
-        cashTransactionService.createTransaction(refundRequest, managerId);
+        if (refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException(messageService.get("payment.refund.amount.zero"));
+        }
 
-        PaymentTransaction refundTransaction = createRefundTransaction(originalTransaction, amount, reason, managerId);
+        // Execute proportional refund across all payments
+        List<CashTransactionDto> refundTransactions = cashTransactionService.executeProportionalRefund(
+                invoice.getId(),
+                refundAmount,
+                reason != null ? reason : messageService.get("payment.refund.default.reason"),
+                managerId
+        );
+
+        if (refundTransactions.isEmpty()) {
+            throw new IllegalStateException(messageService.get("payment.refund.no.transactions.created"));
+        }
+
+        // Create payment transaction record for the refund
+        PaymentTransaction refundTransaction = createRefundTransaction(originalTransaction, refundAmount, reason, managerId);
         refundTransaction = paymentTransactionRepository.save(refundTransaction);
 
+        // Mark original as refunded
         originalTransaction.setStatus(PaymentTransactionStatus.REFUNDED);
         paymentTransactionRepository.save(originalTransaction);
 
-        log.info(logMsg.get("payment.manager.refund.cash.success", originalTransactionId));
+        log.info(logMsg.get("payment.manager.refund.cash.success", originalTransactionId, refundTransactions.size()));
         return paymentTransactionConverter.toDto(refundTransaction);
     }
 

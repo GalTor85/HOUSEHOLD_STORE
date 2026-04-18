@@ -11,14 +11,18 @@ import ru.galtor85.household_store.dto.common.ReceiveStockItem;
 import ru.galtor85.household_store.dto.request.order.ReceiveAndStockRequest;
 import ru.galtor85.household_store.dto.request.order.ReverseReceiptItem;
 import ru.galtor85.household_store.dto.request.order.ReverseReceiptRequest;
+import ru.galtor85.household_store.dto.response.finance.CashTransactionDto;
 import ru.galtor85.household_store.dto.response.product.ProductStockDto;
+import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
 import ru.galtor85.household_store.entity.order.PurchaseOrderItem;
 import ru.galtor85.household_store.entity.product.Product;
 import ru.galtor85.household_store.entity.stock.MovementType;
 import ru.galtor85.household_store.entity.stock.StockMovement;
+import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.stock.StockMovementRepository;
+import ru.galtor85.household_store.service.cash.CashTransactionService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.stock.StockService;
@@ -26,6 +30,7 @@ import ru.galtor85.household_store.service.warehouse.WarehouseSelectionService;
 import ru.galtor85.household_store.service.warehouse.WarehouseService;
 import ru.galtor85.household_store.util.batch.BatchNumberGenerator;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -54,6 +59,8 @@ public class PurchaseReceivingProcessor {
     private final WarehouseService warehouseService;
     private final ReceivingQuantityCalculator quantityCalculator;
     private final WarehouseSelectionService warehouseSelectionService;
+    private final CashTransactionService cashTransactionService;
+    private final InvoiceRepository invoiceRepository;
 
     // =========================================================================
     // RECEIVE PURCHASE ORDER
@@ -267,6 +274,9 @@ public class PurchaseReceivingProcessor {
         Map<Long, List<StockMovement>> receiptsByProduct = receiptTransactions.stream()
                 .collect(Collectors.groupingBy(StockMovement::getProductId));
 
+        // Calculate total return amount for financial refund
+        BigDecimal totalReturnAmount = BigDecimal.ZERO;
+
         for (PurchaseOrderItem orderItem : order.getItems()) {
             Product product = productRepository.findById(orderItem.getProductId())
                     .orElseThrow(() -> new ProductNotFoundException(orderItem.getProductId()));
@@ -306,6 +316,11 @@ public class PurchaseReceivingProcessor {
             if (quantityToReverse <= 0) {
                 continue;
             }
+
+            // Calculate return amount for this product (price * quantity)
+            BigDecimal productReturnAmount = orderItem.getPrice()
+                    .multiply(BigDecimal.valueOf(quantityToReverse));
+            totalReturnAmount = totalReturnAmount.add(productReturnAmount);
 
             try {
                 // Return goods using LIFO (last in, first out)
@@ -364,6 +379,40 @@ public class PurchaseReceivingProcessor {
                 log.error(logMsg.get("purchase.receiving.reverse.item.failed",
                         product.getId(), e.getMessage()), e);
                 failedItems.add(product.getId());
+            }
+        }
+
+
+        if (totalReturnAmount.compareTo(BigDecimal.ZERO) > 0) {
+            // Find invoice for this purchase order
+            Invoice invoice = invoiceRepository.findByPurchaseOrderId(order.getId())
+                    .stream()
+                    .findFirst()
+                    .orElse(null);
+
+            if (invoice != null) {
+                try {
+                    log.info(logMsg.get("purchase.receiving.reverse.financial.refund.start",
+                            order.getOrderNumber(), totalReturnAmount));
+
+                    List<CashTransactionDto> financialRefunds = cashTransactionService.executeProportionalRefund(
+                            invoice.getId(),
+                            totalReturnAmount,
+                            "Return goods to supplier: " + request.getReason(),
+                            managerId
+                    );
+
+                    log.info(logMsg.get("purchase.receiving.reverse.financial.refund.complete",
+                            order.getOrderNumber(), financialRefunds.size(), totalReturnAmount));
+
+                } catch (Exception e) {
+                    log.error(logMsg.get("purchase.receiving.reverse.financial.refund.failed",
+                            order.getOrderNumber(), e.getMessage()), e);
+                    // Don't block stock return if financial refund fails
+                }
+            } else {
+                log.warn(logMsg.get("purchase.receiving.reverse.no.invoice",
+                        order.getOrderNumber()));
             }
         }
 

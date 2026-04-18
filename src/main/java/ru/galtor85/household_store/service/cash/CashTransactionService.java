@@ -18,10 +18,12 @@ import ru.galtor85.household_store.processor.cash.CashTransactionProcessor;
 import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
+import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.service.user.UserSearchService;
 import ru.galtor85.household_store.validator.cash.CashTransactionValidator;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,6 +47,169 @@ public class CashTransactionService {
     private final CashRegisterService cashRegisterService;
     private final UserSearchService userSearchService;
     private final LogMessageService logMsg;
+    private final MessageService messageService;
+
+    // =========================================================================
+    // RECORD FOR PROPORTIONAL REFUND
+    // =========================================================================
+
+    /**
+     * Result of proportional refund calculation for a single payment transaction.
+     * Used internally within service and for testing.
+     *
+     * @param originalTransactionId ID of the original payment transaction
+     * @param refundAmount calculated amount to refund from this transaction
+     */
+    public record ProportionalRefundItem(
+            Long originalTransactionId,
+            BigDecimal refundAmount
+    ) {}
+
+    // =========================================================================
+    // PROPORTIONAL REFUND CALCULATION
+    // =========================================================================
+
+    /**
+     * Calculates proportional refund amounts for an invoice based on partial payments.
+     * Each payment receives refund amount proportional to its share of total paid.
+     *
+     * @param invoiceId ID of the invoice to refund
+     * @param totalRefundAmount total amount to refund
+     * @return list of ProportionalRefundItem for each payment
+     * @throws InvoiceNotFoundException if invoice not found
+     * @throws IllegalArgumentException if no payments found or refund exceeds paid amount
+     */
+    @Transactional(readOnly = true)
+    public List<ProportionalRefundItem> calculateProportionalRefunds(Long invoiceId,
+                                                                     BigDecimal totalRefundAmount) {
+
+        log.info(logMsg.get("refund.calculation.start", invoiceId, totalRefundAmount));
+
+        // 1. Find invoice
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new InvoiceNotFoundException(invoiceId));
+
+        // 2. Determine payment type based on invoice type
+        TransactionType paymentType = invoice.getPurchaseOrderId() != null
+                ? TransactionType.EXPENSE
+                : TransactionType.INCOME;
+
+        // 3. Get all payments for this invoice
+        List<CashTransaction> payments = cashTransactionRepository.findByInvoiceId(invoiceId)
+                .stream()
+                .filter(t -> t.getTransactionType() == paymentType)
+                .toList();
+
+        if (payments.isEmpty()) {
+            log.warn(logMsg.get("refund.error.no.payments", invoice.getInvoiceNumber()));
+            throw new IllegalArgumentException(
+                    messageService.get("refund.error.no.payments", invoice.getInvoiceNumber())
+            );
+        }
+
+        // 4. Calculate total paid amount
+        BigDecimal totalPaid = payments.stream()
+                .map(CashTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        log.debug(logMsg.get("refund.calculation.total", totalPaid, payments.size()));
+
+        // 5. Validate refund amount
+        if (totalRefundAmount.compareTo(totalPaid) > 0) {
+            log.warn(logMsg.get("refund.error.amount.exceeds",
+                    totalRefundAmount, totalPaid, invoice.getInvoiceNumber()));
+            throw new IllegalArgumentException(
+                    messageService.get("refund.error.amount.exceeds.paid",
+                            totalRefundAmount, totalPaid, invoice.getInvoiceNumber())
+            );
+        }
+
+        // 6. Calculate proportional refunds
+        List<ProportionalRefundItem> result = new ArrayList<>();
+        BigDecimal remainingToRefund = totalRefundAmount;
+
+        for (CashTransaction payment : payments) {
+            if (remainingToRefund.compareTo(BigDecimal.ZERO) <= 0) {
+                break;
+            }
+
+            // Calculate proportion: (payment_amount / total_paid) * refund_amount
+            BigDecimal proportion = payment.getAmount()
+                    .multiply(totalRefundAmount)
+                    .divide(totalPaid, 2, RoundingMode.HALF_UP);
+
+            BigDecimal refundForThisPayment = proportion.min(remainingToRefund);
+
+            result.add(new ProportionalRefundItem(
+                    payment.getId(),
+                    refundForThisPayment
+            ));
+
+            remainingToRefund = remainingToRefund.subtract(refundForThisPayment);
+
+            log.debug(logMsg.get("refund.calculation.item",
+                    payment.getId(), refundForThisPayment, payment.getAmount()));
+        }
+
+        log.info(logMsg.get("refund.calculation.complete",
+                invoice.getInvoiceNumber(), result.size(), totalRefundAmount));
+
+        return result;
+    }
+
+    /**
+     * Executes proportional refund for an invoice.
+     * Calculates distribution across all payments and creates partial refunds.
+     *
+     * @param invoiceId ID of the invoice
+     * @param totalRefundAmount total amount to refund
+     * @param reason reason for refund
+     * @param cashierId ID of the cashier performing the refund
+     * @return list of created refund transactions
+     */
+    @Transactional
+    public List<CashTransactionDto> executeProportionalRefund(Long invoiceId,
+                                                              BigDecimal totalRefundAmount,
+                                                              String reason,
+                                                              Long cashierId) {
+
+        if (totalRefundAmount == null || totalRefundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            log.warn(logMsg.get("refund.execute.proportional.invalid.amount", totalRefundAmount));
+            throw new IllegalArgumentException(
+                    messageService.get("refund.error.invalid.amount", totalRefundAmount)
+            );
+        }
+
+        log.info(logMsg.get("refund.execute.proportional.start", invoiceId, totalRefundAmount, reason));
+
+        // 1. Calculate proportional distribution across all payments
+        List<ProportionalRefundItem> items = calculateProportionalRefunds(invoiceId, totalRefundAmount);
+
+        if (items.isEmpty()) {
+            log.warn(logMsg.get("refund.execute.proportional.no.items", invoiceId));
+            return Collections.emptyList();
+        }
+
+        // 2. Execute each partial refund using existing method
+        List<CashTransactionDto> refunds = new ArrayList<>();
+        for (ProportionalRefundItem item : items) {
+            CashTransactionDto refund = createPartialRefund(
+                    item.originalTransactionId(),
+                    item.refundAmount(),
+                    reason,
+                    cashierId
+            );
+            refunds.add(refund);
+
+            log.debug(logMsg.get("refund.execute.proportional.item",
+                    item.originalTransactionId(), item.refundAmount()));
+        }
+
+        log.info(logMsg.get("refund.execute.proportional.complete",
+                invoiceId, refunds.size(), totalRefundAmount));
+
+        return refunds;
+    }
 
     // =========================================================================
     // CREATE TRANSACTION

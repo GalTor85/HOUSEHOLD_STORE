@@ -14,6 +14,7 @@ import ru.galtor85.household_store.advice.exception.rollback.RollbackNotAllowedE
 import ru.galtor85.household_store.config.WarehouseConfig;
 import ru.galtor85.household_store.converter.SalesOrderConverter;
 import ru.galtor85.household_store.dto.request.order.SalesOrderCreateRequest;
+import ru.galtor85.household_store.dto.response.finance.CashTransactionDto;
 import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
 import ru.galtor85.household_store.dto.response.order.PaymentSummaryDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
@@ -416,32 +417,29 @@ public class SalesOrderService {
             if (invoice.getStatus() == InvoiceStatus.PAID ||
                     invoice.getStatus() == InvoiceStatus.PARTIALLY_PAID) {
 
-                // Find all payment transactions for this invoice
-                List<CashTransaction> payments = invoice.getCashTransactions().stream()
-                        .filter(tx -> tx.getTransactionType() == TransactionType.INCOME)
-                        .toList();
+                // Calculate total amount to refund (remaining amount on invoice)
+                BigDecimal refundAmount = invoice.getRemainingAmount();
 
-                if (payments.isEmpty()) {
-                    log.debug(logMsg.get("sales.order.refund.no.payments", invoice.getId()));
+                if (refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                    log.debug(logMsg.get("sales.order.refund.nothing.to.refund", invoice.getId()));
                     continue;
                 }
 
-                for (CashTransaction payment : payments) {
-                    try {
-                        // Cancel original payment - creates REFUND on same cash register
-                        cashTransactionService.cancelTransaction(
-                                payment.getId(),
-                                messageService.get("sales.order.refund.reason", order.getOrderNumber(), reason),
-                                managerId
-                        );
+                try {
+                    // Use proportional refund for all payments
+                    List<CashTransactionDto> refunds = cashTransactionService.executeProportionalRefund(
+                            invoice.getId(),
+                            refundAmount,
+                            messageService.get("sales.order.refund.reason", order.getOrderNumber(), reason),
+                            managerId
+                    );
 
-                        log.info(logMsg.get("sales.order.refund.created",
-                                payment.getId(), invoice.getInvoiceNumber()));
+                    log.info(logMsg.get("sales.order.refund.proportional.complete",
+                            invoice.getInvoiceNumber(), refunds.size(), refundAmount));
 
-                    } catch (Exception e) {
-                        log.error(logMsg.get("sales.order.refund.failed",
-                                payment.getId(), e.getMessage()), e);
-                    }
+                } catch (Exception e) {
+                    log.error(logMsg.get("sales.order.refund.failed",
+                            invoice.getId(), e.getMessage()), e);
                 }
             }
         }

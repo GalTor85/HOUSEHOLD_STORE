@@ -22,6 +22,7 @@ import ru.galtor85.household_store.repository.cash.CashTransactionRepository;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
+import ru.galtor85.household_store.service.cash.CashTransactionService;
 import ru.galtor85.household_store.service.currency.CurrencyConversionService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.util.generator.NumberGenerator;
@@ -56,6 +57,7 @@ public class InvoiceService {
     private final CashTransactionRepository cashTransactionRepository;
     private final CurrencyConversionService currencyConversionService;
     private final FinancialConfig financialConfig;
+    private final CashTransactionService cashTransactionService;
 
     // =========================================================================
     // INVOICE CREATION
@@ -323,6 +325,25 @@ public class InvoiceService {
         Invoice invoice = invoiceValidator.validateInvoiceExists(invoiceId);
         invoiceValidator.validateInvoiceCancellable(invoice);
 
+        // =========================================================================
+        // REFUND MONEY IF INVOICE HAS PAID AMOUNTS
+        // =========================================================================
+
+        BigDecimal totalPaid = calculateTotalPaid(invoice);
+
+        if (totalPaid.compareTo(BigDecimal.ZERO) > 0) {
+            log.info(logMsg.get("invoice.cancel.refund.start", invoiceId, totalPaid));
+
+            cashTransactionService.executeProportionalRefund(
+                    invoice.getId(),
+                    totalPaid,
+                    "Invoice cancelled: " + reason,
+                    cancelledBy
+            );
+
+            log.info(logMsg.get("invoice.cancel.refund.complete", invoiceId, totalPaid));
+        }
+
         invoice.setStatus(InvoiceStatus.CANCELLED);
         String cancelNote = String.format("Cancelled: %s (user %d)", reason, cancelledBy);
         if (invoice.getNotes() == null) {
@@ -335,8 +356,8 @@ public class InvoiceService {
 
         log.info(logMsg.get("invoice.cancelled", saved.getInvoiceNumber()));
 
-        BigDecimal totalPaid = calculateTotalPaid(saved);
-        return invoiceConverter.toDto(saved, totalPaid);
+        BigDecimal totalPaidAfter = calculateTotalPaid(saved);
+        return invoiceConverter.toDto(saved, totalPaidAfter);
     }
 
     // =========================================================================
