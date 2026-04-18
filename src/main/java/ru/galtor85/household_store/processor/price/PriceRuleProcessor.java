@@ -3,6 +3,7 @@ package ru.galtor85.household_store.processor.price;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.galtor85.household_store.config.FinancialConfig;
 import ru.galtor85.household_store.dto.response.cart.CartItemDto;
 import ru.galtor85.household_store.dto.response.finance.PriceCalculationResult;
 import ru.galtor85.household_store.entity.promotion.PriceRule;
@@ -38,6 +39,11 @@ public class PriceRuleProcessor {
 
     private final PriceRuleRepository priceRuleRepository;
     private final LogMessageService logMsg;
+    private final FinancialConfig financialConfig;
+
+    private int getScale() {
+        return financialConfig.getDefaultDecimalPlaces();
+    }
 
     /**
      * Applies active price rules to the current total.
@@ -93,7 +99,7 @@ public class PriceRuleProcessor {
 
     private BigDecimal applyPercentageDiscount(BigDecimal currentTotal, PriceRule rule) {
         BigDecimal result = currentTotal.multiply(BigDecimal.ONE.subtract(
-                rule.getDiscountValue().divide(ONE_HUNDRED, RoundingMode.HALF_UP)));
+                rule.getDiscountValue().divide(ONE_HUNDRED, getScale(), RoundingMode.HALF_UP)));
         log.debug(logMsg.get("price.rule.percentage.applied",
                 rule.getName(), rule.getDiscountValue(), result));
         return result;
@@ -236,7 +242,7 @@ public class PriceRuleProcessor {
                     BigDecimal bundleTotal = calculateBundleTotal(items, productIds);
                     BigDecimal bundleDiscount = bundleTotal
                             .multiply(BigDecimal.valueOf(discountPercent))
-                            .divide(ONE_HUNDRED, RoundingMode.HALF_UP);
+                            .divide(ONE_HUNDRED, getScale(), RoundingMode.HALF_UP);
 
                     log.debug(logMsg.get("price.rule.bundle.applied", rule.getName(), bundleDiscount));
                     return currentTotal.subtract(bundleDiscount);

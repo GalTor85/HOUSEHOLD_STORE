@@ -64,6 +64,17 @@ public class UserTypeDiscountProcessor {
                                                         Long userId,
                                                         List<PriceCalculationResult.AppliedDiscount> appliedDiscounts) {
 
+        // Add null check
+        if (currentTotal == null || currentTotal.compareTo(BigDecimal.ZERO) <= 0) {
+            log.debug(logMsg.get("discount.user.type.skipped",
+                    currentTotal == null ? "null" : currentTotal.toString()));
+            return new UserTypeDiscountResult(
+                    currentTotal != null ? currentTotal : BigDecimal.ZERO,
+                    null,
+                    NO_DISCOUNT
+            );
+        }
+
         UserType userType = getUserType(userId);
         double discountPercent = getUserTypeDiscountPercent(userType);
 
@@ -124,9 +135,10 @@ public class UserTypeDiscountProcessor {
      * @return calculated discount amount
      */
     private BigDecimal calculateDiscountAmount(BigDecimal total, double discountPercent) {
+        int scale = financialConfig.getDefaultDecimalPlaces();
         return total
                 .multiply(BigDecimal.valueOf(discountPercent))
-                .divide(ONE_HUNDRED, RoundingMode.HALF_UP);
+                .divide(ONE_HUNDRED, scale, RoundingMode.HALF_UP);
     }
 
     /**

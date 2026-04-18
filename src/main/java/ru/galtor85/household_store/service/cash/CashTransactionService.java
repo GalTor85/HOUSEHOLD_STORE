@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.advice.exception.cash.InvoiceNotFoundException;
+import ru.galtor85.household_store.config.FinancialConfig;
 import ru.galtor85.household_store.converter.CashTransactionConverter;
 import ru.galtor85.household_store.dto.request.finance.CashTransactionRequest;
 import ru.galtor85.household_store.dto.response.finance.CashTransactionDto;
@@ -48,6 +49,11 @@ public class CashTransactionService {
     private final UserSearchService userSearchService;
     private final LogMessageService logMsg;
     private final MessageService messageService;
+    private final FinancialConfig financialConfig;
+
+    private int getScale() {
+        return financialConfig.getDefaultDecimalPlaces();
+    }
 
     // =========================================================================
     // RECORD FOR PROPORTIONAL REFUND
@@ -134,9 +140,10 @@ public class CashTransactionService {
             }
 
             // Calculate proportion: (payment_amount / total_paid) * refund_amount
+            int scale = getScale();
             BigDecimal proportion = payment.getAmount()
                     .multiply(totalRefundAmount)
-                    .divide(totalPaid, 2, RoundingMode.HALF_UP);
+                    .divide(totalPaid, scale, RoundingMode.HALF_UP);
 
             BigDecimal refundForThisPayment = proportion.min(remainingToRefund);
 

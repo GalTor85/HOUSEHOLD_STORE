@@ -3,6 +3,7 @@ package ru.galtor85.household_store.processor.price;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.galtor85.household_store.config.FinancialConfig;
 import ru.galtor85.household_store.dto.response.finance.PriceCalculationResult;
 import ru.galtor85.household_store.entity.promotion.PromoCode;
 import ru.galtor85.household_store.entity.user.UserType;
@@ -45,6 +46,11 @@ public class PromoCodeProcessor {
     private final PromoCodeUsageRepository promoCodeUsageRepository;
     private final MessageService messageService;
     private final LogMessageService logMsg;
+    private final FinancialConfig financialConfig;
+
+    private int getScale() {
+        return financialConfig.getDefaultDecimalPlaces();
+    }
 
     /**
      * Applies a promo code to the current total.
@@ -134,7 +140,7 @@ public class PromoCodeProcessor {
         return switch (promo.getDiscountType()) {
             case PERCENTAGE -> {
                 BigDecimal discount = currentTotal.multiply(promo.getDiscountValue())
-                        .divide(ONE_HUNDRED, RoundingMode.HALF_UP);
+                        .divide(ONE_HUNDRED, getScale(), RoundingMode.HALF_UP);
                 log.debug(logMsg.get("promo.discount.percentage.applied", promo.getCode(), discount));
                 yield discount;
             }
@@ -186,7 +192,7 @@ public class PromoCodeProcessor {
                 double discountPercent = Double.parseDouble(parts[FREE_OR_DISCOUNT_INDEX]);
                 BigDecimal discount = currentTotal
                         .multiply(BigDecimal.valueOf(discountPercent))
-                        .divide(ONE_HUNDRED, RoundingMode.HALF_UP);
+                        .divide(ONE_HUNDRED, getScale(), RoundingMode.HALF_UP);
                 log.debug(logMsg.get("promo.discount.bundle.calculated", minItems, discountPercent));
                 return discount;
             }

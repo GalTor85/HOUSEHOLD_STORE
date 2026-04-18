@@ -39,6 +39,11 @@ public class PriceCalculationProcessor {
     public PriceCalculationResult calculatePrice(PriceCalculationRequest request) {
         log.debug(logMsg.get("price.calculation.processor.start"));
 
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            log.warn(logMsg.get("price.calculation.processor.no.items"));
+            return resultBuilder.build(BigDecimal.ZERO, BigDecimal.ZERO, new ArrayList<>());
+        }
+
         BigDecimal originalTotal = basePriceCalculator.calculateOriginalTotal(request.getItems());
         BigDecimal currentTotal = originalTotal;
         List<PriceCalculationResult.AppliedDiscount> appliedDiscounts = new ArrayList<>();
@@ -47,7 +52,11 @@ public class PriceCalculationProcessor {
                 userTypeDiscountProcessor.applyUserTypeDiscount(
                         currentTotal, request.getUserId(), appliedDiscounts);
         currentTotal = userTypeResult.totalAfterDiscount();
+
         UserType userType = userTypeResult.userType();
+        if (userType == null) {
+            userType = UserType.RETAIL; // default
+        }
 
         currentTotal = priceRuleProcessor.applyPriceRules(
                 currentTotal, userType, request.getItems(), appliedDiscounts);
