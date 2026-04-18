@@ -20,7 +20,6 @@ import ru.galtor85.household_store.mapper.product.ProductMapper;
 import ru.galtor85.household_store.processor.inventory.InventoryProcessor;
 import ru.galtor85.household_store.processor.product.ProductAttributeProcessor;
 import ru.galtor85.household_store.processor.product.ProductVariantProcessor;
-import ru.galtor85.household_store.repository.product.ProductAttributeRepository;
 import ru.galtor85.household_store.repository.product.ProductMediaRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
@@ -58,10 +57,7 @@ public class ManagerProductService {
     private final FileStorageService fileStorageService;
     private final ProductMediaRepository mediaRepository;
     private final ProductStockRepository stockRepository;
-    private final ProductAttributeRepository attributeRepository;
     private final MessageService messageService;
-
-
 
 
     // =========================================================================
@@ -148,14 +144,14 @@ public class ManagerProductService {
         deleteProductRelations(product, deletedBy);
 
         // Finally delete the product
-        productRepository.delete(product);
+       productRepository.delete(product);
 
         log.info(logMsg.get("manager.product.deleted.log",
                 product.getSku(), product.getId(), deletedBy));
     }
 
     private void deleteProductRelations(Product product, Long deletedBy) {
-        // 1. Delete media files from disk and database
+        //Delete media files from disk and database
         List<ProductMedia> mediaList = mediaRepository.findByProductId(product.getId());
         for (ProductMedia media : mediaList) {
             fileStorageService.deleteFile(media.getFilePath(), product.getId());
@@ -164,24 +160,19 @@ public class ManagerProductService {
         }
         mediaRepository.deleteAll(mediaList);
 
-        // 2. Delete product stock records
+        //Delete product stock records
         List<ProductStock> stocks = stockRepository.findByProductId(product.getId());
         stockRepository.deleteAll(stocks);
         log.debug(logMsg.get("manager.product.stocks.deleted",
                 stocks.size(), product.getId(), deletedBy));
 
-        // 3. Delete attributes
-        attributeRepository.deleteByProductId(product.getId());
-        log.debug(logMsg.get("manager.product.attributes.deleted",
-                product.getId(), deletedBy));
-
-        // 4. Delete supplier product links
+        //Delete supplier product links
         List<SupplierProduct> supplierProducts = supplierProductRepository.findByProductId(product.getId());
         supplierProductRepository.deleteAll(supplierProducts);
         log.debug(logMsg.get("manager.product.supplier.links.deleted",
                 supplierProducts.size(), product.getId(), deletedBy));
 
-        // 5. Delete variants recursively
+        //Delete variants recursively
         for (Product variant : product.getVariants()) {
             deleteProductRelations(variant, deletedBy);
             productRepository.delete(variant);
@@ -405,4 +396,4 @@ public class ManagerProductService {
         Product product = validator.validateProductExists(productId);
         return inventoryProcessor.toggleActive(product, active);
     }
- }
+}
