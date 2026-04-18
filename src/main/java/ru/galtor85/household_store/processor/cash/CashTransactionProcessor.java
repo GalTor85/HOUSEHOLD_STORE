@@ -69,6 +69,9 @@ public class CashTransactionProcessor {
                 .build();
 
         CashTransaction saved = cashTransactionRepository.save(transaction);
+        if (invoice != null) {
+            invoice.getCashTransactions().add(saved);
+        }
 
         log.info(logMsg.get("cash.transaction.processor.created",
                 saved.getId(), saved.getAmount()));

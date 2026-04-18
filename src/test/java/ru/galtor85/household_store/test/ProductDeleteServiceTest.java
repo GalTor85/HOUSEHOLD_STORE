@@ -9,13 +9,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-import ru.galtor85.household_store.entity.product.*;
-import ru.galtor85.household_store.entity.user.User;
+import ru.galtor85.household_store.entity.product.MediaType;
+import ru.galtor85.household_store.entity.product.Product;
+import ru.galtor85.household_store.entity.product.ProductAttribute;
+import ru.galtor85.household_store.entity.product.ProductMedia;
+import ru.galtor85.household_store.entity.product.ProductStock;
 import ru.galtor85.household_store.repository.product.ProductAttributeRepository;
 import ru.galtor85.household_store.repository.product.ProductMediaRepository;
 import ru.galtor85.household_store.repository.product.ProductRepository;
 import ru.galtor85.household_store.repository.product.ProductStockRepository;
-import ru.galtor85.household_store.repository.user.UserRepository;
 import ru.galtor85.household_store.service.manager.ManagerProductService;
 
 import java.math.BigDecimal;
@@ -27,8 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 @Transactional
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@DisplayName("Real Service Delete Tests")
-class ProductDeleteServiceTest {
+@DisplayName("Product Delete Service Tests")
+class ProductDeleteServiceTest extends BaseSalesChainTest {
 
     @Autowired
     private ProductRepository productRepository;
@@ -43,31 +45,24 @@ class ProductDeleteServiceTest {
     private ProductStockRepository productStockRepository;
 
     @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
     private ManagerProductService managerProductService;
 
     private Long testProductId;
     private Long testAttributeId;
     private Long testMediaId;
     private Long testStockId;
-    private User adminUser;
+    private Long adminUserId;
 
     @BeforeEach
     void setUp() {
         log.info("=== SETUP: Creating test data ===");
 
-        adminUser = User.builder()
-                .email("admin-delete-" + System.currentTimeMillis() + "@example.com")
-                .firstName("Admin")
-                .lastName("Delete")
-                .mobileNumber("+79990000000")
-                .creator("system")
-                .build();
-        adminUser = userRepository.save(adminUser);
-        log.info("Created admin user with ID: {}", adminUser.getId());
+        // Create admin user using base class
+        TestData testData = createTestData();
+        adminUserId = testData.userId();
+        log.info("Using admin user with ID: {}", adminUserId);
 
+        // Create product
         Product product = Product.builder()
                 .sku("TEST-DELETE-" + System.currentTimeMillis())
                 .name("Test Delete Product")
@@ -79,6 +74,7 @@ class ProductDeleteServiceTest {
         testProductId = product.getId();
         log.info("Created product with ID: {}, SKU: {}", testProductId, product.getSku());
 
+        // Add attribute
         ProductAttribute attribute = ProductAttribute.builder()
                 .product(product)
                 .name("Color")
@@ -89,6 +85,7 @@ class ProductDeleteServiceTest {
         testAttributeId = product.getAttributes().getFirst().getId();
         log.info("Created attribute with ID: {}", testAttributeId);
 
+        // Add media
         ProductMedia media = ProductMedia.builder()
                 .productId(product.getId())
                 .fileName("test-image.jpg")
@@ -99,9 +96,10 @@ class ProductDeleteServiceTest {
         testMediaId = media.getId();
         log.info("Created media with ID: {}", testMediaId);
 
+        // Add stock
         ProductStock stock = ProductStock.builder()
                 .productId(product.getId())
-                .warehouseId(1L)
+                .warehouseId(testData.warehouseId())
                 .quantity(100)
                 .build();
         stock = productStockRepository.save(stock);
@@ -119,7 +117,7 @@ class ProductDeleteServiceTest {
         assertThat(productRepository.existsById(testProductId)).isTrue();
         assertThat(productAttributeRepository.existsById(testAttributeId)).isTrue();
 
-        managerProductService.deleteProduct(testProductId, adminUser.getId());
+        managerProductService.deleteProduct(testProductId, adminUserId);
 
         assertThat(productRepository.existsById(testProductId)).isFalse();
         assertThat(productAttributeRepository.existsById(testAttributeId)).isFalse();
@@ -134,7 +132,7 @@ class ProductDeleteServiceTest {
 
         assertThat(productMediaRepository.existsById(testMediaId)).isTrue();
 
-        managerProductService.deleteProduct(testProductId, adminUser.getId());
+        managerProductService.deleteProduct(testProductId, adminUserId);
 
         assertThat(productMediaRepository.existsById(testMediaId)).isFalse();
 
@@ -148,7 +146,7 @@ class ProductDeleteServiceTest {
 
         assertThat(productStockRepository.existsById(testStockId)).isTrue();
 
-        managerProductService.deleteProduct(testProductId, adminUser.getId());
+        managerProductService.deleteProduct(testProductId, adminUserId);
 
         assertThat(productStockRepository.existsById(testStockId)).isFalse();
 
