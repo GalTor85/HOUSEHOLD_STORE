@@ -348,6 +348,8 @@ public class ManagerPurchaseService {
      * Creates financial refund for supplier when returning goods.
      */
     private void createSupplierRefund(PurchaseOrder order, ReverseReceiptRequest request, Long managerId) {
+        log.info(logMsg.get("purchase.refund.create.start", order.getId()));
+
         List<Invoice> invoices = invoiceRepository.findByPurchaseOrderId(order.getId());
 
         if (invoices.isEmpty()) {
@@ -355,12 +357,15 @@ public class ManagerPurchaseService {
             return;
         }
 
-        BigDecimal refundAmount = RefundCalculator.calculateTotalRefundAmount(order, request.getItems());
+        // Calculate total refund amount based on returned items
+        BigDecimal totalRefundAmount = RefundCalculator.calculateTotalRefundAmount(order, request.getItems());
 
-        if (refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (totalRefundAmount.compareTo(BigDecimal.ZERO) <= 0) {
             log.debug(logMsg.get("purchase.refund.no.amount", order.getId()));
             return;
         }
+
+        log.info("Total refund amount for purchase order {}: {}", order.getOrderNumber(), totalRefundAmount);
 
         for (Invoice invoice : invoices) {
             if (invoice.getStatus() == InvoiceStatus.PAID ||
@@ -370,16 +375,38 @@ public class ManagerPurchaseService {
                         .filter(tx -> tx.getTransactionType() == TransactionType.EXPENSE)
                         .toList();
 
+                if (payments.isEmpty()) {
+                    log.debug(logMsg.get("purchase.refund.no.payments", invoice.getId()));
+                    continue;
+                }
+
                 for (CashTransaction payment : payments) {
                     try {
-                        cashTransactionService.cancelTransaction(
+                        // Calculate proportional refund amount for this payment
+                        BigDecimal proportionalRefund = RefundCalculator.calculateProportionalRefund(
+                                payment.getAmount(),
+                                invoice.getAmount(),
+                                totalRefundAmount
+                        );
+
+                        if (proportionalRefund.compareTo(BigDecimal.ZERO) <= 0) {
+                            log.debug("Proportional refund is zero for payment {}", payment.getId());
+                            continue;
+                        }
+
+                        log.info("Creating partial refund for payment {}: payment amount={}, proportional refund={}",
+                                payment.getId(), payment.getAmount(), proportionalRefund);
+
+                        // Create partial refund with proportional amount
+                        cashTransactionService.createPartialRefund(
                                 payment.getId(),
+                                proportionalRefund,
                                 messageService.get("purchase.refund.reason", order.getOrderNumber(), request.getReason()),
                                 managerId
                         );
 
                         log.info(logMsg.get("purchase.refund.created",
-                                payment.getId(), invoice.getInvoiceNumber()));
+                                payment.getId(), invoice.getInvoiceNumber(), proportionalRefund));
 
                     } catch (Exception e) {
                         log.error(logMsg.get("purchase.refund.failed",
@@ -388,6 +415,8 @@ public class ManagerPurchaseService {
                 }
             }
         }
+
+        log.info(logMsg.get("purchase.refund.create.complete", order.getId()));
     }
 
     /**

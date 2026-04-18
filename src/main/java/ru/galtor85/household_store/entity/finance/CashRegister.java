@@ -70,32 +70,4 @@ public class CashRegister {
     @OneToMany(mappedBy = "cashRegister", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<CashTransaction> transactions = new ArrayList<>();
-
-    // =========================================================================
-    // HELPER METHODS
-    // =========================================================================
-
-    public BigDecimal getCurrentBalance() {
-        if (transactions == null || transactions.isEmpty()) {
-            return openingBalance;
-        }
-
-        return transactions.stream()
-                .map(t -> {
-                    TransactionType type = t.getTransactionType();
-                    if (type == TransactionType.INCOME) {
-                        return t.getAmount();                        // +
-                    } else if (type == TransactionType.EXPENSE) {
-                        return t.getAmount().negate();               // -
-                    } else if (type == TransactionType.REFUND) {
-                        if (t.getInvoice() != null && t.getInvoice().getSalesOrderId() != null) {
-                            return t.getAmount().negate();
-                        } else {
-                            return t.getAmount();
-                        }
-                    }
-                    return BigDecimal.ZERO;
-                })
-                .reduce(openingBalance, BigDecimal::add);
-    }
 }

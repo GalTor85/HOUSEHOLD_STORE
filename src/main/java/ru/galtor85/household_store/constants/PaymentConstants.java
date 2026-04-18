@@ -39,8 +39,6 @@ public final class PaymentConstants {
     public static final String JSON_DESCRIPTION = "description";
     public static final String JSON_PAYMENT_METHOD_ID = "payment_method_id";
     public static final String JSON_PAYMENT_IDENTIFIER = "payment_identifier";
-    public static final String JSON_TRANSACTION_ID = "transaction_id";
-    public static final String JSON_REASON = "reason";
 
     // =========================================================================
     // DEFAULT VALUES

@@ -18,6 +18,7 @@ import ru.galtor85.household_store.dto.response.finance.InvoiceDto;
 import ru.galtor85.household_store.dto.response.order.PaymentSummaryDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
 import ru.galtor85.household_store.dto.response.product.ProductStockDto;
+import ru.galtor85.household_store.dto.response.report.DailySalesReportDto;
 import ru.galtor85.household_store.entity.cart.Cart;
 import ru.galtor85.household_store.entity.cart.CartStatus;
 import ru.galtor85.household_store.entity.finance.CashTransaction;
@@ -45,9 +46,12 @@ import ru.galtor85.household_store.validator.order.OrderSalesCancellationValidat
 import ru.galtor85.household_store.validator.order.SalesOrderValidator;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static ru.galtor85.household_store.constants.TechnicalConstants.*;
 
@@ -577,6 +581,67 @@ public class SalesOrderService {
     public SalesOrder getSalesOrderEntityByNumber(String orderNumber) {
         return salesOrderRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new OrderNotFoundException(orderNumber));
+    }
+
+    /**
+     * Gets daily sales report.
+     *
+     * @param date report date
+     * @return daily sales report DTO
+     */
+    @Transactional(readOnly = true)
+    public DailySalesReportDto getDailySalesReport(LocalDate date) {
+        log.info(logMsg.get("sales.order.daily.report.start", date));
+
+        Object[] reportData = salesOrderRepository.getDailyReport(date);
+
+        DailySalesReportDto report = DailySalesReportDto.builder()
+                .date(date)
+                .totalOrders(((Number) reportData[0]).longValue())
+                .completedOrders(((Number) reportData[1]).longValue())
+                .cancelledOrders(((Number) reportData[2]).longValue())
+                .pendingOrders(((Number) reportData[3]).longValue())
+                .totalSalesAmount((BigDecimal) reportData[4])
+                .minOrderAmount((BigDecimal) reportData[5])
+                .maxOrderAmount((BigDecimal) reportData[6])
+                .uniqueCustomers(((Number) reportData[7]).longValue())
+                .build();
+
+        // Calculate average order value
+        if (report.getTotalOrders() > 0) {
+            report.setAverageOrderValue(
+                    report.getTotalSalesAmount().divide(
+                            BigDecimal.valueOf(report.getTotalOrders()), 2, RoundingMode.HALF_UP
+                    )
+            );
+        } else {
+            report.setAverageOrderValue(BigDecimal.ZERO);
+        }
+
+        // Get top products
+        List<Object[]> topProducts = salesOrderRepository.getTopProductsForDate(date);
+        report.setTopProducts(topProducts.stream()
+                .map(row -> DailySalesReportDto.TopProductDto.builder()
+                        .productId(((Number) row[0]).longValue())
+                        .productName((String) row[1])
+                        .quantitySold(((Number) row[2]).longValue())
+                        .totalAmount((BigDecimal) row[3])
+                        .build())
+                .collect(Collectors.toList()));
+
+        // Get hourly sales
+        List<Object[]> hourlySales = salesOrderRepository.getHourlySalesForDate(date);
+        report.setSalesByHour(hourlySales.stream()
+                .map(row -> DailySalesReportDto.HourlySalesDto.builder()
+                        .hour(((Number) row[0]).intValue())
+                        .ordersCount(((Number) row[1]).longValue())
+                        .amount((BigDecimal) row[2])
+                        .build())
+                .collect(Collectors.toList()));
+
+        log.info(logMsg.get("sales.order.daily.report.complete", date, report.getTotalOrders()));
+
+        return report;
     }
 
     // =========================================================================

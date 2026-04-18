@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.order.SalesOrder;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -65,4 +66,42 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
      * @return total count of orders for the user
      */
     long countByUserId(Long userId);
+
+    /**
+     * Gets daily sales report for a specific date.
+     */
+    @Query("SELECT COUNT(so), " +
+            "SUM(CASE WHEN so.status = 'COMPLETED' THEN 1 ELSE 0 END), " +
+            "SUM(CASE WHEN so.status = 'CANCELLED' THEN 1 ELSE 0 END), " +
+            "SUM(CASE WHEN so.status = 'PENDING' THEN 1 ELSE 0 END), " +
+            "SUM(so.totalAmount), " +
+            "MIN(so.totalAmount), " +
+            "MAX(so.totalAmount), " +
+            "COUNT(DISTINCT so.userId) " +
+            "FROM SalesOrder so " +
+            "WHERE DATE(so.createdAt) = :date")
+    Object[] getDailyReport(@Param("date") LocalDate date);
+
+    /**
+     * Gets top products for daily report.
+     */
+    @Query("SELECT soi.productId, soi.productName, " +
+            "SUM(soi.quantity), SUM(soi.price * soi.quantity) " +
+            "FROM SalesOrderItem soi " +
+            "JOIN SalesOrder so ON soi.salesOrder.id = so.id " +
+            "WHERE DATE(so.createdAt) = :date " +
+            "GROUP BY soi.productId, soi.productName " +
+            "ORDER BY SUM(soi.quantity) DESC")
+    List<Object[]> getTopProductsForDate(@Param("date") LocalDate date);
+
+    /**
+     * Gets hourly sales for daily report.
+     */
+    @Query("SELECT EXTRACT(HOUR FROM so.createdAt), " +
+            "COUNT(so), SUM(so.totalAmount) " +
+            "FROM SalesOrder so " +
+            "WHERE DATE(so.createdAt) = :date " +
+            "GROUP BY EXTRACT(HOUR FROM so.createdAt) " +
+            "ORDER BY EXTRACT(HOUR FROM so.createdAt)")
+    List<Object[]> getHourlySalesForDate(@Param("date") LocalDate date);
 }

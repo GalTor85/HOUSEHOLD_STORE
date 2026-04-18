@@ -32,34 +32,46 @@ public class MessageService {
     }
 
     /**
+     * Normalizes message key to lowercase for consistent lookups.
+     *
+     * @param code original message key
+     * @return normalized key in lowercase
+     */
+    private String normalizeKey(String code) {
+        return code != null ? code.toLowerCase() : null;
+    }
+
+    /**
      * Returns a localized message with explicit default fallback.
      */
     public String getWithDefault(String code, String defaultMessage, Object... args) {
         Locale locale = LocaleContextHolder.getLocale();
+        String normalizedCode = normalizeKey(code);
 
         try {
-            return messageSource.getMessage(code, args, locale);
+            return messageSource.getMessage(normalizedCode, args, locale);
         } catch (NoSuchMessageException e) {
-            log.warn("Message key '{}' not found for locale '{}'", code, locale);
+            log.warn("Message key '{}' not found for locale '{}'", normalizedCode, locale);
             return defaultMessage != null ? defaultMessage : code;
         } catch (Exception e) {
-            log.error("Error resolving with default message key '{}': {}", code, e.getMessage());
+            log.error("Error resolving with default message key '{}': {}", normalizedCode, e.getMessage());
             return defaultMessage != null ? defaultMessage : code;
         }
     }
 
     private String getInternal(String code, Object... args) {
         Locale locale = LocaleContextHolder.getLocale();
+        String normalizedCode = normalizeKey(code);
 
         try {
-            String message = messageSource.getMessage(code, args, locale);
-            if (!message.equals(code)) {
+            String message = messageSource.getMessage(normalizedCode, args, locale);
+            if (!message.equals(normalizedCode)) {
                 return message;
             }
         } catch (NoSuchMessageException e) {
-            log.debug("Message key '{}' not found for locale '{}'", code, locale);
+            log.debug("Message key '{}' not found for locale '{}'", normalizedCode, locale);
         } catch (Exception e) {
-            log.error("Error resolving message key '{}': {}", code, e.getMessage());
+            log.error("Error resolving message key '{}': {}", normalizedCode, e.getMessage());
         }
 
         return buildReadableFallback(code, args);

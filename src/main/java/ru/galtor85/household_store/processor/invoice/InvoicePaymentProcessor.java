@@ -12,6 +12,7 @@ import ru.galtor85.household_store.entity.finance.*;
 import ru.galtor85.household_store.entity.order.OrderType;
 import ru.galtor85.household_store.processor.cash.CashTransactionProcessor;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
+import ru.galtor85.household_store.service.cash.CashRegisterService;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
 import ru.galtor85.household_store.validator.cash.CashRegisterValidator;
@@ -33,6 +34,7 @@ public class InvoicePaymentProcessor {
     private final InvoiceRepository invoiceRepository;
     private final MessageService messageService;
     private final LogMessageService logMsg;
+    private final CashRegisterService cashRegisterService;
 
     /**
      * Processes a payment for an invoice.
@@ -72,7 +74,7 @@ public class InvoicePaymentProcessor {
 
         // 5. For expense, check sufficient cash in register
         if (transactionType == TransactionType.EXPENSE) {
-            BigDecimal currentBalance = cashRegister.getCurrentBalance();
+            BigDecimal currentBalance = cashRegisterService.getCurrentBalance(cashRegisterId);
             if (currentBalance.compareTo(amount) < 0) {
                 throw new InsufficientCashException(currentBalance, amount);
             }

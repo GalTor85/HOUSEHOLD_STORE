@@ -53,7 +53,7 @@ public class CashTransactionService {
     /**
      * Creates a new cash transaction.
      *
-     * @param request transaction request
+     * @param request   transaction request
      * @param cashierId cashier ID
      * @return created transaction DTO
      */
@@ -126,8 +126,8 @@ public class CashTransactionService {
     /**
      * Gets transactions within a date period.
      *
-     * @param startDate period start
-     * @param endDate period end
+     * @param startDate      period start
+     * @param endDate        period end
      * @param cashRegisterId optional cash register filter
      * @return list of transaction DTOs
      */
@@ -156,31 +156,24 @@ public class CashTransactionService {
      * Cancels a cash transaction (creates a refund transaction).
      *
      * @param transactionId transaction ID
-     * @param reason cancellation reason
-     * @param cashierId cashier ID
+     * @param reason        cancellation reason
+     * @param cashierId     cashier ID
      * @return refund transaction DTO
      */
     @Transactional
     public CashTransactionDto cancelTransaction(Long transactionId, String reason, Long cashierId) {
         log.info(logMsg.get("cash.transaction.service.cancel.start", transactionId, reason));
 
-        // Validate transaction exists and is refundable
         CashTransaction original = validator.validateRefundableTransactionExists(transactionId);
-
         validator.validateTransactionCancellable(original);
-
         validator.validateTransactionRefundable(original, original.getAmount());
 
-
-        // Add cash register validation
         CashRegister cashRegister = cashRegisterService.validateCashRegisterExists(
                 original.getCashRegister().getId());
-        validator.validateCashRegisterActive(cashRegister);  // Already there, good!
+        validator.validateCashRegisterActive(cashRegister);
 
-       // Create refund transaction
         CashTransaction refundTransaction = processor.createRefundTransaction(original, reason, cashierId);
 
-        // Update invoice status if needed
         if (original.getInvoice() != null) {
             updateInvoiceStatusAfterRefund(original.getInvoice());
         }
@@ -188,7 +181,13 @@ public class CashTransactionService {
         log.info(logMsg.get("cash.transaction.service.cancelled",
                 transactionId, refundTransaction.getId()));
 
-        return converter.toDto(refundTransaction);
+        return converter.toDtoWithDetails(
+                refundTransaction,
+                cashRegister,
+                original.getInvoice(),
+                null,
+                refundTransaction.getBalanceBefore()  // используем баланс из транзакции
+        );
     }
 
     // =========================================================================
@@ -232,13 +231,74 @@ public class CashTransactionService {
                 invoice.getAmount()));
     }
 
+    /**
+     * Creates a partial refund for a transaction.
+     *
+     * @param originalTransactionId ID of the original transaction
+     * @param refundAmount          amount to refund
+     * @param reason                reason for refund
+     * @param cashierId             ID of the cashier performing the refund
+     * @return DTO of the created refund transaction with current balance
+     */
+    @Transactional
+    public CashTransactionDto createPartialRefund(Long originalTransactionId,
+                                                  BigDecimal refundAmount,
+                                                  String reason,
+                                                  Long cashierId) {
+        log.info(logMsg.get("cash.transaction.service.partial.refund.start",
+                originalTransactionId, refundAmount));
+
+        // Validate transaction exists and is refundable
+        CashTransaction original = validator.validateRefundableTransactionExists(originalTransactionId);
+        validator.validateTransactionCancellable(original);
+        validator.validateTransactionRefundable(original, refundAmount);
+
+        // Validate cash register is active
+        CashRegister cashRegister = cashRegisterService.validateCashRegisterExists(
+                original.getCashRegister().getId());
+        validator.validateCashRegisterActive(cashRegister);
+
+        // Create partial refund transaction
+        CashTransaction refundTransaction = processor.createPartialRefundTransaction(
+                original, refundAmount, reason, cashierId);
+
+        // Update invoice status if needed
+        if (original.getInvoice() != null) {
+            updateInvoiceStatusAfterRefund(original.getInvoice());
+        }
+
+        log.info(logMsg.get("cash.transaction.service.partial.refund.complete",
+                originalTransactionId, refundTransaction.getId(), refundAmount));
+
+        // Build response DTO with current balance
+        CashTransactionDto result = converter.toDto(refundTransaction);
+        BigDecimal currentBalance = cashRegisterService.getCurrentBalance(cashRegister.getId());
+        result.setBalanceAfter(currentBalance);
+
+        return result;
+    }
+
     private void updateInvoiceStatusAfterRefund(Invoice invoice) {
-        updateInvoiceStatus(invoice);
+        BigDecimal totalPaid = invoice.getTotalPaidAmount();
+
+        if (totalPaid.compareTo(BigDecimal.ZERO) <= 0) {
+
+            invoice.setStatus(InvoiceStatus.REFUNDED);
+            invoice.setPaidDate(null);
+        } else if (totalPaid.compareTo(invoice.getAmount()) < 0) {
+
+            invoice.setStatus(InvoiceStatus.PARTIALLY_PAID);
+        } else {
+
+            invoice.setStatus(InvoiceStatus.PAID);
+        }
+
+        invoiceRepository.save(invoice);
 
         log.info(logMsg.get("invoice.status.updated.after.refund",
                 invoice.getInvoiceNumber(),
                 invoice.getStatus().name(),
-                invoice.getTotalPaidAmount()));
+                totalPaid));
     }
 
     /**

@@ -66,7 +66,28 @@ public class CashRegisterService {
      */
     public BigDecimal getCurrentBalance(Long cashRegisterId) {
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
-        return cashRegister.getCurrentBalance();
+        LocalDateTime startDate = cashRegister.getOpenedAt();
+
+        if (startDate == null) {
+            return cashRegister.getOpeningBalance();
+        }
+
+        BigDecimal totalIncome = nullToZero(cashTransactionRepository
+                .getTotalIncomeByCashRegisterAndDateRange(cashRegisterId, startDate, LocalDateTime.now()));
+
+        BigDecimal totalExpense = nullToZero(cashTransactionRepository
+                .getTotalExpenseByCashRegisterAndDateRange(cashRegisterId, startDate, LocalDateTime.now()));
+
+        BigDecimal totalRefundToCustomer = cashTransactionRepository
+                .getTotalRefundToCustomerByCashRegisterAndDateRange(cashRegisterId, startDate, LocalDateTime.now());
+        BigDecimal totalRefundFromSupplier = cashTransactionRepository
+                .getTotalRefundFromSupplierByCashRegisterAndDateRange(cashRegisterId, startDate, LocalDateTime.now());
+
+        return cashRegister.getOpeningBalance()
+                .add(totalIncome)                    // + INCOME
+                .subtract(totalExpense)              // - EXPENSE
+                .subtract(totalRefundToCustomer)     // - REFUND (SALES)
+                .add(totalRefundFromSupplier);       // + REFUND (PURCHASE)
     }
 
     // =========================================================================
@@ -76,7 +97,7 @@ public class CashRegisterService {
     /**
      * Creates a new cash register.
      *
-     * @param request creation request
+     * @param request   creation request
      * @param createdBy ID of user creating the register
      * @return created cash register DTO
      */
@@ -103,7 +124,7 @@ public class CashRegisterService {
      * Updates an existing cash register.
      *
      * @param cashRegisterId cash register ID
-     * @param request update request
+     * @param request        update request
      * @return updated cash register DTO
      */
     @Transactional
@@ -113,7 +134,7 @@ public class CashRegisterService {
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
         CashRegister updated = processor.updateCashRegister(cashRegister, request);
 
-        CashRegisterDto result = converter.toDto(updated, updated.getCurrentBalance());
+        CashRegisterDto result = converter.toDto(updated, getCurrentBalance(updated.getId()));
 
         log.info(logMsg.get("cash.register.service.updated", result.getRegisterNumber()));
 
@@ -165,7 +186,7 @@ public class CashRegisterService {
     @Transactional(readOnly = true)
     public List<CashRegisterDto> getAllCashRegisters() {
         return cashRegisterRepository.findAll().stream()
-                .map(cr -> converter.toDto(cr, cr.getCurrentBalance()))
+                .map(cr -> converter.toDto(cr, getCurrentBalance(cr.getId())))
                 .collect(Collectors.toList());
     }
 
@@ -177,7 +198,7 @@ public class CashRegisterService {
     @Transactional(readOnly = true)
     public List<CashRegisterDto> getActiveCashRegisters() {
         return cashRegisterRepository.findByIsActiveTrue().stream()
-                .map(cr -> converter.toDto(cr, cr.getCurrentBalance()))
+                .map(cr -> converter.toDto(cr, getCurrentBalance(cr.getId())))
                 .collect(Collectors.toList());
     }
 
@@ -190,7 +211,7 @@ public class CashRegisterService {
     @Transactional(readOnly = true)
     public CashRegisterDto getCashRegisterById(Long cashRegisterId) {
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
-        return converter.toDto(cashRegister, cashRegister.getCurrentBalance());
+        return converter.toDto(cashRegister, getCurrentBalance(cashRegisterId));
     }
 
     // =========================================================================
@@ -202,7 +223,7 @@ public class CashRegisterService {
      *
      * @param cashRegisterId cash register ID
      * @param openingBalance opening balance
-     * @param cashierId cashier ID
+     * @param cashierId      cashier ID
      * @return opened cash register DTO
      */
     @Transactional
@@ -214,7 +235,7 @@ public class CashRegisterService {
         validator.validateOpeningBalance(openingBalance);
 
         CashRegister opened = processor.openCashRegister(cashRegister, openingBalance, cashierId);
-        CashRegisterDto result = converter.toDto(opened, opened.getCurrentBalance());
+        CashRegisterDto result = converter.toDto(opened, getCurrentBalance(opened.getId()));
 
         log.info(logMsg.get("cash.register.service.opened", result.getRegisterNumber()));
 
@@ -224,10 +245,10 @@ public class CashRegisterService {
     /**
      * Closes a cash register at the end of a shift.
      *
-     * @param cashRegisterId cash register ID
-     * @param closingBalance closing balance
+     * @param cashRegisterId    cash register ID
+     * @param closingBalance    closing balance
      * @param discrepancyReason reason for discrepancy
-     * @param cashierId cashier ID
+     * @param cashierId         cashier ID
      * @return closed cash register DTO
      */
     @Transactional
@@ -240,7 +261,7 @@ public class CashRegisterService {
         validator.validateCashier(cashRegister, cashierId);
         validator.validateClosingBalance(closingBalance);
 
-        BigDecimal calculatedBalance = cashRegister.getCurrentBalance();
+        BigDecimal calculatedBalance = getCurrentBalance(cashRegisterId);
         validator.validateDiscrepancyReason(closingBalance, calculatedBalance, discrepancyReason);
 
         BigDecimal discrepancy = closingBalance.subtract(calculatedBalance);
@@ -272,8 +293,8 @@ public class CashRegisterService {
      * Gets cash register summary for a period.
      *
      * @param cashRegisterId cash register ID
-     * @param startDate period start
-     * @param endDate period end
+     * @param startDate      period start
+     * @param endDate        period end
      * @return summary DTO
      */
     @Transactional(readOnly = true)
@@ -282,18 +303,43 @@ public class CashRegisterService {
 
         CashRegister cashRegister = validator.validateExists(cashRegisterId);
 
+        // Opening balance
         BigDecimal openingBalance = cashRegister.getOpeningBalance();
+
+        // Income (customer payments)
         BigDecimal totalIncome = nullToZero(cashTransactionRepository
                 .getTotalIncomeByCashRegisterAndDateRange(cashRegisterId, startDate, endDate));
+
+        // Expense (supplier payments)
         BigDecimal totalExpense = nullToZero(cashTransactionRepository
                 .getTotalExpenseByCashRegisterAndDateRange(cashRegisterId, startDate, endDate));
-        BigDecimal netTurnover = nullToZero(cashTransactionRepository
-                .getNetTurnoverByCashRegisterAndDateRange(cashRegisterId, startDate, endDate));
+
+        // Refund TO customers (SALES orders) - money goes OUT
+        BigDecimal refundToCustomer = nullToZero(cashTransactionRepository
+                .getTotalRefundToCustomerByCashRegisterAndDateRange(cashRegisterId, startDate, endDate));
+
+        // Refund FROM suppliers (PURCHASE orders) - money comes IN
+        BigDecimal refundFromSupplier = nullToZero(cashTransactionRepository
+                .getTotalRefundFromSupplierByCashRegisterAndDateRange(cashRegisterId, startDate, endDate));
+
+        // Calculate net turnover (all operations)
+        BigDecimal netTurnover = totalIncome
+                .subtract(totalExpense)
+                .subtract(refundToCustomer)
+                .add(refundFromSupplier);
+
+        // Calculate closing balance
+        BigDecimal closingBalance = openingBalance
+                .add(totalIncome)
+                .subtract(totalExpense)
+                .subtract(refundToCustomer)
+                .add(refundFromSupplier);
+
+        // Transaction count
         long transactionCount = cashTransactionRepository
                 .findByCashRegisterIdAndDateRange(cashRegisterId, startDate, endDate).size();
 
-        BigDecimal closingBalance = openingBalance.add(totalIncome).subtract(totalExpense);
-
+        // Build response
         CashRegisterSummaryDto summary = CashRegisterSummaryDto.builder()
                 .cashRegisterId(cashRegisterId)
                 .cashRegisterName(cashRegister.getName())
@@ -302,6 +348,8 @@ public class CashRegisterService {
                 .openingBalance(openingBalance)
                 .totalIncome(totalIncome)
                 .totalExpense(totalExpense)
+                .refundToCustomer(refundToCustomer)
+                .refundFromSupplier(refundFromSupplier)
                 .netTurnover(netTurnover)
                 .closingBalance(closingBalance)
                 .transactionCount((int) transactionCount)

@@ -17,6 +17,7 @@ import ru.galtor85.household_store.dto.request.order.RollbackRequest;
 import ru.galtor85.household_store.dto.request.order.SalesOrderCreateRequest;
 import ru.galtor85.household_store.dto.response.order.RollbackApprovalDto;
 import ru.galtor85.household_store.dto.response.order.SalesOrderDto;
+import ru.galtor85.household_store.dto.response.report.DailySalesReportDto;
 import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
@@ -25,6 +26,7 @@ import ru.galtor85.household_store.service.order.SalesOrderService;
 import ru.galtor85.household_store.service.rollback.RollbackService;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static ru.galtor85.household_store.constants.EndpointConstants.CONTROL_MANAGER_ORDERS;
 
@@ -237,6 +239,28 @@ public class ManagerSalesOrderController extends BaseController {
         return ResponseEntity.ok(ApiResponse.success(
                 messageService.get("manager.order.price.updated"),
                 order));
+    }
+
+    /**
+     * Gets daily sales report.
+     *
+     * @param date report date
+     * @return daily sales report DTO
+     */
+    @GetMapping("/reports/sales/daily")
+    @Operation(summary = "Get daily sales report",
+            description = "Retrieves sales statistics for a specific date")
+    public ResponseEntity<ApiResponse<DailySalesReportDto>> getDailySalesReport(
+            @Parameter(description = "Report date", example = "2026-04-17", required = true)
+            @RequestParam LocalDate date) {
+
+        log.info(logMsg.get("manager.report.sales.daily.start", date));
+
+        DailySalesReportDto report = salesOrderService.getDailySalesReport(date);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("manager.report.sales.daily.fetched"),
+                report));
     }
 
     /**

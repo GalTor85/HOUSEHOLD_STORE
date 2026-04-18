@@ -22,7 +22,7 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
      * Finds paginated transactions by cash register ID.
      *
      * @param cashRegisterId cash register ID
-     * @param pageable pagination information
+     * @param pageable       pagination information
      * @return page of cash transactions
      */
     Page<CashTransaction> findByCashRegisterId(Long cashRegisterId, Pageable pageable);
@@ -48,8 +48,8 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
      * Finds transactions by cash register within date range.
      *
      * @param cashRegisterId cash register ID
-     * @param startDate period start
-     * @param endDate period end
+     * @param startDate      period start
+     * @param endDate        period end
      * @return list of cash transactions
      */
     @Query("SELECT ct FROM CashTransaction ct WHERE ct.cashRegister.id = :cashRegisterId " +
@@ -62,8 +62,8 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
      * Gets total income for cash register within date range.
      *
      * @param cashRegisterId cash register ID
-     * @param startDate period start
-     * @param endDate period end
+     * @param startDate      period start
+     * @param endDate        period end
      * @return total income amount
      */
     @Query("SELECT COALESCE(SUM(ct.amount), 0) FROM CashTransaction ct " +
@@ -78,8 +78,8 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
      * Gets total expense for cash register within date range.
      *
      * @param cashRegisterId cash register ID
-     * @param startDate period start
-     * @param endDate period end
+     * @param startDate      period start
+     * @param endDate        period end
      * @return total expense amount
      */
     @Query("SELECT COALESCE(SUM(ct.amount), 0) FROM CashTransaction ct " +
@@ -90,39 +90,7 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
                                                          @Param("startDate") LocalDateTime startDate,
                                                          @Param("endDate") LocalDateTime endDate);
 
-    /**
-     * Gets net turnover for cash register within date range.
-     *
-     * @param cashRegisterId cash register ID
-     * @param startDate period start
-     * @param endDate period end
-     * @return net turnover amount
-     */
-    @Query("SELECT COALESCE(SUM(CASE WHEN ct.transactionType = 'INCOME' THEN ct.amount " +
-            "WHEN ct.transactionType = 'EXPENSE' THEN -ct.amount ELSE 0 END), 0) " +
-            "FROM CashTransaction ct WHERE ct.cashRegister.id = :cashRegisterId " +
-            "AND ct.createdAt BETWEEN :startDate AND :endDate")
-    BigDecimal getNetTurnoverByCashRegisterAndDateRange(@Param("cashRegisterId") Long cashRegisterId,
-                                                        @Param("startDate") LocalDateTime startDate,
-                                                        @Param("endDate") LocalDateTime endDate);
-
-    /**
-     * Gets total refund amount for cash register within date range.
-     *
-     * @param cashRegisterId cash register ID
-     * @param startDate period start
-     * @param endDate period end
-     * @return total refund amount
-     */
-    @Query("SELECT COALESCE(SUM(ct.amount), 0) FROM CashTransaction ct " +
-            "WHERE ct.cashRegister.id = :cashRegisterId " +
-            "AND ct.transactionType = 'REFUND' " +
-            "AND ct.createdAt BETWEEN :startDate AND :endDate")
-    BigDecimal getTotalRefundByCashRegisterAndDateRange(@Param("cashRegisterId") Long cashRegisterId,
-                                                        @Param("startDate") LocalDateTime startDate,
-                                                        @Param("endDate") LocalDateTime endDate);
-
-    /**
+      /**
      * Checks if a refund transaction exists for the original transaction.
      *
      * @param transactionId original transaction ID
@@ -132,4 +100,28 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
     boolean existsByOriginalTransactionId(@Param("transactionId") Long transactionId);
 
     boolean existsByCashRegisterId(Long cashRegisterId);
+
+    /**
+     * Gets total refund amount TO customers (SALES orders)
+     */
+    @Query("SELECT COALESCE(SUM(ct.amount), 0) FROM CashTransaction ct " +
+            "WHERE ct.cashRegister.id = :cashRegisterId " +
+            "AND ct.transactionType = 'REFUND' " +
+            "AND ct.invoice.salesOrderId IS NOT NULL " +
+            "AND ct.createdAt BETWEEN :startDate AND :endDate")
+    BigDecimal getTotalRefundToCustomerByCashRegisterAndDateRange(@Param("cashRegisterId") Long cashRegisterId,
+                                                                  @Param("startDate") LocalDateTime startDate,
+                                                                  @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Gets total refund amount FROM suppliers (PURCHASE orders)
+     */
+    @Query("SELECT COALESCE(SUM(ct.amount), 0) FROM CashTransaction ct " +
+            "WHERE ct.cashRegister.id = :cashRegisterId " +
+            "AND ct.transactionType = 'REFUND' " +
+            "AND ct.invoice.purchaseOrderId IS NOT NULL " +
+            "AND ct.createdAt BETWEEN :startDate AND :endDate")
+    BigDecimal getTotalRefundFromSupplierByCashRegisterAndDateRange(@Param("cashRegisterId") Long cashRegisterId,
+                                                                    @Param("startDate") LocalDateTime startDate,
+                                                                    @Param("endDate") LocalDateTime endDate);
 }

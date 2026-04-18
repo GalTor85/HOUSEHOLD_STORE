@@ -39,6 +39,12 @@ public class CashRegisterSummaryDto {
     @Schema(description = "Closing balance", example = "15000.00")
     private BigDecimal closingBalance;
 
+    @Schema(description = "Refunds to customers (SALES)", example = "300.00")
+    private BigDecimal refundToCustomer;
+
+    @Schema(description = "Refunds from suppliers (PURCHASE)", example = "500.00")
+    private BigDecimal refundFromSupplier;
+
     @Schema(description = "Total income", example = "5000.00")
     private BigDecimal totalIncome;
 

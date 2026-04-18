@@ -117,11 +117,8 @@ public class CashRegisterProcessor {
     public CashRegister closeCashRegister(CashRegister cashRegister, BigDecimal closingBalance) {
         log.info(logMsg.get("cash.register.processor.close.start", cashRegister.getId()));
 
-        BigDecimal currentBalance = cashRegister.getCurrentBalance();
-        BigDecimal finalClosingBalance = closingBalance != null ? closingBalance : currentBalance;
-
         cashRegister.setIsActive(false);
-        cashRegister.setClosingBalance(finalClosingBalance);
+        cashRegister.setClosingBalance(closingBalance);
         cashRegister.setClosedAt(LocalDateTime.now());
 
         CashRegister closed = cashRegisterRepository.save(cashRegister);
