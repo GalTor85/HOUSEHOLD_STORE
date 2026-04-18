@@ -276,15 +276,19 @@ public class SalesOrderProcessor {
         order.setDiscountAmount(priceResult.getTotalDiscount());
         order.setTotalAmount(priceResult.getFinalTotal());
 
-        if (cartItems != null) {
-            addOrderItems(order, cartItems);
-        } else if (orderItems != null) {
-            order.setItems(orderItems);
-        }
-
         SalesOrder savedOrder = salesOrderRepository.save(order);
 
-        Invoice invoice = invoiceAutoCreationProcessor.createInvoiceForOrder(order, userId);
+        if (cartItems != null) {
+            addOrderItems(savedOrder, cartItems);
+        } else if (orderItems != null) {
+            for (SalesOrderItem item : orderItems) {
+                item.setSalesOrder(savedOrder);
+                savedOrder.addItem(item);
+            }
+
+        }
+
+        Invoice invoice = invoiceAutoCreationProcessor.createInvoiceForOrder(savedOrder , userId);
         if (invoice != null) {
             savedOrder.addInvoice(invoice);
             salesOrderRepository.save(savedOrder);
