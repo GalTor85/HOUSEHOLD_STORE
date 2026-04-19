@@ -1,10 +1,14 @@
 package ru.galtor85.household_store.repository.payment;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.galtor85.household_store.entity.order.OrderType;
 import ru.galtor85.household_store.entity.payment.PaymentTransaction;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -41,4 +45,16 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
      * @return total count of transactions
      */
     long countByCreatedBy(Long userId);
+
+    boolean existsByOrderIdAndCreatedAtAfter(Long orderId, LocalDateTime date);
+
+    @Modifying
+    @Query("UPDATE PaymentTransaction t SET t.deleted = true, t.deletedAt = :deletedAt, " +
+            "t.deletedBy = :deletedBy, t.deleteReason = :reason WHERE t.id = :id")
+    int softDelete(@Param("id") Long id, @Param("deletedAt") LocalDateTime deletedAt,
+                   @Param("deletedBy") Long deletedBy, @Param("reason") String reason);
+
+    @Modifying
+    @Query("DELETE FROM PaymentTransaction t WHERE t.deleted = true AND t.deletedAt < :threshold")
+    int deleteByDeletedTrueAndDeletedAtBefore(@Param("threshold") LocalDateTime threshold);
 }

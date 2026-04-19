@@ -94,4 +94,6 @@
 
     <include file="db/changelog/db.changelog-remove-quantity-in-stock.xml"/>
 
+    <!-- Soft delete columns for all entities -->
+    <include file="db/changelog/db.changelog-add-soft-delete.xml"/>
 </databaseChangeLog>

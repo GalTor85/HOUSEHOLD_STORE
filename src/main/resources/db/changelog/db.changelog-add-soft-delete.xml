@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- =========================================================================
+         SOFT DELETE COLUMNS FOR ALL ENTITIES
+         Author: G@LTor85
+         Date: 2026-04-19
+         Description: Add soft delete columns to support logical deletion
+    ========================================================================= -->
+
+    <!-- INVOICES -->
+    <changeSet id="add-soft-delete-to-invoices" author="G@LTor85">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="invoices" schemaName="household_schema"/>
+        </preConditions>
+
+        <comment>Add soft delete columns to invoices table</comment>
+
+        <addColumn tableName="invoices" schemaName="household_schema">
+            <column name="deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="invoices" schemaName="household_schema">
+            <column name="deleted_at" type="timestamp"/>
+        </addColumn>
+
+        <addColumn tableName="invoices" schemaName="household_schema">
+            <column name="deleted_by" type="bigint"/>
+        </addColumn>
+
+        <addColumn tableName="invoices" schemaName="household_schema">
+            <column name="delete_reason" type="varchar(500)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="invoices" schemaName="household_schema" columnName="deleted"/>
+            <dropColumn tableName="invoices" schemaName="household_schema" columnName="deleted_at"/>
+            <dropColumn tableName="invoices" schemaName="household_schema" columnName="deleted_by"/>
+            <dropColumn tableName="invoices" schemaName="household_schema" columnName="delete_reason"/>
+        </rollback>
+    </changeSet>
+
+    <!-- SALES ORDERS -->
+    <changeSet id="add-soft-delete-to-sales-orders" author="G@LTor85">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sales_orders" schemaName="household_schema"/>
+        </preConditions>
+
+        <comment>Add soft delete columns to sales_orders table</comment>
+
+        <addColumn tableName="sales_orders" schemaName="household_schema">
+            <column name="deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sales_orders" schemaName="household_schema">
+            <column name="deleted_at" type="timestamp"/>
+        </addColumn>
+
+        <addColumn tableName="sales_orders" schemaName="household_schema">
+            <column name="deleted_by" type="bigint"/>
+        </addColumn>
+
+        <addColumn tableName="sales_orders" schemaName="household_schema">
+            <column name="delete_reason" type="varchar(500)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="sales_orders" schemaName="household_schema" columnName="deleted"/>
+            <dropColumn tableName="sales_orders" schemaName="household_schema" columnName="deleted_at"/>
+            <dropColumn tableName="sales_orders" schemaName="household_schema" columnName="deleted_by"/>
+            <dropColumn tableName="sales_orders" schemaName="household_schema" columnName="delete_reason"/>
+        </rollback>
+    </changeSet>
+
+    <!-- PURCHASE ORDERS -->
+    <changeSet id="add-soft-delete-to-purchase-orders" author="G@LTor85">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="purchase_orders" schemaName="household_schema"/>
+        </preConditions>
+
+        <comment>Add soft delete columns to purchase_orders table</comment>
+
+        <addColumn tableName="purchase_orders" schemaName="household_schema">
+            <column name="deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="purchase_orders" schemaName="household_schema">
+            <column name="deleted_at" type="timestamp"/>
+        </addColumn>
+
+        <addColumn tableName="purchase_orders" schemaName="household_schema">
+            <column name="deleted_by" type="bigint"/>
+        </addColumn>
+
+        <addColumn tableName="purchase_orders" schemaName="household_schema">
+            <column name="delete_reason" type="varchar(500)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="purchase_orders" schemaName="household_schema" columnName="deleted"/>
+            <dropColumn tableName="purchase_orders" schemaName="household_schema" columnName="deleted_at"/>
+            <dropColumn tableName="purchase_orders" schemaName="household_schema" columnName="deleted_by"/>
+            <dropColumn tableName="purchase_orders" schemaName="household_schema" columnName="delete_reason"/>
+        </rollback>
+    </changeSet>
+
+    <!-- PAYMENT TRANSACTIONS -->
+    <changeSet id="add-soft-delete-to-payment-transactions" author="G@LTor85">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="payment_transactions" schemaName="household_schema"/>
+        </preConditions>
+
+        <comment>Add soft delete columns to payment_transactions table</comment>
+
+        <addColumn tableName="payment_transactions" schemaName="household_schema">
+            <column name="deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="payment_transactions" schemaName="household_schema">
+            <column name="deleted_at" type="timestamp"/>
+        </addColumn>
+
+        <addColumn tableName="payment_transactions" schemaName="household_schema">
+            <column name="deleted_by" type="bigint"/>
+        </addColumn>
+
+        <addColumn tableName="payment_transactions" schemaName="household_schema">
+            <column name="delete_reason" type="varchar(500)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="payment_transactions" schemaName="household_schema" columnName="deleted"/>
+            <dropColumn tableName="payment_transactions" schemaName="household_schema" columnName="deleted_at"/>
+            <dropColumn tableName="payment_transactions" schemaName="household_schema" columnName="deleted_by"/>
+            <dropColumn tableName="payment_transactions" schemaName="household_schema" columnName="delete_reason"/>
+        </rollback>
+    </changeSet>
+
+    <!-- OPTIONAL: Add indexes for better query performance -->
+    <changeSet id="add-soft-delete-indexes" author="G@LTor85">
+        <comment>Add indexes on deleted flag for soft delete queries</comment>
+
+        <createIndex tableName="invoices" schemaName="household_schema" indexName="idx_invoices_deleted">
+            <column name="deleted"/>
+        </createIndex>
+
+        <createIndex tableName="sales_orders" schemaName="household_schema" indexName="idx_sales_orders_deleted">
+            <column name="deleted"/>
+        </createIndex>
+
+        <createIndex tableName="purchase_orders" schemaName="household_schema" indexName="idx_purchase_orders_deleted">
+            <column name="deleted"/>
+        </createIndex>
+
+        <createIndex tableName="payment_transactions" schemaName="household_schema" indexName="idx_payment_transactions_deleted">
+            <column name="deleted"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="invoices" schemaName="household_schema" indexName="idx_invoices_deleted"/>
+            <dropIndex tableName="sales_orders" schemaName="household_schema" indexName="idx_sales_orders_deleted"/>
+            <dropIndex tableName="purchase_orders" schemaName="household_schema" indexName="idx_purchase_orders_deleted"/>
+            <dropIndex tableName="payment_transactions" schemaName="household_schema" indexName="idx_payment_transactions_deleted"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

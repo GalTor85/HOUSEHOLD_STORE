@@ -3,6 +3,7 @@ package ru.galtor85.household_store.repository.order;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -104,4 +105,26 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
             "GROUP BY EXTRACT(HOUR FROM so.createdAt) " +
             "ORDER BY EXTRACT(HOUR FROM so.createdAt)")
     List<Object[]> getHourlySalesForDate(@Param("date") LocalDate date);
+
+    /**
+     *
+     * @param id
+     * @param deletedAt
+     * @param deletedBy
+     * @param reason
+     * @return
+     */
+    @Modifying
+    @Query("UPDATE SalesOrder o SET o.deleted = true, o.deletedAt = :deletedAt, o.deletedBy = :deletedBy, o.deleteReason = :reason WHERE o.id = :id")
+    int softDelete(@Param("id") Long id, @Param("deletedAt") LocalDateTime deletedAt,
+                   @Param("deletedBy") Long deletedBy, @Param("reason") String reason);
+
+    /**
+     *
+     * @param threshold
+     * @return
+     */
+    @Modifying
+    @Query("DELETE FROM SalesOrder o WHERE o.deleted = true AND o.deletedAt < :threshold")
+    int deleteByDeletedTrueAndDeletedAtBefore(@Param("threshold") LocalDateTime threshold);
 }

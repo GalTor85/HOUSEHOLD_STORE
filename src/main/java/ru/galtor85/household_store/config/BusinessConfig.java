@@ -22,6 +22,7 @@ public class BusinessConfig {
     private PaginationConfig pagination = new PaginationConfig();
     private UserConfig user = new UserConfig();
     private BankAccountConfig BankAccount = new BankAccountConfig();
+    private CleanupConfig cleanup = new CleanupConfig();
 
     @Data
     public static class CartConfig {
@@ -60,5 +61,26 @@ public class BusinessConfig {
     public static class BankAccountConfig {
         private Integer maxNameLength=50;
         private Integer maxBankNameLength=50;
+    }
+
+    @Data
+    public static class CleanupConfig {
+        /** Retention period in days for deleted entities (default: 90) */
+        private Integer retentionDays = 90;
+
+        /** Retention period in days for cancelled orders (default: 30) */
+        private Integer cancelledRetentionDays = 30;
+
+        /** How far back to check for recent payments (months) */
+        private Integer recentPaymentsMonths = 6;
+
+        /** Minimum age in months for invoice deletion */
+        private Integer invoiceMinAgeMonths = 6;
+
+        /** Minimum age in months for purchase order deletion */
+        private Integer purchaseOrderMinAgeMonths = 6;
+
+        /** Minimum age in months for payment transaction deletion */
+        private Integer paymentMinAgeMonths = 3;
     }
 }
