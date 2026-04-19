@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="add-soft-delete-to-currencies" author="G@LTor85">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="currencies" schemaName="household_schema"/>
+        </preConditions>
+
+        <comment>Add soft delete columns to currencies table</comment>
+
+        <addColumn tableName="currencies" schemaName="household_schema">
+            <column name="deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="currencies" schemaName="household_schema">
+            <column name="deleted_at" type="timestamp"/>
+        </addColumn>
+
+        <addColumn tableName="currencies" schemaName="household_schema">
+            <column name="deleted_by" type="bigint"/>
+        </addColumn>
+
+        <addColumn tableName="currencies" schemaName="household_schema">
+            <column name="delete_reason" type="varchar(500)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="currencies" schemaName="household_schema" columnName="deleted"/>
+            <dropColumn tableName="currencies" schemaName="household_schema" columnName="deleted_at"/>
+            <dropColumn tableName="currencies" schemaName="household_schema" columnName="deleted_by"/>
+            <dropColumn tableName="currencies" schemaName="household_schema" columnName="delete_reason"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-soft-delete-index-to-currencies" author="G@LTor85">
+        <createIndex tableName="currencies" schemaName="household_schema"
+                     indexName="idx_currencies_deleted">
+            <column name="deleted"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="currencies" schemaName="household_schema"
+                       indexName="idx_currencies_deleted"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

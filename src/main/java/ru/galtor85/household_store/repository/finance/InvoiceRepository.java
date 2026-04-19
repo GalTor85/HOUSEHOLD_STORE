@@ -125,12 +125,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     BigDecimal getUnpaidAmountBySupplierId(@Param("supplierId") Long supplierId);
 
     @Modifying
-    @Query("UPDATE Invoice i SET i.deleted = true, i.deletedAt = :deletedAt, " +
-            "i.deletedBy = :deletedBy, i.deleteReason = :reason WHERE i.id = :id")
-    int softDelete(@Param("id") Long id, @Param("deletedAt") LocalDateTime deletedAt,
-                   @Param("deletedBy") Long deletedBy, @Param("reason") String reason);
-
-    @Modifying
     @Query("DELETE FROM Invoice i WHERE i.deleted = true AND i.deletedAt < :threshold")
     int deleteByDeletedTrueAndDeletedAtBefore(@Param("threshold") LocalDateTime threshold);
 

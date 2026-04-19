@@ -49,12 +49,6 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     boolean existsByOrderIdAndCreatedAtAfter(Long orderId, LocalDateTime date);
 
     @Modifying
-    @Query("UPDATE PaymentTransaction t SET t.deleted = true, t.deletedAt = :deletedAt, " +
-            "t.deletedBy = :deletedBy, t.deleteReason = :reason WHERE t.id = :id")
-    int softDelete(@Param("id") Long id, @Param("deletedAt") LocalDateTime deletedAt,
-                   @Param("deletedBy") Long deletedBy, @Param("reason") String reason);
-
-    @Modifying
     @Query("DELETE FROM PaymentTransaction t WHERE t.deleted = true AND t.deletedAt < :threshold")
     int deleteByDeletedTrueAndDeletedAtBefore(@Param("threshold") LocalDateTime threshold);
 }

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.galtor85.household_store.config.BusinessConfig;
+import ru.galtor85.household_store.entity.finance.Currency;
 import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.order.PurchaseOrder;
@@ -12,6 +13,7 @@ import ru.galtor85.household_store.entity.order.SalesOrder;
 import ru.galtor85.household_store.entity.order.OrderStatus;
 import ru.galtor85.household_store.entity.payment.PaymentTransaction;
 import ru.galtor85.household_store.entity.payment.PaymentTransactionStatus;
+import ru.galtor85.household_store.repository.currency.CurrencyRepository;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
@@ -54,6 +56,7 @@ public class EntityCleanupService {
     private final BusinessConfig businessConfig;
     private final MessageService messageService;
     private final LogMessageService logMsg;
+    private final CurrencyRepository currencyRepository;
 
     // =========================================================================
     // PRIVATE HELPERS
@@ -337,6 +340,54 @@ public class EntityCleanupService {
     }
 
     // =========================================================================
+    // CURRENCY SOFT DELETE
+    // =========================================================================
+
+    /**
+     * Soft deletes a currency by ID.
+     * <p>
+     * Validation rules:
+     * <ul>
+     *   <li>Currency must exist</li>
+     *   <li>Currency must not be already deleted</li>
+     *   <li>Currency must not be the base currency</li>
+     *   <li>Currency must not be used in any transactions</li>
+     * </ul>
+     * </p>
+     *
+     * @param currencyId ID of the currency to delete
+     * @param reason     reason for deletion
+     * @param deletedBy  ID of the user performing the deletion
+     * @throws IllegalArgumentException if currency not found
+     * @throws IllegalStateException    if currency is already deleted, is base currency, or has transactions
+     */
+    @Transactional
+    public void softDeleteCurrency(Long currencyId, String reason, Long deletedBy) {
+        Currency currency = currencyRepository.findById(currencyId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        messageService.get("cleanup.currency.not.found", currencyId)));
+
+        if (currency.isDeleted()) {
+            throw new IllegalStateException(
+                    messageService.get("cleanup.currency.already.deleted", currencyId));
+        }
+
+        if (Boolean.TRUE.equals(currency.getIsBase())) {
+            throw new IllegalStateException(
+                    messageService.get("cleanup.currency.cannot.delete.base", currencyId));
+        }
+
+        currency.setDeleted(true);
+        currency.setDeletedAt(LocalDateTime.now());
+        currency.setDeletedBy(deletedBy);
+        currency.setDeleteReason(reason);
+        currency.setIsActive(false);
+
+        currencyRepository.save(currency);
+        log.info(logMsg.get("entity.cleanup.currency.deleted", currencyId, reason));
+    }
+
+    // =========================================================================
     // AUTO CLEANUP SCHEDULER
     // =========================================================================
 
@@ -360,6 +411,7 @@ public class EntityCleanupService {
         totalDeleted += salesOrderRepository.deleteByDeletedTrueAndDeletedAtBefore(threshold);
         totalDeleted += invoiceRepository.deleteByDeletedTrueAndDeletedAtBefore(threshold);
         totalDeleted += paymentTransactionRepository.deleteByDeletedTrueAndDeletedAtBefore(threshold);
+        totalDeleted += currencyRepository.deleteByDeletedTrueAndDeletedAtBefore(threshold);
 
         log.info(logMsg.get("entity.cleanup.auto.completed", totalDeleted));
         return totalDeleted;

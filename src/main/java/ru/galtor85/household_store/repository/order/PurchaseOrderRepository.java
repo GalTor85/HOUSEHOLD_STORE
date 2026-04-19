@@ -66,30 +66,7 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             "AND po.status NOT IN ('CANCELLED', 'COMPLETED')")
     boolean existsActiveBySupplierId(@Param("supplierId") Long supplierId);
 
-    /**
-     *
-     * @param id
-     * @param deletedAt
-     * @param deletedBy
-     * @param reason
-     * @return
-     */
-    @Modifying
-    @Query("UPDATE PurchaseOrder o SET o.deleted = true, o.deletedAt = :deletedAt, " +
-            "o.deletedBy = :deletedBy, o.deleteReason = :reason WHERE o.id = :id")
-    int softDelete(@Param("id") Long id, @Param("deletedAt") LocalDateTime deletedAt,
-                   @Param("deletedBy") Long deletedBy, @Param("reason") String reason);
-
-    /**
-     *
-     * @param threshold
-     * @return
-     */
     @Modifying
     @Query("DELETE FROM PurchaseOrder o WHERE o.deleted = true AND o.deletedAt < :threshold")
     int deleteByDeletedTrueAndDeletedAtBefore(@Param("threshold") LocalDateTime threshold);
-
-    @Query("SELECT COUNT(po) > 0 FROM PurchaseOrder po WHERE po.id = :orderId AND po.status != :status")
-    boolean existsByPurchaseOrderIdAndStatusNot(@Param("orderId") Long orderId,
-                                                @Param("status") OrderStatus status);
 }

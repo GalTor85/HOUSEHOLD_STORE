@@ -156,6 +156,36 @@ public class CleanupController extends BaseController {
     }
 
     /**
+     * Soft deletes a currency by ID.
+     * <p>
+     * Validation rules:
+     * <ul>
+     *   <li>Currency must exist</li>
+     *   <li>Currency must not be the base currency</li>
+     *   <li>Currency must not be used in any transactions</li>
+     * </ul>
+     * </p>
+     *
+     * @param currencyId the ID of the currency to delete
+     * @param request    contains the reason for deletion
+     * @return success response with localized message
+     */
+    @DeleteMapping("/currencies/{currencyId}")
+    @Operation(summary = "Soft delete currency",
+            description = "Marks a currency as deleted. Base currency cannot be deleted.")
+    public ResponseEntity<ApiResponse<Void>> softDeleteCurrency(
+            @Parameter(description = "Currency ID", example = "1", required = true)
+            @PathVariable Long currencyId,
+            @Valid @RequestBody SoftDeleteRequest request) {
+
+        User currentUser = getCurrentUser();
+        cleanupService.softDeleteCurrency(currencyId, request.getReason(), currentUser.getId());
+
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.get("cleanup.currency.deleted"), null));
+    }
+
+    /**
      * Runs automatic cleanup of expired deleted entities.
      * <p>
      * Permanently removes entities that were soft deleted and have passed

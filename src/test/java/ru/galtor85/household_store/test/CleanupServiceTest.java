@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+import ru.galtor85.household_store.entity.finance.Currency;
 import ru.galtor85.household_store.entity.finance.Invoice;
 import ru.galtor85.household_store.entity.finance.InvoiceStatus;
 import ru.galtor85.household_store.entity.finance.PaymentMethod;
@@ -23,6 +24,7 @@ import ru.galtor85.household_store.entity.payment.PaymentTransactionStatus;
 import ru.galtor85.household_store.entity.user.Role;
 import ru.galtor85.household_store.entity.user.User;
 import ru.galtor85.household_store.repository.auth.SecurityUserRepository;
+import ru.galtor85.household_store.repository.currency.CurrencyRepository;
 import ru.galtor85.household_store.repository.finance.InvoiceRepository;
 import ru.galtor85.household_store.repository.order.PurchaseOrderRepository;
 import ru.galtor85.household_store.repository.order.SalesOrderRepository;
@@ -72,11 +74,15 @@ class CleanupServiceTest {
     @Autowired
     private EntityManager entityManager;
 
+    @Autowired
+    private CurrencyRepository currencyRepository;
+
     private Long adminUserId;
     private Long testSalesOrderId;
     private Long testPurchaseOrderId;
     private Long testInvoiceId;
     private Long testTransactionId;
+    private Long testCurrencyId;
 
     @BeforeEach
     void setUp() {
@@ -151,6 +157,20 @@ class CleanupServiceTest {
                 .executeUpdate();
 
         entityManager.clear();
+
+        // Create test currency
+        Currency currency = Currency.builder()
+                .code("TST")
+                .name("Test Currency")
+                .symbol("T$")
+                .isBase(false)
+                .exchangeRate(BigDecimal.valueOf(100))
+                .decimalPlaces(2)
+                .isActive(true)
+                .createdBy(adminUserId)
+                .build();
+        currency = currencyRepository.save(currency);
+        testCurrencyId = currency.getId();
     }
 
     @Test
@@ -298,5 +318,55 @@ class CleanupServiceTest {
         SalesOrder found = salesOrderRepository.findById(testSalesOrderId).orElse(null);
         assertThat(found).isNotNull();
         assertThat(found.isDeleted()).isTrue();
+    }
+
+    @Test
+    @Order(13)
+    void testSoftDeleteCurrency() {
+        cleanupService.softDeleteCurrency(testCurrencyId, "Test deletion", adminUserId);
+
+        Currency deletedCurrency = currencyRepository.findById(testCurrencyId).orElse(null);
+        assertThat(deletedCurrency).isNotNull();
+        assertThat(deletedCurrency.isDeleted()).isTrue();
+        assertThat(deletedCurrency.getDeletedAt()).isNotNull();
+        assertThat(deletedCurrency.getDeletedBy()).isEqualTo(adminUserId);
+        assertThat(deletedCurrency.getDeleteReason()).isEqualTo("Test deletion");
+        assertThat(deletedCurrency.getIsActive()).isFalse();
+    }
+
+    @Test
+    @Order(14)
+    void testSoftDeleteNonExistentCurrency() {
+        assertThatThrownBy(() -> cleanupService.softDeleteCurrency(999999L, "Test", adminUserId))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @Order(15)
+    void testSoftDeleteBaseCurrency() {
+        currencyRepository.findByIsBaseTrue().ifPresent(baseCurrency -> assertThatThrownBy(() -> cleanupService.softDeleteCurrency(baseCurrency.getId(), "Test", adminUserId))
+                .isInstanceOf(IllegalStateException.class));
+    }
+
+    @Test
+    @Order(16)
+    void testSoftDeleteAlreadyDeletedCurrency() {
+        Currency currency = Currency.builder()
+                .code("TS2")
+                .name("Test Currency 2")
+                .symbol("T$")
+                .isBase(false)
+                .exchangeRate(BigDecimal.valueOf(100))
+                .decimalPlaces(2)
+                .isActive(true)
+                .createdBy(adminUserId)
+                .build();
+        currency = currencyRepository.save(currency);
+
+        cleanupService.softDeleteCurrency(currency.getId(), "First", adminUserId);
+
+        Currency finalCurrency = currency;
+        assertThatThrownBy(() -> cleanupService.softDeleteCurrency(finalCurrency.getId(), "Second", adminUserId))
+                .isInstanceOf(IllegalStateException.class);
     }
 }

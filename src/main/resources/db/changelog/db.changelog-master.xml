@@ -96,4 +96,6 @@
 
     <!-- Soft delete columns for all entities -->
     <include file="db/changelog/db.changelog-add-soft-delete.xml"/>
+
+    <include file="db/changelog/db.changelog-add-soft-delete-currency.xml"/>
 </databaseChangeLog>

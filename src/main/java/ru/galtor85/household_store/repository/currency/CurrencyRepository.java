@@ -3,9 +3,11 @@ package ru.galtor85.household_store.repository.currency;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.galtor85.household_store.entity.finance.Currency;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -59,4 +61,8 @@ public interface CurrencyRepository extends JpaRepository<Currency, Long> {
     @Modifying
     @Query("UPDATE Currency c SET c.isBase = false")
     void resetBaseCurrency();
+
+    @Modifying
+    @Query("DELETE FROM Currency c WHERE c.deleted = true AND c.deletedAt < :threshold")
+    int deleteByDeletedTrueAndDeletedAtBefore(@Param("threshold") LocalDateTime threshold);
 }
