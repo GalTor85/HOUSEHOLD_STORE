@@ -71,8 +71,9 @@ class CashRefundTest {
 
     @BeforeEach
     void setUp() {
+        String uniqueNumber = "TEST-" + System.currentTimeMillis();
         cashRegister = CashRegister.builder()
-                .registerNumber("TEST-001")
+                .registerNumber(uniqueNumber)
                 .name("Test Cash Register")
                 .isActive(true)
                 .openingBalance(BigDecimal.valueOf(10000))

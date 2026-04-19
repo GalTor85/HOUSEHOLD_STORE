@@ -6,8 +6,7 @@ package ru.galtor85.household_store.entity.user;
 public enum Role {
     ADMIN,
     USER,
-    MANAGER,
-    CUSTOMER;
+    MANAGER;
 
     /**
      * Checks if this role can manage the target role.
@@ -18,9 +17,8 @@ public enum Role {
     public boolean canManage(Role targetRole) {
         return switch (this) {
             case ADMIN -> true;
-            case MANAGER -> targetRole == USER || targetRole == CUSTOMER;
-            case USER -> targetRole == CUSTOMER;
-            case CUSTOMER -> false;
+            case MANAGER -> targetRole == USER ;
+            case USER ->  false;
         };
     }
 

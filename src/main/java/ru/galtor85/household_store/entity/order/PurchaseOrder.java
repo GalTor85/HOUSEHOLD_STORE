@@ -115,6 +115,7 @@ public class PurchaseOrder {
     @Column(length = 3000)
     private String notes;
 
+    @Builder.Default
     @Column(name = "deleted")
     private boolean deleted = false;
 

@@ -88,6 +88,7 @@ public class PaymentTransaction {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Builder.Default
     @Column(name = "deleted")
     private boolean deleted = false;
 
