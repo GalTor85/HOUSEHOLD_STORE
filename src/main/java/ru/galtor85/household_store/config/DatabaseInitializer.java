@@ -116,7 +116,6 @@ public class DatabaseInitializer {
      */
     private void initializeAll() {
         createDefaultAdmin();
-        createDefaultManager();
         createDefaultWarehouse();
         createDefaultCurrency();
     }
@@ -180,31 +179,7 @@ public class DatabaseInitializer {
                 adminConfig.getLastName(),
                 adminConfig.getPassword(),
                 Role.valueOf(adminConfig.getRole()),
-                null
-        );
-    }
-
-    /**
-     * Creates the default manager user if it doesn't exist.
-     *
-     * <p><b>Default Manager Credentials:</b></p>
-     * <ul>
-     *   <li>Email: from configuration (default: manager@household.store)</li>
-     *   <li>Password: from configuration (default: Manager123!)</li>
-     *   <li>Role: MANAGER</li>
-     *   <li>User Type: EMPLOYEE</li>
-     * </ul>
-     */
-    private void createDefaultManager() {
-        DefaultsUserConfig.ManagerConfig managerConfig = defaultsUserConfig.getManager();
-
-        createUserIfNotExists(
-                managerConfig.getEmail(),
-                managerConfig.getFirstName(),
-                managerConfig.getLastName(),
-                managerConfig.getPassword(),
-                Role.valueOf(managerConfig.getRole()),
-                UserType.valueOf(managerConfig.getUserType())
+                UserType.valueOf(adminConfig.getUserType())
         );
     }
 

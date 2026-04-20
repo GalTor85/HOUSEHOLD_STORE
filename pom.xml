@@ -87,6 +87,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Rate limiting for API endpoints -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.10.1</version>
+        </dependency>
+
         <!-- SECTION: Critical Security Patches (Direct Overrides) -->
         <!-- Fixes vulnerabilities in jackson-core 3.1.0 -->
         <dependency>

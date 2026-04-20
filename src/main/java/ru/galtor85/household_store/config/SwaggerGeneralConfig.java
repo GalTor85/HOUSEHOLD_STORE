@@ -48,7 +48,7 @@ public class SwaggerGeneralConfig {
                                 .email(getMessage("swagger-general-config.contact.email", locale)))
                         .license(new License()
                                 .name(getMessage("swagger-general-config.license.name", locale))
-                                .url(getMessage("swagger-general-config.license.url", locale))));
+                                ));
     }
 
     private String getMessage(String code, Locale locale) {

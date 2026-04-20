@@ -32,6 +32,7 @@ public class DefaultsUserConfig {
         private String password = "Admin123!";
         private String firstName = "Admin";
         private String lastName = "Admin";
+        private String userType = "EMPLOYEE";
         private String role = "ADMIN";
     }
 
