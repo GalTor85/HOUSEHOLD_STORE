@@ -85,7 +85,7 @@ PostgreSQL 15+ (if running without Docker)
 ⚡ Quick Start
 1. Clone Repository
 
-git clone https://github.com/GalTor85/household-store.git
+git clone https://github.com/GalTor85/household_store.git`
 cd household-store
 
 2. Local Run (without Docker)
