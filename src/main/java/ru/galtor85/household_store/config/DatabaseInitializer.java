@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 import ru.galtor85.household_store.entity.finance.Currency;
 import ru.galtor85.household_store.entity.user.Role;
 import ru.galtor85.household_store.entity.user.User;
-import ru.galtor85.household_store.entity.user.UserType;
 import ru.galtor85.household_store.entity.warehouse.Warehouse;
 import ru.galtor85.household_store.repository.auth.SecurityUserRepository;
 import ru.galtor85.household_store.repository.currency.CurrencyRepository;
@@ -24,13 +23,11 @@ import ru.galtor85.household_store.security.SecurityUser;
 import ru.galtor85.household_store.security.SecurityUserFactory;
 import ru.galtor85.household_store.service.i18n.LogMessageService;
 import ru.galtor85.household_store.service.i18n.MessageService;
-import ru.galtor85.household_store.service.user.UserTypeAssignmentService;
 import ru.galtor85.household_store.util.generator.NumberGenerator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import static ru.galtor85.household_store.constants.TechnicalConstants.DEFAULT_REASON_FOR_CREATE;
 import static ru.galtor85.household_store.constants.TechnicalConstants.SYSTEM_CREATOR;
 
 /**
@@ -84,7 +81,6 @@ public class DatabaseInitializer {
     private final PasswordEncoder passwordEncoder;
     private final MessageService messageService;
     private final JdbcTemplate jdbcTemplate;
-    private final UserTypeAssignmentService userTypeAssignmentService;
     private final WarehouseRepository warehouseRepository;
     private final WarehouseConfig warehouseConfig;
     private final CurrencyRepository currencyRepository;
@@ -178,11 +174,9 @@ public class DatabaseInitializer {
                 adminConfig.getFirstName(),
                 adminConfig.getLastName(),
                 adminConfig.getPassword(),
-                Role.valueOf(adminConfig.getRole()),
-                UserType.valueOf(adminConfig.getUserType())
+                Role.valueOf(adminConfig.getRole())
         );
     }
-
     /**
      * Creates a user if it doesn't already exist in the database.
      *
@@ -198,10 +192,9 @@ public class DatabaseInitializer {
      * @param lastName    user's last name
      * @param rawPassword plain text password (will be encoded)
      * @param role        user's role (ADMIN, MANAGER, USER)
-     * @param userType    optional user type (RETAIL, WHOLESALE, VIP, EMPLOYEE, etc.)
      */
     private void createUserIfNotExists(String email, String firstName, String lastName,
-                                       String rawPassword, Role role, UserType userType) {
+                                       String rawPassword, Role role) {
         try {
             if (userRepository.findByEmail(email).isEmpty()) {
                 log.info(logMsg.get("database-initializer.log.creating.user", email));
@@ -223,15 +216,6 @@ public class DatabaseInitializer {
                 );
 
                 securityUserRepository.save(securityUser);
-
-                if (userType != null) {
-                    userTypeAssignmentService.assignUserType(
-                            savedUser.getId(),
-                            userType,
-                            SYSTEM_CREATOR,
-                            DEFAULT_REASON_FOR_CREATE
-                    );
-                }
 
                 log.info(logMsg.get("database-initializer.log.user.created", email, role.name()));
             } else {

@@ -23,26 +23,23 @@ public class DefaultsUserConfig {
 
     private AdminConfig admin = new AdminConfig();
     private ManagerConfig manager = new ManagerConfig();
-    private WarehouseConfig warehouse = new WarehouseConfig();
-    private FinancialConfig currency = new FinancialConfig();
 
     @Data
     public static class AdminConfig {
-        private String email = "admin@household.store";
-        private String password = "Admin123!";
-        private String firstName = "Admin";
-        private String lastName = "Admin";
-        private String userType = "EMPLOYEE";
-        private String role = "ADMIN";
+        private String email;
+        private String password;
+        private String firstName;
+        private String lastName;
+        private String role;
     }
 
     @Data
     public static class ManagerConfig {
-        private String email = "manager@household.store";
-        private String password = "Manager123!";
-        private String firstName = "Manager";
-        private String lastName = "Manager";
-        private String role = "MANAGER";
-        private String userType = "EMPLOYEE";
+        private String email;
+        private String password;
+        private String firstName;
+        private String lastName;
+        private String role;
+        private String userType;
     }
 }

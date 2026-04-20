@@ -20,8 +20,6 @@ import ru.galtor85.household_store.advice.exception.cash.CashRegisterClosedExcep
 import ru.galtor85.household_store.advice.exception.cash.CashRegisterNotFoundException;
 import ru.galtor85.household_store.advice.exception.cash.InsufficientCashException;
 import ru.galtor85.household_store.advice.exception.cash.InvoiceNotFoundException;
-import ru.galtor85.household_store.advice.exception.category.CategoryAlreadyAssignedException;
-import ru.galtor85.household_store.advice.exception.category.CategoryNotFoundException;
 import ru.galtor85.household_store.advice.exception.cell.*;
 import ru.galtor85.household_store.advice.exception.file.*;
 import ru.galtor85.household_store.advice.exception.finance.BankAccountNotFoundException;
@@ -35,13 +33,12 @@ import ru.galtor85.household_store.advice.exception.rollback.*;
 import ru.galtor85.household_store.advice.exception.stock.*;
 import ru.galtor85.household_store.advice.exception.supplier.*;
 import ru.galtor85.household_store.advice.exception.system.DatabaseConnectionException;
-import ru.galtor85.household_store.advice.exception.system.MessageNotFoundException;
+
 import ru.galtor85.household_store.advice.exception.system.SystemInfoException;
 import ru.galtor85.household_store.advice.exception.user.UserTypeAssignmentException;
-import ru.galtor85.household_store.advice.exception.user.UserTypeAssignmentNotFoundException;
 import ru.galtor85.household_store.advice.exception.validation.InvalidDateRangeException;
 import ru.galtor85.household_store.advice.exception.validation.InvalidPriceException;
-import ru.galtor85.household_store.advice.exception.validation.InvalidQuantityException;
+
 import ru.galtor85.household_store.advice.exception.validation.ValidationRequestException;
 import ru.galtor85.household_store.advice.exception.warehouse.WarehouseAlreadyExistsException;
 import ru.galtor85.household_store.advice.exception.warehouse.WarehouseNotFoundException;
@@ -49,7 +46,6 @@ import ru.galtor85.household_store.dto.response.system.ApiResponse;
 import ru.galtor85.household_store.service.i18n.MessageService;
 
 import java.math.BigDecimal;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -208,13 +204,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(InvalidTokenFormatException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidTokenFormat() {
-        String message = messageService.get("auth.error.token.invalid.format");
-        log.warn("InvalidTokenFormatException");
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(message));
-    }
-
     @ExceptionHandler(RefreshTokenMissingException.class)
     public ResponseEntity<ApiResponse<Void>> handleRefreshTokenMissing() {
         String message = messageService.get("auth.error.refresh.token.missing");
@@ -243,14 +232,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(e.getMessage(), details));
     }
 
-    @ExceptionHandler(UserTypeAssignmentNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUserTypeAssignmentNotFound(
-            UserTypeAssignmentNotFoundException e) {
-        String message = messageService.get("user-type.error.not.found", e.getUserId());
-        log.error("UserTypeAssignmentNotFoundException: {}", message);
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(message));
-    }
-
     // =========================================================================
     // VALIDATION EXCEPTIONS
     // =========================================================================
@@ -275,14 +256,6 @@ public class GlobalExceptionHandler {
         String price = e.getInvalidPrice() != null ? e.getInvalidPrice().toString() : "null";
         String message = messageService.get("manager.price.error.invalid", price);
         log.error("InvalidPriceException: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(InvalidQuantityException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidQuantity(InvalidQuantityException e) {
-        String qty = e.getInvalidQuantity() != null ? e.getInvalidQuantity().toString() : "null";
-        String message = messageService.get("manager.order.error.invalid.quantity", qty);
-        log.error("InvalidQuantityException: {}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
     }
 
@@ -318,32 +291,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(ProductNotFromSupplierException.class)
-    public ResponseEntity<ApiResponse<Void>> handleProductNotFromSupplier(ProductNotFromSupplierException e) {
-        String message = messageService.get("manager.purchase.error.product.not.from.supplier",
-                e.getProductId(), e.getSupplierId());
-        log.error("ProductNotFromSupplierException: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
-    }
-
     // =========================================================================
 // CATEGORY EXCEPTIONS
 // =========================================================================
-
-    @ExceptionHandler(CategoryAlreadyAssignedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleCategoryAlreadyAssigned(
-            CategoryAlreadyAssignedException e) {
-        String message = messageService.get("category.error.already.assigned", e.getCategory());
-        log.warn("CategoryAlreadyAssignedException: {}", message);
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(CategoryNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleCategoryNotFound(CategoryNotFoundException e) {
-        String message = messageService.get("category.error.not.found", e.getCategory());
-        log.error("CategoryNotFoundException: {}", message);
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(message));
-    }
 
     // =========================================================================
     // PRODUCT MEDIA EXCEPTIONS
@@ -441,12 +391,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(OrderCreationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleOrderCreation(OrderCreationException e) {
-        log.error("OrderCreationException for order {}", e.getOrderNumber());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.error(e.getMessage()));
-    }
-
     @ExceptionHandler(PurchaseOrderNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handlePurchaseOrderNotFound(PurchaseOrderNotFoundException e) {
         String message;
@@ -468,13 +412,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(OrderItemAlreadyExistsException.class)
-    public ResponseEntity<ApiResponse<Void>> handleOrderItemAlreadyExists(OrderItemAlreadyExistsException e) {
-        String message = messageService.get("manager.order.error.item.exists", e.getProductId());
-        log.error("OrderItemAlreadyExistsException: {}", message);
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(message));
-    }
-
     @ExceptionHandler(InvalidOrderStatusException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidOrderStatus(InvalidOrderStatusException e) {
         String message = messageService.get("manager.order.error.invalid.status", e.getInvalidStatus());
@@ -482,30 +419,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(InvalidStatusTransitionException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidStatusTransition(InvalidStatusTransitionException e) {
-        String message = messageService.get("manager.order.error.invalid.status.transition",
-                e.getCurrentStatus(), e.getNewStatus());
-        log.error("InvalidStatusTransitionException: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(OrderModificationNotAllowedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleOrderModificationNotAllowed(
-            OrderModificationNotAllowedException e) {
-        String message = messageService.get("manager.order.error.cannot.modify", e.getCurrentStatus());
-        log.error("OrderModificationNotAllowedException: {}", message);
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(InvalidOrderTypeException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidOrderType(InvalidOrderTypeException e) {
-        String message = messageService.get("manager.order.error.not.customer.order", e.getOrderId());
-        log.error("InvalidOrderTypeException: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(OrderCancellationNotAllowedException.class)
+     @ExceptionHandler(OrderCancellationNotAllowedException.class)
     public ResponseEntity<ApiResponse<Void>> handleOrderCancellationNotAllowed(
             OrderCancellationNotAllowedException e) {
         log.warn("OrderCancellationNotAllowedException: {}", e.getMessage());
@@ -533,14 +447,6 @@ public class GlobalExceptionHandler {
     // =========================================================================
     // PURCHASE ORDER EXCEPTIONS
     // =========================================================================
-
-    @ExceptionHandler(PurchaseOrderDetailsNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handlePurchaseOrderDetailsNotFound(
-            PurchaseOrderDetailsNotFoundException e) {
-        String message = messageService.get("manager.purchase.error.purchase.details.not.found", e.getOrderId());
-        log.error("PurchaseOrderDetailsNotFoundException: {}", message);
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(message));
-    }
 
     @ExceptionHandler(CannotReceivePurchaseOrderException.class)
     public ResponseEntity<ApiResponse<Void>> handleCannotReceivePurchaseOrder(
@@ -613,15 +519,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(SupplierProductNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleSupplierProductNotFound(
-            SupplierProductNotFoundException e) {
-        String message = messageService.get("manager.supplier.product.error.not.found",
-                e.getSupplierProductId());
-        log.error("SupplierProductNotFoundException: {}", message);
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(message));
-    }
-
     // =========================================================================
     // WAREHOUSE EXCEPTIONS
     // =========================================================================
@@ -680,26 +577,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(CellAlreadyEmptyException.class)
-    public ResponseEntity<ApiResponse<Void>> handleCellAlreadyEmpty(CellAlreadyEmptyException e) {
-        String message = messageService.get("cell.error.already.empty", e.getCellId());
-        log.warn("CellAlreadyEmptyException: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
-    }
-
     @ExceptionHandler(CellInactiveException.class)
     public ResponseEntity<ApiResponse<Void>> handleCellInactive(CellInactiveException e) {
         String message = messageService.get("cell.error.inactive", e.getCellId());
         log.warn("CellInactiveException: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(InsufficientCellCapacityException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInsufficientCellCapacity(
-            InsufficientCellCapacityException e) {
-        String message = messageService.get("cell.error.insufficient.capacity",
-                e.getCellId(), e.getAvailableQuantity(), e.getRequestedQuantity());
-        log.error("InsufficientCellCapacityException: {}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
     }
 
@@ -766,14 +647,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(InvalidStockOperationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidStockOperation(InvalidStockOperationException e) {
-        String message = messageService.get("manager.stock.error.negative", e.getCurrentStock());
-        log.error("InvalidStockOperationException: current={}, requested={}",
-                e.getCurrentStock(), e.getRequestedChange());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
-    }
-
     @ExceptionHandler(WriteOffInsufficientStockException.class)
     public ResponseEntity<ApiResponse<Void>> handleWriteOffInsufficientStock(
             WriteOffInsufficientStockException e) {
@@ -781,14 +654,6 @@ public class GlobalExceptionHandler {
                 e.getProductId(), e.getAvailableStock(), e.getRequestedQuantity());
         log.error("WriteOffInsufficientStockException: {}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(BulkOperationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBulkOperationException(BulkOperationException e) {
-        String message = messageService.get("manager.bulk.operation.error",
-                e.getSuccessfulCount(), e.getProductIds().size());
-        log.error("BulkOperationException: {}", message);
-        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).body(ApiResponse.error(message));
     }
 
     @ExceptionHandler(ProductStockNotFoundException.class)
@@ -807,24 +672,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleSameWarehouseTransfer(SameWarehouseTransferException e) {
         String message = messageService.get("stock.transfer.same.warehouse.error", e.getWarehouseId());
         log.warn("SameWarehouseTransferException: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
-    }
-
-    // =========================================================================
-    // STOCK MOVEMENT EXCEPTIONS
-    // =========================================================================
-
-    @ExceptionHandler(StockMovementNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleStockMovementNotFound(StockMovementNotFoundException e) {
-        String message = messageService.get("movement.error.not.found", e.getMovementId());
-        log.error("StockMovementNotFoundException: {}", message);
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(InvalidStockMovementException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidStockMovement(InvalidStockMovementException e) {
-        String message = messageService.get("movement.error.invalid", e.getReason(), e.getProductId());
-        log.error("InvalidStockMovementException: {}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
     }
 
@@ -969,23 +816,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
     }
 
-    @ExceptionHandler(RollbackInvalidStateException.class)
-    public ResponseEntity<ApiResponse<Void>> handleRollbackInvalidState(RollbackInvalidStateException e) {
-        String status = messageService.get("order.status." + e.getCurrentStatus().name());
-        String message = messageService.get("error.rollback.invalid.state",
-                e.getOrderId(), status, e.getDetails());
-        log.warn("RollbackInvalidStateException: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(RollbackTimeoutException.class)
-    public ResponseEntity<ApiResponse<Void>> handleRollbackTimeout(RollbackTimeoutException e) {
-        String formatted = e.getDeliveredAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
-        String message = messageService.get("error.rollback.timeout", e.getOrderId(), formatted);
-        log.warn("RollbackTimeoutException: {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
-    }
-
     @ExceptionHandler(RollbackNotAllowedException.class)
     public ResponseEntity<ApiResponse<Void>> handleRollbackNotAllowed(RollbackNotAllowedException e) {
         String message = e.getMessage();
@@ -1008,15 +838,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleSystemInfoException(SystemInfoException e) {
         String message = messageService.get("system.error.info", e.getInfoType());
         log.error("SystemInfoException for {}: {}", e.getInfoType(), e.getMessage());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.error(message));
-    }
-
-    @ExceptionHandler(MessageNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMessageNotFoundException(MessageNotFoundException e) {
-        log.error("MessageNotFoundException: {}", e.getMessage());
-        String message = messageService.getWithDefault(
-                "global-exception-handler.error.configuration.missing.key",
-                "Configuration error: missing message key");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.error(message));
     }
 
