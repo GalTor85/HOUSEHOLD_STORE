@@ -101,7 +101,7 @@ public class PaymentMethodValidator {
         }
         if (effectiveCurrency.length() != CURRENCY_CODE_LENGTH) {
             throw new IllegalArgumentException(
-                    messageService.get("payment.validation.currency.invalid", effectiveCurrency));
+                    messageService.get("payment.validation.currency.invalid"));
         }
         if (!SUPPORTED_CURRENCIES.contains(effectiveCurrency.toUpperCase())) {
             throw new IllegalArgumentException(
@@ -117,7 +117,7 @@ public class PaymentMethodValidator {
             throw new IllegalArgumentException(messageService.get("payment.validation.processing.fee.min"));
         }
         if (fee.compareTo(MAX_PROCESSING_FEE) > 0) {
-            throw new IllegalArgumentException(messageService.get("payment.validation.processing.fee.max"));
+            throw new IllegalArgumentException(messageService.get("payment.validation.processing.fee.max", MAX_PROCESSING_FEE));
         }
     }
 

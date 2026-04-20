@@ -232,8 +232,11 @@ public class CellBasedReceivingProcessor {
         cell.setIsOccupied(true);
         cell.setLastInventoryDate(LocalDateTime.now());
 
+        double allWightKg =product.getWeightKg()*quantity;
+        double allVolumeM3=product.getVolumeM3()*quantity;
+
         log.info(logMsg.get("cell.assignment.updated.log",
-                cell.getCode(), currentQty, newQty, product.getId()));
+                cell.getCode(), currentQty, newQty, allWightKg, cell.getMaxWeightKg(), allVolumeM3, cell.getMaxVolumeM3()));
 
         return storageCellRepository.save(cell);
     }

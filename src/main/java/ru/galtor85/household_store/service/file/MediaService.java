@@ -53,7 +53,7 @@ public class MediaService {
                 log.error(logMsg.get("media.service.log.file.not.readable",
                         media.getFileName(), mediaId));
                 throw new FileReadException(
-                        messageService.get("media.service.error.file.not.readable", mediaId),
+                        messageService.get("media.service.error.file.not.readable", media.getFileName(), mediaId),
                         null, null
                 );
             }

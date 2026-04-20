@@ -155,7 +155,7 @@ public class UserTypeDiscountProcessor {
                                        BigDecimal discountAmount) {
         appliedDiscounts.add(PriceCalculationResult.AppliedDiscount.builder()
                 .name(messageService.get("discount.user.type", userType.name()))
-                .description(messageService.get("discount.user.type.description", discountPercent))
+                .description(messageService.get("discount.user.type.description", discountPercent, userType.name()))
                 .discountAmount(discountAmount)
                 .type(DISCOUNT_TYPE_USER_TYPE)
                 .build());

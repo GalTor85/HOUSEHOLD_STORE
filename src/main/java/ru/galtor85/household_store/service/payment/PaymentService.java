@@ -596,7 +596,7 @@ public class PaymentService {
                         messageService.get("payment.method.not.found", paymentMethodId)));
 
         if (!paymentMethod.isActive()) {
-            throw new IllegalStateException(messageService.get("payment.method.inactive", paymentMethodId));
+            throw new IllegalStateException(messageService.get("payment.method.inactive.warn", paymentMethodId));
         }
 
         UserTypeAssignmentDto userType = userTypeAssignmentService.getCurrentUserType(userId);

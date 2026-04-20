@@ -52,7 +52,7 @@ public class FileOperationProcessor {
                 }
             }
         } catch (IOException e) {
-            log.error(logMsg.get("file.storage.delete.error", fileName, e.getMessage()), e);
+            log.error(logMsg.get("file.storage.delete.error", fileName, e.getMessage()));
             throw new FileDeleteException(
                     messageService.get("file.storage.delete.error", fileName, e.getMessage()),
                     e, fileName, productId

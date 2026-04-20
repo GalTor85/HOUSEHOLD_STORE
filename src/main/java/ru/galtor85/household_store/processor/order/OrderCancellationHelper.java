@@ -34,7 +34,7 @@ public class OrderCancellationHelper {
         order.setCancellationReason(reason);
         cancelPendingInvoices(order.getInvoices());
 
-        log.debug(logMsg.get("order.cancellation.purchase.invoices.cancelled", order.getId()));
+        log.debug(logMsg.get("order.cancellation.purchase.invoices.cancelled", order.getInvoices().size(), order.getId()));
     }
 
     private void cancelPendingInvoices(List<Invoice> invoices) {

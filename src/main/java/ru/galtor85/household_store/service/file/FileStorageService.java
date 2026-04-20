@@ -78,7 +78,7 @@ public class FileStorageService {
             );
 
         } catch (IOException e) {
-            log.error(logMsg.get("file.storage.upload.error", originalFileName, e.getMessage()), e);
+            log.error(logMsg.get("file.storage.upload.error", originalFileName, e.getMessage()));
             throw new FileStorageException(
                     messageService.get("file.storage.upload.error", originalFileName, e.getMessage()),
                     e, originalFileName, productId

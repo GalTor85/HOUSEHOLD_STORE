@@ -14,7 +14,6 @@ import java.util.Locale;
  * Falls back to English if the configured locale is invalid.
  * Generates smart readable fallback from key if translation is missing.
  *
- * <p>Usage: log.info(logMessageService.get("payment.start", orderId));</p>
  */
 @Slf4j
 @Service

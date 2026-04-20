@@ -63,7 +63,7 @@ public class MediaUploadProcessor {
                     : UNKNOWN_FILE_NAME;
 
             try {
-                log.debug(logMsg.get("product.media.service.processing.file", i, fileName));
+                log.debug(logMsg.get("product.media.service.processing.file", i, productId, fileName));
 
                 validator.validateFileNotEmpty(file, productId, fileName);
 

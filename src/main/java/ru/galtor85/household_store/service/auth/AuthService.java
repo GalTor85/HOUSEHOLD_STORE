@@ -117,7 +117,7 @@ public class AuthService {
      */
     @Transactional
     public AuthResponse register(UserCreateRequest request) {
-        log.debug(logMsg.get("auth.log.register.attempt", request.getEmail()));
+        log.debug(logMsg.get("auth.log.register.attempt"));
 
         User user = userToEntity.build(request, null);
         User registeredUser = userService.register(user, request.getPassword());
@@ -225,7 +225,7 @@ public class AuthService {
 
             SecurityContextHolder.clearContext();
 
-            log.info(logMsg.get("auth.log.logout.success", user.getEmail()));
+            log.info(logMsg.get("auth.log.logout.success.id", user.getId()));
         }
 
         log.info(logMsg.get("auth.log.logout.success"));
@@ -248,7 +248,7 @@ public class AuthService {
         SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
 
         assert securityUser != null;
-        log.debug(logMsg.get("auth.log.token.valid", securityUser.getUsername()));
+        log.debug(logMsg.get("auth.log.token.valid"));
 
         User user = userSearchService.getUserById(securityUser.getUserId());
 

@@ -406,7 +406,7 @@ public class PaymentMethodService {
         if (!paymentMethod.isActive()) {
             log.warn(logMsg.get("payment.method.inactive.warn", methodId));
             throw new IllegalStateException(
-                    messageService.get("payment.method.inactive", methodId));
+                    messageService.get("payment.method.inactive.warn", methodId));
         }
 
         	log.debug(logMsg.get("payment.service.get.user.method.success", methodId, userType));

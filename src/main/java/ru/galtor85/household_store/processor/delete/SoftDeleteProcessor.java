@@ -55,6 +55,6 @@ public class SoftDeleteProcessor {
         securityUserRepository.save(securityUser);
 
         log.info(logMsg.get("user-deleted-service.log.user.soft.deleted",
-                user.getId(), anonymizedEmail));
+                user.getId()));
     }
 }

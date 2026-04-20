@@ -407,7 +407,7 @@ public class ManagerInventoryController extends BaseController {
         managerProductService.deleteMedia(mediaId, manager.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("manager.product.media.deleted"),
+                messageService.get("media.deleted"),
                 null));
     }
 
@@ -1278,7 +1278,7 @@ public class ManagerInventoryController extends BaseController {
         List<StockMovementDto> movements = stockService.getMovementsByBatch(batchNumber);
 
         return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("stock.movements.batch.fetched"),
+                messageService.get("stock.movements.batch.fetched",movements.size(), batchNumber),
                 movements));
     }
 

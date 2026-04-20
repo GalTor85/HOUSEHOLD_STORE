@@ -430,7 +430,7 @@ public class FinanceController {
                 cashRegisterId, closingBalance, discrepancyReason, currentUser.getId());
 
         return ResponseEntity.ok(ApiResponse.success(
-                messageService.get("cash.register.closed"),
+                messageService.get("cash.register.closed.with.name", cashRegister.getName()),
                 cashRegister));
     }
 

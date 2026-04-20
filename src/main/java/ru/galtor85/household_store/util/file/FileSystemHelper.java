@@ -50,7 +50,7 @@ public class FileSystemHelper {
             return productUploadPath;
         } catch (IOException e) {
             throw new FileStorageException(
-                    messageService.get("file.storage.directory.create.error", productId, e.getMessage()),
+                    messageService.get("file.storage.directory.create.error", e.getMessage()),
                     e, null, productId
             );
         }

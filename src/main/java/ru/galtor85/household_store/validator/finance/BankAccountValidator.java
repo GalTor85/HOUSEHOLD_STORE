@@ -36,7 +36,7 @@ public class BankAccountValidator {
     public BankAccount validateExists(Long accountId) {
         return bankAccountRepository.findById(accountId)
                 .orElseThrow(() -> {
-                    log.error(logMsg.get("bank.account.not.found", accountId));
+                    log.error(logMsg.get("bank.account.not.found.id", accountId));
                     return new BankAccountNotFoundException(accountId);
                 });
     }

@@ -223,7 +223,7 @@ public class PurchaseOrderValidator {
     public PurchaseOrder validatePurchaseOrderExists(Long orderId) {
         return purchaseOrderRepository.findById(orderId)
                 .orElseThrow(() -> {
-                    log.error(logMsg.get("purchase.order.not.found", orderId));
+                    log.error(logMsg.get("purchase.order.not.found.id", orderId));
                     return new PurchaseOrderNotFoundException(orderId);
                 });
     }

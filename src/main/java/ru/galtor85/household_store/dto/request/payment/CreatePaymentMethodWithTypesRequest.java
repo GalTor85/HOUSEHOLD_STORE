@@ -96,7 +96,7 @@ public class CreatePaymentMethodWithTypesRequest {
     private String currency = DEFAULT_CURRENCY;
 
     @DecimalMin(value = "0.0", message = "{payment.validation.processing.fee.min}")
-    @DecimalMax(value = "100.0", message = "{payment.validation.processing.fee.max}")
+    @DecimalMax(value = "100.0", message = "{payment.validation.processing.fee.max.annotation}")
     @Schema(description = "Processing fee percentage",
             example = "0.00",
             defaultValue = "0.00")

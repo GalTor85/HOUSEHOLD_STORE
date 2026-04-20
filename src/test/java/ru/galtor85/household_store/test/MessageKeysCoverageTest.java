@@ -1,5 +1,10 @@
 package ru.galtor85.household_store.test;
 
+import com.github.javaparser.ParserConfiguration;
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import org.junit.jupiter.api.*;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.core.io.Resource;
@@ -15,14 +20,15 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@DisplayName("Message Keys Coverage Tests")
+@DisplayName("Message Keys Consistency & Coverage Tests")
 class MessageKeysCoverageTest {
 
     // =========================================================================
     // CONFIGURATION CONSTANTS
     // =========================================================================
-
     private static final String MESSAGE_BASENAME = "classpath:messages";
     private static final String MESSAGE_ENCODING = "UTF-8";
     private static final boolean FALLBACK_TO_SYSTEM_LOCALE = false;
@@ -57,7 +63,6 @@ class MessageKeysCoverageTest {
 
     // Regex patterns
     private static final Pattern STATIC_KEY_PATTERN;
-    private static final Pattern MESSAGE_SOURCE_PATTERN;
     private static final Pattern VALIDATION_ANNOTATION_PATTERN;
     private static final Pattern VALIDATION_ANNOTATION_SIMPLE_PATTERN;
     private static final Pattern DYNAMIC_KEY_PATTERN;
@@ -78,9 +83,6 @@ class MessageKeysCoverageTest {
         STATIC_KEY_PATTERN = Pattern.compile(
                 "(?:messageService|logMsg)\\s*\\.\\s*(" + MESSAGE_SERVICE_METHODS_PATTERN + ")\\s*\\(\\s*\"([^\"]+)\""
         );
-        MESSAGE_SOURCE_PATTERN = Pattern.compile(
-                "messageSource\\s*\\.\\s*getMessage\\s*\\(\\s*\"([^\"]+)\""
-        );
         VALIDATION_ANNOTATION_PATTERN = Pattern.compile(
                 "@(" + VALIDATION_ANNOTATIONS_PATTERN + ")\\s*\\([^)]*message\\s*=\\s*\"\\{([^}]+)}\""
         );
@@ -96,28 +98,40 @@ class MessageKeysCoverageTest {
     }
 
     // =========================================================================
-    // FIELDS
+    // DATA STORAGE
     // =========================================================================
-
+    // Properties files data
     private static Map<String, Properties> messagesByFile;
     private static Map<String, Set<String>> keysByFile;
-    private static Set<String> staticKeysFromCode;
-    private static Set<String> annotationKeysFromCode;
-    private static Set<String> dynamicKeyWarnings;
     private static List<String> propertyFiles;
 
-    private static Map<String, Set<String>> enumValuesByPrefix;
+    // Keys extracted from code
+    private static Set<String> staticKeysFromCode;
+    private static Set<String> annotationKeysFromCode;
     private static Set<String> generatedDynamicKeys;
+    private static Set<String> dynamicKeyWarnings;
+
+    // Enum analysis
+    private static Map<String, Set<String>> enumValuesByPrefix;
+
+    // Argument consistency data (from MessageKeysArgumentConsistencyTest)
+    private static final Map<String, List<CallInfo>> callRegistry = new HashMap<>();
+    private static final Map<String, Integer> propertiesKeyArgs = new HashMap<>();
 
     // =========================================================================
     // SETUP
     // =========================================================================
-
     @BeforeAll
     static void setUp() throws IOException {
         System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
         System.setErr(new PrintStream(System.err, true, StandardCharsets.UTF_8));
 
+        // Configure JavaParser for Java 17
+        ParserConfiguration config = new ParserConfiguration();
+        config.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_17);
+        StaticJavaParser.setConfiguration(config);
+
+        // Initialize message source (not strictly needed but kept for consistency)
         ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
         messageSource.setBasename(MESSAGE_BASENAME);
         messageSource.setDefaultEncoding(MESSAGE_ENCODING);
@@ -128,45 +142,29 @@ class MessageKeysCoverageTest {
         propertyFiles = new ArrayList<>();
         staticKeysFromCode = new TreeSet<>();
         annotationKeysFromCode = new TreeSet<>();
+        generatedDynamicKeys = new TreeSet<>();
         dynamicKeyWarnings = new TreeSet<>();
         enumValuesByPrefix = new LinkedHashMap<>();
-        generatedDynamicKeys = new TreeSet<>();
 
+        // Step 1: Discover properties files
         discoverAllPropertyFiles();
+
+        // Step 2: Analyze enum classes for dynamic key prefixes
         analyzeEnumClasses();
-        extractKeysAndWarningsFromSourceCode();
+
+        // Step 3: Scan source code (both for keys and argument counts)
+        scanSourceCode();
+
+        // Step 4: Generate dynamic keys from enums
         generateDynamicKeysFromEnums();
-    }
 
-    // =========================================================================
-    // VALIDATION UTILS
-    // =========================================================================
-
-    /**
-     * Checks if a key is valid (not ending with a dot).
-     * Keys ending with a dot are prefixes used for dynamic concatenation.
-     */
-    private static boolean isValidKey(String key) {
-        if (key == null || key.isEmpty()) {
-            return false;
-        }
-        return !key.endsWith(".");
-    }
-
-    /**
-     * Gets all valid keys from code (filters out prefix keys ending with dot).
-     */
-    private static Set<String> getValidKeysFromCode() {
-        Set<String> allKeys = getAllKeysFromCode();
-        return allKeys.stream()
-                .filter(MessageKeysCoverageTest::isValidKey)
-                .collect(Collectors.toCollection(TreeSet::new));
+        // Step 5: Build expected argument counts from properties
+        buildPropertiesArgumentCounts();
     }
 
     // =========================================================================
     // PROPERTIES FILES DISCOVERY
     // =========================================================================
-
     private static void discoverAllPropertyFiles() throws IOException {
         ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
 
@@ -231,7 +229,6 @@ class MessageKeysCoverageTest {
     // =========================================================================
     // ENUM ANALYSIS
     // =========================================================================
-
     private static void analyzeEnumClasses() throws IOException {
         Path sourceRoot = findSourceRoot();
         if (sourceRoot == null) {
@@ -361,9 +358,8 @@ class MessageKeysCoverageTest {
     }
 
     // =========================================================================
-    // SOURCE CODE EXTRACTION
+    // SOURCE CODE SCANNING (Keys + Argument Counts)
     // =========================================================================
-
     private static Path findSourceRoot() {
         for (String path : SOURCE_ROOT_CANDIDATES) {
             Path p = Paths.get(path);
@@ -385,7 +381,7 @@ class MessageKeysCoverageTest {
         return null;
     }
 
-    private static void extractKeysAndWarningsFromSourceCode() throws IOException {
+    private static void scanSourceCode() throws IOException {
         Path sourceRoot = findSourceRoot();
         if (sourceRoot == null) {
             return;
@@ -394,26 +390,19 @@ class MessageKeysCoverageTest {
         try (Stream<Path> walk = Files.walk(sourceRoot)) {
             walk.filter(Files::isRegularFile)
                     .filter(p -> p.toString().endsWith(".java"))
-                    .forEach(MessageKeysCoverageTest::extractFromFile);
+                    .forEach(MessageKeysCoverageTest::processJavaFile);
         }
     }
 
-    private static void extractFromFile(Path file) {
+    private static void processJavaFile(Path file) {
         try {
             String content = Files.readString(file);
-            String filename = file.getFileName().toString();
+            String filename = file.toString();
 
+            // 1. Extract keys using regex (fast, covers static calls and annotations)
             Matcher staticMatcher = STATIC_KEY_PATTERN.matcher(content);
             while (staticMatcher.find()) {
                 String key = staticMatcher.group(2);
-                if (isValidKey(key)) {
-                    staticKeysFromCode.add(key);
-                }
-            }
-
-            Matcher sourceMatcher = MESSAGE_SOURCE_PATTERN.matcher(content);
-            while (sourceMatcher.find()) {
-                String key = sourceMatcher.group(1);
                 if (isValidKey(key)) {
                     staticKeysFromCode.add(key);
                 }
@@ -438,18 +427,59 @@ class MessageKeysCoverageTest {
             Matcher dynamicMatcher = DYNAMIC_KEY_PATTERN.matcher(content);
             while (dynamicMatcher.find()) {
                 String match = dynamicMatcher.group();
-                dynamicKeyWarnings.add(filename + ": " + truncate(match, MAX_LINE_LENGTH));
+                dynamicKeyWarnings.add(file.getFileName() + ": " + truncate(match, MAX_LINE_LENGTH));
             }
 
             Matcher enumConcatMatcher = ENUM_CONCAT_PATTERN.matcher(content);
             while (enumConcatMatcher.find()) {
                 String prefix = enumConcatMatcher.group(1);
                 String expr = enumConcatMatcher.group(2);
-                dynamicKeyWarnings.add(filename + ": " + truncate(prefix + " + " + expr, MAX_LINE_LENGTH));
+                dynamicKeyWarnings.add(file.getFileName() + ": " + truncate(prefix + " + " + expr, MAX_LINE_LENGTH));
             }
 
-        } catch (IOException ignored) {
+            // 2. Detailed analysis using JavaParser for argument counts
+            CompilationUnit cu = StaticJavaParser.parse(file);
+            cu.accept(new DetailedCallVisitor(filename), null);
+
+        } catch (Exception e) {
+            System.err.println("Failed to parse file " + file + ": " + e.getMessage());
         }
+    }
+
+    private static class DetailedCallVisitor extends VoidVisitorAdapter<Void> {
+        private final String fileName;
+
+        DetailedCallVisitor(String fileName) {
+            this.fileName = fileName;
+        }
+
+        @Override
+        public void visit(MethodCallExpr call, Void arg) {
+            super.visit(call, arg);
+            if (!call.getNameAsString().equals("get")) return;
+
+            String scope = call.getScope().map(Object::toString).orElse("");
+            if (!scope.contains("logMsg") && !scope.contains("messageService")) return;
+
+            if (call.getArguments().isEmpty() || !call.getArgument(0).isStringLiteralExpr()) return;
+
+            String key = call.getArgument(0).asStringLiteralExpr().getValue();
+            int argCount = call.getArguments().size() - 1;
+            int line = call.getBegin().map(p -> p.line).orElse(-1);
+
+            callRegistry.computeIfAbsent(key, k -> new ArrayList<>())
+                    .add(new CallInfo(fileName, line, argCount));
+        }
+    }
+
+    private record CallInfo(String fileName, int lineNumber, int argCount) {
+    }
+
+    // =========================================================================
+    // UTILITIES
+    // =========================================================================
+    private static boolean isValidKey(String key) {
+        return key != null && !key.isEmpty() && !key.endsWith(".");
     }
 
     private static Set<String> getAllKeysFromCode() {
@@ -460,11 +490,34 @@ class MessageKeysCoverageTest {
         return all;
     }
 
+    private static Set<String> getValidKeysFromCode() {
+        return getAllKeysFromCode().stream()
+                .filter(MessageKeysCoverageTest::isValidKey)
+                .collect(Collectors.toCollection(TreeSet::new));
+    }
+
     private static String truncate(String str, int max) {
-        if (str == null) {
-            return "null";
-        }
+        if (str == null) return "null";
         return str.length() <= max ? str : str.substring(0, max - 3) + "...";
+    }
+
+    private static void buildPropertiesArgumentCounts() {
+        for (String filename : propertyFiles) {
+            Properties props = messagesByFile.get(filename);
+            for (String key : props.stringPropertyNames()) {
+                String value = props.getProperty(key);
+                int maxPlaceholder = findMaxPlaceholderIndex(value);
+                propertiesKeyArgs.merge(key, maxPlaceholder + 1, Math::max);
+            }
+        }
+    }
+
+    private static int findMaxPlaceholderIndex(String value) {
+        if (value == null) return -1;
+        Matcher m = PLACEHOLDER_PATTERN.matcher(value);
+        int max = -1;
+        while (m.find()) max = Math.max(max, Integer.parseInt(m.group(1)));
+        return max;
     }
 
     private static List<String> validatePlaceholders(String message) {
@@ -506,13 +559,27 @@ class MessageKeysCoverageTest {
     void showStatistics() {
         Set<String> validCodeKeys = getValidKeysFromCode();
 
-        long prefixKeysCount = getAllKeysFromCode().stream()
-                .filter(k -> k.endsWith("."))
-                .count();
+        long prefixKeysCount = getAllKeysFromCode().stream().filter(k -> k.endsWith(".")).count();
 
         Set<String> redundantKeys = new TreeSet<>(generatedDynamicKeys);
         redundantKeys.removeAll(staticKeysFromCode);
         redundantKeys.removeAll(annotationKeysFromCode);
+
+        // Count argument mismatches
+        int internalMismatchCount = 0;
+        for (List<CallInfo> calls : callRegistry.values()) {
+            Set<Integer> argCounts = calls.stream().map(CallInfo::argCount).collect(Collectors.toSet());
+            if (argCounts.size() > 1) internalMismatchCount++;
+        }
+
+        int codeVsPropMismatchCount = 0;
+        for (Map.Entry<String, List<CallInfo>> entry : callRegistry.entrySet()) {
+            String key = entry.getKey();
+            Integer expected = propertiesKeyArgs.get(key);
+            if (expected == null) continue;
+            int actual = entry.getValue().getFirst().argCount();
+            if (actual != expected) codeVsPropMismatchCount++;
+        }
 
         System.out.println("\n" + LINE_SEPARATOR.repeat(LINE_SEPARATOR_LENGTH));
         System.out.println("📊 STATISTICS");
@@ -525,6 +592,9 @@ class MessageKeysCoverageTest {
         System.out.println("  ───────────────────────────────────");
         System.out.println("  Total VALID keys from code:     " + validCodeKeys.size());
         System.out.println("  Redundant dynamic keys:         " + redundantKeys.size() + " ⚠️ (may be unused)");
+        System.out.println();
+        System.out.println("  Argument mismatches (internal): " + internalMismatchCount + " ❌");
+        System.out.println("  Argument mismatches (code vs prop): " + codeVsPropMismatchCount + " ❌");
         System.out.println();
         System.out.println("  Dynamic key constructions:      " + dynamicKeyWarnings.size());
         System.out.println("  Property files:                 " + propertyFiles.size());
@@ -590,7 +660,6 @@ class MessageKeysCoverageTest {
         System.out.println("⚠️ REDUNDANT KEYS (Generated from enums, but NOT found in static code)");
         System.out.println(LINE_SEPARATOR.repeat(LINE_SEPARATOR_LENGTH));
         System.out.println("   These keys MAY be unused. Manual verification recommended.");
-        System.out.println("   They are generated from enum values but not found as static calls.");
         System.out.println(LINE_SEPARATOR.repeat(LINE_SEPARATOR_LENGTH));
 
         Set<String> redundantKeys = new TreeSet<>(generatedDynamicKeys);
@@ -665,6 +734,7 @@ class MessageKeysCoverageTest {
         if (!hasMissing) {
             System.out.println("✅ No missing keys - all valid code keys are in properties");
         }
+        // We don't assert here; just reporting. Missing keys are critical but may be fixed separately.
     }
 
     @Test
@@ -736,13 +806,14 @@ class MessageKeysCoverageTest {
 
     @Test
     @Order(8)
-    @DisplayName("8. Invalid placeholders")
+    @DisplayName("8. Invalid placeholders (CRITICAL)")
     void reportInvalidPlaceholders() {
         System.out.println("\n" + LINE_SEPARATOR.repeat(LINE_SEPARATOR_LENGTH));
-        System.out.println("❌ INVALID PLACEHOLDERS");
+        System.out.println("❌ INVALID PLACEHOLDERS (CRITICAL)");
         System.out.println(LINE_SEPARATOR.repeat(LINE_SEPARATOR_LENGTH));
 
         boolean hasInvalid = false;
+        int totalInvalidCount = 0;
 
         for (String filename : propertyFiles) {
             Properties props = messagesByFile.get(filename);
@@ -758,6 +829,7 @@ class MessageKeysCoverageTest {
 
             if (!invalid.isEmpty()) {
                 hasInvalid = true;
+                totalInvalidCount += invalid.size();
                 System.out.println("\n📁 " + filename);
                 System.out.println("   Invalid: " + invalid.size() + " placeholders");
                 System.out.println("   ─".repeat(50));
@@ -775,115 +847,157 @@ class MessageKeysCoverageTest {
 
         if (!hasInvalid) {
             System.out.println("✅ No invalid placeholders");
+        } else {
+            System.out.println("\n" + LINE_SEPARATOR.repeat(LINE_SEPARATOR_LENGTH));
+            System.out.println("❌ Total invalid placeholders found: " + totalInvalidCount);
+            System.out.println(LINE_SEPARATOR.repeat(LINE_SEPARATOR_LENGTH));
         }
+
+        assertTrue(!hasInvalid,
+                "Found " + totalInvalidCount + " invalid placeholder(s) in properties files. See console output for details.");
     }
 
     @Test
     @Order(9)
-    @DisplayName("9. Export all keys to file")
+    @DisplayName("9. Internal Argument Consistency")
+    void validateInternalArgumentConsistency() {
+        Map<String, Set<Integer>> problematicKeys = new LinkedHashMap<>();
+
+        for (Map.Entry<String, List<CallInfo>> entry : callRegistry.entrySet()) {
+            String key = entry.getKey();
+            Set<Integer> distinctArgCounts = entry.getValue().stream()
+                    .map(CallInfo::argCount)
+                    .collect(Collectors.toSet());
+
+            if (distinctArgCounts.size() > 1) {
+                problematicKeys.put(key, distinctArgCounts);
+            }
+        }
+
+        if (problematicKeys.isEmpty()) {
+            System.out.println("✅ All keys have the same argument count across all calls.");
+        } else {
+            System.out.println("\n❌ Found keys with inconsistent argument counts: " + problematicKeys.size());
+            for (Map.Entry<String, Set<Integer>> entry : problematicKeys.entrySet()) {
+                System.out.println("  Key: '" + entry.getKey() + "' -> counts: " + entry.getValue());
+                for (CallInfo ci : callRegistry.get(entry.getKey())) {
+                    System.out.println("    " + ci.fileName() + ":" + ci.lineNumber() + " (args: " + ci.argCount() + ")");
+                }
+            }
+        }
+
+        assertTrue(problematicKeys.isEmpty(),
+                "Found message keys with incompatible argument counts within the code.");
+    }
+
+    @Test
+    @Order(10)
+    @DisplayName("10. Code vs Properties Argument Count Match")
+    void validateCodeVsPropertiesArgumentCount() {
+        List<String> mismatches = new ArrayList<>();
+
+        for (Map.Entry<String, List<CallInfo>> entry : callRegistry.entrySet()) {
+            String key = entry.getKey();
+            Integer expected = propertiesKeyArgs.get(key);
+            if (expected == null) continue;
+
+            int actual = entry.getValue().getFirst().argCount();
+            if (actual != expected) {
+                mismatches.add(String.format("Key '%s': properties expects %d args, code passes %d", key, expected, actual));
+                for (CallInfo ci : entry.getValue()) {
+                    mismatches.add("    " + ci.fileName() + ":" + ci.lineNumber());
+                }
+            }
+        }
+
+        if (mismatches.isEmpty()) {
+            System.out.println("✅ All keys have matching argument counts between code and properties.");
+        } else {
+            System.out.println("\n❌ Argument count mismatches between code and properties:");
+            mismatches.forEach(System.out::println);
+        }
+
+        assertTrue(mismatches.isEmpty(), "Argument count mismatch between code and properties.");
+    }
+
+    @Test
+    @Order(11)
+    @DisplayName("11. Export all reports to files")
     void exportAllKeysToFile() throws IOException {
         Set<String> validCodeKeys = getValidKeysFromCode();
-        Set<String> allCodeKeys = getAllKeysFromCode();
 
         Set<String> redundantKeys = new TreeSet<>(generatedDynamicKeys);
         redundantKeys.removeAll(staticKeysFromCode);
         redundantKeys.removeAll(annotationKeysFromCode);
 
         Path outputDir = Paths.get("target/test-output");
-
-        // =========================================================================
-        // CLEANING OLD REPORT FILES
-        // =========================================================================
         if (Files.exists(outputDir)) {
-            System.out.println("\n🧹 Cleaning old report files...");
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(outputDir, "*.txt")) {
-                int deletedCount = 0;
-                for (Path file : stream) {
-                    Files.delete(file);
-                    deletedCount++;
-                }
-                System.out.println("   Deleted " + deletedCount + " old report files");
-            } catch (IOException e) {
-                System.out.println("   ⚠️ Failed to clean old files: " + e.getMessage());
+                for (Path file : stream) Files.delete(file);
             }
         }
-
         Files.createDirectories(outputDir);
         System.out.println("📁 Output directory: " + outputDir.toAbsolutePath());
 
-        // =========================================================================
-        // GENERATING REPORT FILES
-        // =========================================================================
-
-        // All valid keys
-        Path outputFile = outputDir.resolve("all-message-keys.txt");
-        Files.write(outputFile, validCodeKeys, StandardCharsets.UTF_8);
-        System.out.println("✅ Exported " + validCodeKeys.size() + " valid keys to: all-message-keys.txt");
-
-        // Static keys
-        Path staticKeysFile = outputDir.resolve("static-keys-from-code.txt");
+        // Basic key sets
+        Files.write(outputDir.resolve("all-message-keys.txt"), validCodeKeys, StandardCharsets.UTF_8);
         Set<String> staticOnly = new TreeSet<>();
         staticOnly.addAll(staticKeysFromCode);
         staticOnly.addAll(annotationKeysFromCode);
-        Files.write(staticKeysFile, staticOnly, StandardCharsets.UTF_8);
-        System.out.println("✅ Exported " + staticOnly.size() + " static keys to: static-keys-from-code.txt");
+        Files.write(outputDir.resolve("static-keys-from-code.txt"), staticOnly, StandardCharsets.UTF_8);
+        Files.write(outputDir.resolve("generated-dynamic-keys.txt"), generatedDynamicKeys, StandardCharsets.UTF_8);
 
-        // Dynamic keys
-        Path dynamicKeysFile = outputDir.resolve("generated-dynamic-keys.txt");
-        Files.write(dynamicKeysFile, generatedDynamicKeys, StandardCharsets.UTF_8);
-        System.out.println("✅ Exported " + generatedDynamicKeys.size() + " dynamic keys to: generated-dynamic-keys.txt");
-
-        // Redundant keys
         if (!redundantKeys.isEmpty()) {
-            Path redundantFile = outputDir.resolve("redundant-keys.txt");
-            Files.write(redundantFile, redundantKeys, StandardCharsets.UTF_8);
-            System.out.println("⚠️ Exported " + redundantKeys.size() + " redundant keys to: redundant-keys.txt");
+            Files.write(outputDir.resolve("redundant-keys.txt"), redundantKeys, StandardCharsets.UTF_8);
         }
 
-        // Prefix keys (excluded)
-        long prefixKeysCount = allCodeKeys.stream().filter(k -> k.endsWith(".")).count();
-        if (prefixKeysCount > 0) {
-            Set<String> prefixKeys = allCodeKeys.stream()
-                    .filter(k -> k.endsWith("."))
-                    .collect(Collectors.toCollection(TreeSet::new));
-            Path prefixFile = outputDir.resolve("prefix-keys-excluded.txt");
-            Files.write(prefixFile, prefixKeys, StandardCharsets.UTF_8);
-            System.out.println("❌ Exported " + prefixKeysCount + " prefix keys (excluded) to: prefix-keys-excluded.txt");
+        // Argument mismatches
+        List<String> internalMismatchReport = new ArrayList<>();
+        for (Map.Entry<String, List<CallInfo>> entry : callRegistry.entrySet()) {
+            Set<Integer> counts = entry.getValue().stream().map(CallInfo::argCount).collect(Collectors.toSet());
+            if (counts.size() > 1) {
+                internalMismatchReport.add(entry.getKey() + " -> " + counts);
+                for (CallInfo ci : entry.getValue()) {
+                    internalMismatchReport.add("  " + ci.fileName() + ":" + ci.lineNumber() + " (" + ci.argCount() + ")");
+                }
+            }
+        }
+        if (!internalMismatchReport.isEmpty()) {
+            Files.write(outputDir.resolve("internal-argument-mismatches.txt"), internalMismatchReport, StandardCharsets.UTF_8);
         }
 
-        // Missing и Orphaned для каждого properties файла
+        List<String> propMismatchReport = new ArrayList<>();
+        for (Map.Entry<String, List<CallInfo>> entry : callRegistry.entrySet()) {
+            String key = entry.getKey();
+            Integer expected = propertiesKeyArgs.get(key);
+            if (expected == null) continue;
+            int actual = entry.getValue().getFirst().argCount();
+            if (actual != expected) {
+                propMismatchReport.add(key + ": expected " + expected + ", actual " + actual);
+                for (CallInfo ci : entry.getValue()) {
+                    propMismatchReport.add("  " + ci.fileName() + ":" + ci.lineNumber());
+                }
+            }
+        }
+        if (!propMismatchReport.isEmpty()) {
+            Files.write(outputDir.resolve("code-vs-properties-argument-mismatches.txt"), propMismatchReport, StandardCharsets.UTF_8);
+        }
+
+        // Missing / orphaned per file
         for (String filename : propertyFiles) {
             Set<String> fileKeys = keysByFile.get(filename);
-
-            // Missing keys
             Set<String> missing = new TreeSet<>(validCodeKeys);
             missing.removeAll(fileKeys);
             if (!missing.isEmpty()) {
-                Path missingFile = outputDir.resolve("missing-" + filename.replace(".properties", ".txt"));
-                Files.write(missingFile, missing, StandardCharsets.UTF_8);
-                System.out.println("❌ Missing " + missing.size() + " keys in " + filename + " → " + missingFile.getFileName());
+                Files.write(outputDir.resolve("missing-" + filename.replace(".properties", ".txt")), missing, StandardCharsets.UTF_8);
             }
-
-            // Orphaned keys
             Set<String> orphaned = new TreeSet<>(fileKeys);
             orphaned.removeAll(validCodeKeys);
             if (!orphaned.isEmpty()) {
-                Path orphanedFile = outputDir.resolve("orphaned-" + filename.replace(".properties", ".txt"));
-                Files.write(orphanedFile, orphaned, StandardCharsets.UTF_8);
-                System.out.println("👻 Orphaned " + orphaned.size() + " keys in " + filename + " → " + orphanedFile.getFileName());
+                Files.write(outputDir.resolve("orphaned-" + filename.replace(".properties", ".txt")), orphaned, StandardCharsets.UTF_8);
             }
         }
 
-        // =========================================================================
-        // SUMMARY OF GENERATED REPORT FILES
-        // =========================================================================
-        System.out.println("\n📋 Generated report files:");
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(outputDir, "*.txt")) {
-            for (Path file : stream) {
-                long size = Files.size(file);
-                String sizeStr = size < 1024 ? size + " B" : (size / 1024) + " KB";
-                System.out.println("   • " + file.getFileName() + " (" + sizeStr + ")");
-            }
-        }
+        System.out.println("✅ Reports exported successfully.");
     }
 }

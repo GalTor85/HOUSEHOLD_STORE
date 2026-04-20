@@ -153,6 +153,12 @@
             <artifactId>spring-boot-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.javaparser</groupId>
+            <artifactId>javaparser-symbol-solver-core</artifactId>
+            <version>3.25.10</version>
+            <scope>test</scope>
+        </dependency>
         <!-- Explicit patched AssertJ version -->
         <dependency>
             <groupId>org.assertj</groupId>
@@ -230,4 +236,3 @@
         </plugins>
     </build>
 </project>
-

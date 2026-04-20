@@ -642,8 +642,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(WarehouseAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleWarehouseAlreadyExists(WarehouseAlreadyExistsException e) {
-        String message = messageService.get("warehouse.error.already.exists", e.getField(), e.getValue());
-        log.error("WarehouseAlreadyExistsException: {}", message);
+        String message = messageService.get("warehouse.error.already.exists");
+        log.error("WarehouseAlreadyExistsException: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(message));
     }
 
@@ -675,7 +675,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CellAlreadyOccupiedException.class)
     public ResponseEntity<ApiResponse<Void>> handleCellAlreadyOccupied(CellAlreadyOccupiedException e) {
-        String message = messageService.get("cell.error.already.occupied", e.getCellId());
+        String message = messageService.get("cell.error.already.occupied", e.getCellId(), e.getCurrentProductId());
         log.error("CellAlreadyOccupiedException: {}", message);
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(message));
     }
@@ -900,7 +900,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvoiceAlreadyPaidException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvoiceAlreadyPaid(InvoiceAlreadyPaidException e) {
         log.warn("InvoiceAlreadyPaidException: id={}, number={}", e.getInvoiceId(), e.getInvoiceNumber());
-        String message = messageService.get("invoice.already.paid");
+        String message = messageService.get("payment.error.invoice.already.paid");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(message));
     }
 
