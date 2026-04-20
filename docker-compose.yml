@@ -4,16 +4,16 @@ services:
     image: postgres:15-alpine
     container_name: household-postgres
     environment:
-      POSTGRES_DB: household_store
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-household_store}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-docker.sql:/docker-entrypoint-initdb.d/01-init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d household_store"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-household_store}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -30,21 +30,21 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/household_store?currentSchema=household_schema&useUnicode=true&characterEncoding=UTF-8
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      SERVER_PORT: 8443
-      SSL_KEYSTORE_PASSWORD: changeit
-      SSL_KEY_ALIAS: tomcat
-      JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-household_store}?currentSchema=household_schema&useUnicode=true&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SERVER_PORT: ${SERVER_PORT:-8443}
+      SSL_KEYSTORE_PASSWORD: ${SSL_KEYSTORE_PASSWORD}
+      SSL_KEY_ALIAS: ${SSL_KEY_ALIAS:-tomcat}
+      JWT_SECRET: ${JWT_SECRET}
     ports:
-      - "8443:8443"
+      - "${SERVER_PORT:-8443}:${SERVER_PORT:-8443}"
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
-      - ./keystore.p12:/app/keystore/keystore.p12:ro
+      - ${SSL_KEYSTORE_PATH:-./keystore.p12}:/app/keystore/keystore.p12:ro
     healthcheck:
-      test: [ "CMD", "wget", "--no-check-certificate", "-q", "-O-", "https://localhost:8443/actuator/health" ]
+      test: ["CMD", "wget", "--no-check-certificate", "-q", "-O-", "https://localhost:${SERVER_PORT:-8443}/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
